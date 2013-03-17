@@ -3,16 +3,16 @@ import re
 import subprocess
 import os
 
-#get the current layout
-cur_layout_cmd = ['setxkbmap', '-v']
-cur_l = subprocess.Popen(cur_layout_cmd, stdout=subprocess.PIPE)
-cur_l = cur_l.communicate()[0]
-cur_l = cur_l.split('\n')
-for l in cur_l:
-	if l.startswith("symbols:"):
-		cur_l = l.split()[1]
-		break;
-current_layout = cur_l.split('+')[1].strip()
+#get the current userset layout
+vm_layout = "%s/.config/qubes-keyboard-layout.rc" % os.getenv("HOME")
+cur_user_layout = ""
+if os.path.isfile(vm_layout):
+	try:
+		fp = open(vm_layout,'r')
+		cur_user_layout = fp.read().strip()
+		fp.close()
+	except IOError:
+		pass
 
 # get the list of all xkb layouts
 xkb_rules_base = "/usr/share/X11/xkb/rules/base.lst"
@@ -46,9 +46,16 @@ zenity_cmd.append("Code")
 zenity_cmd.append('--column')
 zenity_cmd.append("Full name")
 
+if cur_user_layout == "":
+	zenity_cmd.append("TRUE")
+else:
+	zenity_cmd.append("FALSE")
 
+zenity_cmd.append("none")
+zenity_cmd.append("Qubes default layout")
+ 
 for l in layouts:
-	if l[0] == current_layout:
+	if l[0] == cur_user_layout:
 		zenity_cmd.append("TRUE")
 	else:
 		zenity_cmd.append("FALSE")
@@ -61,14 +68,25 @@ choice = choice.strip()
 
 #apply the choice
 
-vm_layout = "%s/.config/qubes-keyboard-layout.rc" % os.getenv("HOME")
-if choice != "":
+if choice == "none":
+    # Reset user defined keyboard settings
+    try:
+        subprocess.check_call(['gsettings', 'reset', 'org.gnome.libgnomekbd.keyboard', 'layouts'])
+        fp = open(vm_layout, 'w')
+        fp.write("")
+        fp.close()
+    except:
+		pass
+
+    subprocess.check_call(['/etc/X11/xinit/xinitrc.d/qubes_keymap.sh'])
+
+elif choice != "":
     subprocess.check_call(['setxkbmap', choice])
     try:
         subprocess.check_call(['gsettings', 'set', 'org.gnome.libgnomekbd.keyboard', 'layouts', "['%s']" % choice])
-    except:
-        # fallback to config file
         file = open(vm_layout, 'w+')
         file.write(choice)
         file.close()
+    except:
+		pass
 
