@@ -26,10 +26,8 @@
 #include <xs.h>
 #include <xenctrl.h>
 #include <sys/select.h>
-#include "double-buffer.h"
 
 struct libvchan *ctrl;
-int double_buffered = 0;
 int is_server;
 void (*vchan_at_eof)(void) = NULL;
 int vchan_is_closed = 0;
@@ -58,18 +56,7 @@ int write_data_exact(char *buf, int size)
 
 int write_data(char *buf, int size)
 {
-	int count;
-	if (!double_buffered)
-		return write_data_exact(buf, size); // this may block
-	double_buffer_append(buf, size);
-	count = libvchan_buffer_space(ctrl);
-	if (count > double_buffer_datacount())
-		count = double_buffer_datacount();
-        // below, we write only as much data as possible without
-        // blocking; remainder of data stays in the double buffer
-	write_data_exact(double_buffer_data(), count);
-	double_buffer_substract(count);
-	return size;
+	return write_data_exact(buf, size); // this may block
 }
 
 int real_write_message(char *hdr, int size, char *data, int datasize)
@@ -182,12 +169,6 @@ void wait_for_vchan_or_argfd(int nfd, int *fd, fd_set * retset)
 
 int peer_server_init(int port)
 {
-#ifdef CONFIG_STUBDOM
-	double_buffer_init();
-	double_buffered = 1;
-#else
-	double_buffered = 0; // writes to vchan may block
-#endif
 	is_server = 1;
 	ctrl = libvchan_server_init(port);
 	if (!ctrl) {
@@ -231,54 +212,6 @@ char *get_vm_name(int dom, int *target_dom)
 	return name;
 }
 
-void peer_client_init(int dom, int port)
-{
-	struct xs_handle *xs;
-	char *dummy;
-	unsigned int len = 0;
-	char devbuf[128];
-	unsigned int count;
-	char **vec;
-
-	double_buffered = 1; // writes to vchan are buffered, nonblocking
-	double_buffer_init();
-	xs = xs_daemon_open();
-	if (!xs) {
-		perror("xs_daemon_open");
-		exit(1);
-	}
-	snprintf(devbuf, sizeof(devbuf),
-		 "/local/domain/%d/device/vchan/%d/event-channel", dom,
-		 port);
-	xs_watch(xs, devbuf, devbuf);
-	do {
-		vec = xs_read_watch(xs, &count);
-		if (vec)
-			free(vec);
-		len = 0;
-		dummy = xs_read(xs, 0, devbuf, &len);
-	}
-	while (!dummy || !len); // wait for the server to create xenstore entries
-	free(dummy);
-	xs_daemon_close(xs);
-
-	if (!(ctrl = libvchan_client_init(dom, port))) {
-          perror("libvchan_client_init");
-          exit(1);
-        }
-
-#ifdef XENCTRL_HAS_XC_INTERFACE
-	xc_handle = xc_interface_open(NULL, 0, 0);
-	if (!xc_handle) {
-#else
-	xc_handle = xc_interface_open();
-	if (xc_handle < 0) {
-#endif
-		perror("xc_interface_open");
-		exit(1);
-	}
-}
-
 int peer_server_reinitialize(int port)
 {
 	if (libvchan_cleanup(ctrl) < 0)
@@ -298,28 +231,3 @@ int vchan_fd()
 	return libvchan_fd_for_select(ctrl);
 }
 
-#ifdef CONFIG_STUBDOM
-int vchan_handle_connected()
-{
-	return libvchan_server_handle_connected(ctrl);
-}
-
-void vchan_handler_called()
-{
-	// clear the pending flag, will never block if called as name suggest
-	libvchan_wait(ctrl);
-}
-
-void vchan_unmask_channel()
-{
-	libvchan_prepare_to_select(ctrl);
-}
-
-/* only for stubdom, because eof is handled in wait_for_vchan_or_argfd in other
- * cases */
-int vchan_is_eof()
-{
-	return libvchan_is_eof(ctrl);
-}
-
-#endif

@@ -22,7 +22,7 @@
 CC=gcc
 CFLAGS+=-I../vchan/vchan/ -I../vchan/u2mfn/ -I../include/ -g -Wall -pie -fPIC
 LDFLAGS+=-L../vchan/vchan/
-OBJS=vmside.o xserver-fd.o ../gui-common/double-buffer.o \
+OBJS=vmside.o xserver-fd.o \
 	../gui-common/txrx-vchan.o ../gui-common/error.o ../common/list.o 
 
 all: qubes-gui

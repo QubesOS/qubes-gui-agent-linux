@@ -42,15 +42,4 @@ void vchan_register_at_eof(void (*new_vchan_at_eof)(void));
 void vchan_close();
 int vchan_fd();
 
-/* used only in stubdom */
-#ifdef CONFIG_STUBDOM
-int vchan_handle_connected();
-void vchan_handler_called();
-void vchan_unmask_channel();
-/* only for stubdom, because eof is handled in wait_for_vchan_or_argfd in other
- * cases */
-int vchan_is_eof();
-#endif
-
-
 #endif /* _QUBES_TXRX_H */
