@@ -88,32 +88,3 @@ clean:
 	(cd xf86-input-mfndev; if [ -e Makefile ] ; then $(MAKE) distclean; fi; ./bootstrap --clean || echo )
 	$(MAKE) -C relaxed-xf86ValidateModes clean
 
-update-repo-current:
-	ln -f $(RPMS_DIR)/x86_64/qubes-gui-dom0-*$(VERSION)*$(DIST_DOM0)*.rpm ../yum/current-release/current/dom0/rpm/
-	for vmrepo in ../yum/current-release/current/vm/* ; do \
-		dist=$$(basename $$vmrepo) ;\
-		ln -f $(RPMS_DIR)/x86_64/qubes-*-vm-*$(VERSION)*$$dist*.rpm $$vmrepo/rpm/ ;\
-	done
-
-update-repo-current-testing:
-	ln -f $(RPMS_DIR)/x86_64/qubes-gui-dom0-*$(VERSION)*$(DIST_DOM0)*.rpm ../yum/current-release/current-testing/dom0/rpm/
-	for vmrepo in ../yum/current-release/current-testing/vm/* ; do \
-		dist=$$(basename $$vmrepo) ;\
-		ln -f $(RPMS_DIR)/x86_64/qubes-*-vm-*$(VERSION)*$$dist*.rpm $$vmrepo/rpm/ ;\
-	done
-
-update-repo-unstable:
-	ln -f $(RPMS_DIR)/x86_64/qubes-gui-dom0-*$(VERSION)*$(DIST_DOM0)*.rpm ../yum/current-release/unstable/dom0/rpm/
-	for vmrepo in ../yum/current-release/unstable/vm/* ; do \
-		dist=$$(basename $$vmrepo) ;\
-		ln -f $(RPMS_DIR)/x86_64/qubes-*-vm-*$(VERSION)*$$dist*.rpm $$vmrepo/rpm/ ;\
-	done
-
-update-repo-template:
-	for vmrepo in ../template-builder/yum_repo_qubes/* ; do \
-		dist=$$(basename $$vmrepo) ;\
-		ln -f $(RPMS_DIR)/x86_64/qubes-*-vm-*$(VERSION)*$$dist*.rpm $$vmrepo/rpm/ ;\
-	done
-
-update-repo-installer:
-	ln -f $(RPMS_DIR)/x86_64/qubes-gui-dom0-*$(VERSION)*$(DIST_DOM0)*.rpm ../installer/yum/qubes-dom0/rpm/
