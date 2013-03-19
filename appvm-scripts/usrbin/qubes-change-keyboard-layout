@@ -78,7 +78,7 @@ if choice == "none":
     except:
         pass
 
-    subprocess.check_call(['/etc/X11/xinit/xinitrc.d/qubes_keymap.sh'])
+    subprocess.check_call(['/etc/X11/xinit/xinitrc.d/qubes-keymap.sh'])
 
 elif choice != "":
     subprocess.check_call(['setxkbmap', choice])
