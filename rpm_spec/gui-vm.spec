@@ -106,6 +106,7 @@ install -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh $RPM_BUILD_ROOT
 install -D appvm-scripts/etc/tmpfiles.d/pulseaudio.conf $RPM_BUILD_ROOT/usr/lib/tmpfiles.d/qubes-pulseaudio.conf
 install -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop $RPM_BUILD_ROOT/etc/xdg/autostart/qubes-pulseaudio.desktop
 install -D appvm-scripts/qubes-gui-agent.service $RPM_BUILD_ROOT/lib/systemd/system/qubes-gui-agent.service
+install -D appvm-scripts/qubes-gui-vm.gschema.override $RPM_BUILD_ROOT%{_datadir}/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
 install -d $RPM_BUILD_ROOT/var/log/qubes
 
 %post
@@ -120,11 +121,19 @@ fi
 sed -i '/^autospawn/d' /etc/pulse/client.conf
 echo autospawn=no >> /etc/pulse/client.conf
 
+%postun
+if [ $1 -eq 0 ] ; then
+fi
+
 %preun
 if [ "$1" = 0 ] ; then
 	chkconfig qubes-gui-agent off
     [ -x /bin/systemctl ] && /bin/systemctl disable qubes-gui-agent.service
+    /usr/bin/glib-compile-schemas %{_datadir}/glib-2.0/schemas &> /dev/null || :
 fi
+
+%posttrans
+    /usr/bin/glib-compile-schemas %{_datadir}/glib-2.0/schemas &> /dev/null || :
 
 %triggerin -- pulseaudio-libs
 
@@ -159,4 +168,5 @@ rm -f %{name}-%{version}
 /etc/sysconfig/modules/qubes-u2mfn.modules
 /lib/systemd/system/qubes-gui-agent.service
 /usr/lib/tmpfiles.d/qubes-pulseaudio.conf
+%{_datadir}/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
 %dir /var/log/qubes
