@@ -7,12 +7,12 @@ import os
 vm_layout = "%s/.config/qubes-keyboard-layout.rc" % os.getenv("HOME")
 cur_user_layout = ""
 if os.path.isfile(vm_layout):
-	try:
-		fp = open(vm_layout,'r')
-		cur_user_layout = fp.read().strip()
-		fp.close()
-	except IOError:
-		pass
+    try:
+        fp = open(vm_layout,'r')
+        cur_user_layout = fp.read().strip()
+        fp.close()
+    except IOError:
+        pass
 
 # get the list of all xkb layouts
 xkb_rules_base = "/usr/share/X11/xkb/rules/base.lst"
@@ -22,15 +22,15 @@ xkb_rules = open( xkb_rules_base)
 
 l = xkb_rules.readline()
 while not (l.startswith("!") and l.startswith("! layout")):
-	l = xkb_rules.readline()
+    l = xkb_rules.readline()
 
 #layouts section starts
 
 l = xkb_rules.readline().strip()
 while l.strip() != "":
-	pair = re.split("\s+", l, maxsplit=1)
-	layouts.append(pair)
-	l = xkb_rules.readline().strip()
+    pair = re.split("\s+", l, maxsplit=1)
+    layouts.append(pair)
+    l = xkb_rules.readline().strip()
 
 xkb_rules.close()
 
@@ -47,21 +47,21 @@ zenity_cmd.append('--column')
 zenity_cmd.append("Full name")
 
 if cur_user_layout == "":
-	zenity_cmd.append("TRUE")
+    zenity_cmd.append("TRUE")
 else:
-	zenity_cmd.append("FALSE")
+    zenity_cmd.append("FALSE")
 
 zenity_cmd.append("none")
 zenity_cmd.append("Qubes default layout")
- 
+
 for l in layouts:
-	if l[0] == cur_user_layout:
-		zenity_cmd.append("TRUE")
-	else:
-		zenity_cmd.append("FALSE")
-	zenity_cmd.append(l[0])
-	zenity_cmd.append(l[1])
-	
+    if l[0] == cur_user_layout:
+        zenity_cmd.append("TRUE")
+    else:
+        zenity_cmd.append("FALSE")
+    zenity_cmd.append(l[0])
+    zenity_cmd.append(l[1])
+
 p = subprocess.Popen(zenity_cmd, stdout=subprocess.PIPE)
 choice = p.communicate()[0]
 choice = choice.strip()
@@ -76,7 +76,7 @@ if choice == "none":
         fp.write("")
         fp.close()
     except:
-		pass
+        pass
 
     subprocess.check_call(['/etc/X11/xinit/xinitrc.d/qubes_keymap.sh'])
 
@@ -88,5 +88,5 @@ elif choice != "":
         file.write(choice)
         file.close()
     except:
-		pass
+        pass
 
