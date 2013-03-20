@@ -79,11 +79,9 @@ tar:
 	git archive --format=tar --prefix=qubes-gui/ HEAD -o qubes-gui.tar
 
 clean:
-	(cd common; $(MAKE) clean)
-	(cd gui-agent; $(MAKE) clean)
-	(cd gui-common; $(MAKE) clean)
-	(cd gui-daemon; $(MAKE) clean)
-	(cd shmoverride; $(MAKE) clean)
+	(cd common && $(MAKE) clean)
+	(cd gui-agent && $(MAKE) clean)
+	(cd gui-common && $(MAKE) clean)
 	$(MAKE) -C pulse clean
 	(cd xf86-input-mfndev; if [ -e Makefile ] ; then $(MAKE) distclean; fi; ./bootstrap --clean || echo )
 	$(MAKE) -C relaxed-xf86ValidateModes clean
