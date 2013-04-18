@@ -1,0 +1,55 @@
+
+
+## arg 1:  the new package version
+#pre_install() {
+  # do something here
+#}
+
+## arg 1:  the new package version
+post_install() {
+
+systemctl enable qubes-gui-agent.service 2> /dev/null
+
+sed -i '/^autospawn/d' /etc/pulse/client.conf
+echo autospawn=no >> /etc/pulse/client.conf
+
+# Remove pulseaudio autostart script
+echo "" > /etc/X11/xinit/xinitrc.d/pulseaudio
+
+# Then modify /etc/pacman.conf to ensure that this file won't be changed during upgrades. Add this line next to the commented NoUpgrade line:
+sed '/NoUpgrade/aNoUpgrade = /etc/X11/xinit/xinitrc.d/pulseaudio' -i /etc/pacman.conf
+
+}
+
+
+## arg 1:  the new package version
+## arg 2:  the old package version
+#post_upgrade() {
+  # do something here
+#}
+
+## arg 1:  the new package version
+## arg 2:  the old package version
+#pre_upgrade() {
+  # do something here
+#}
+
+## arg 1:  the new package version
+## arg 2:  the old package version
+#post_upgrade() {
+  # do something here
+#}
+
+## arg 1:  the old package version
+pre_remove() {
+
+systemctl disable qubes-gui-agent.service
+
+}
+
+## arg 1:  the old package version
+#post_remove() {
+  # do something here
+#}
+
+
