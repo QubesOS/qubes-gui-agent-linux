@@ -1465,21 +1465,6 @@ void do_execute(char *user, char *cmd)
 	}
 }
 
-void handle_execute()
-{
-	char *ptr;
-	struct msg_execute exec_data;
-	read_data((char *) &exec_data, sizeof(exec_data));
-	exec_data.cmd[sizeof(exec_data.cmd) - 1] = 0;
-	ptr = index(exec_data.cmd, ':');
-	if (!ptr)
-		return;
-	*ptr = 0;
-	fprintf(stderr, "handle_execute(): cmd = %s:%s\n",
-		exec_data.cmd, ptr + 1);
-	do_execute(exec_data.cmd, ptr + 1);
-}
-
 #define CLIPBOARD_4WAY
 void handle_clipboard_req(Ghandles * g, XID UNUSED(winid))
 {
@@ -1616,9 +1601,6 @@ void handle_message(Ghandles * g)
 		break;
 	case MSG_CLIPBOARD_DATA:
 		handle_clipboard_data(g, hdr.window);
-		break;
-	case MSG_EXECUTE:
-		handle_execute();
 		break;
 	case MSG_KEYMAP_NOTIFY:
 		handle_keymap_notify(g);
