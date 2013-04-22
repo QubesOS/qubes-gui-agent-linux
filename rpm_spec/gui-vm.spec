@@ -24,6 +24,8 @@
 
 
 %{!?version: %define version %(cat version)}
+# default value in case of no qubes-builder's one
+%{!?backend_vmm: %define backend_vmm xen}
 
 Name:		qubes-gui-vm	
 Version:	%{version}
@@ -49,13 +51,13 @@ BuildRequires:	libtool-ltdl-devel
 BuildRequires:	pulseaudio-libs-devel >= 0.9.21, pulseaudio-libs-devel <= 5.0
 BuildRequires:	xen-devel
 BuildRequires:	xorg-x11-server-devel
-BuildRequires:	qubes-core-libs-devel >= 1.6.1
-BuildRequires:	qubes-core-libs
+BuildRequires:	qubes-libvchan-%{backend_vmm}-devel
 BuildRequires:	qubes-gui-common-devel
 Requires:	qubes-core-vm >= 2.1.2
 Requires:	xen-qubes-vm-essentials
 Requires:	xorg-x11-drv-dummy
 Requires:	xorg-x11-xinit
+Requires:	qubes-libvchan-%{backend_vmm}
 
 # The vchan sink needs .h files from pulseaudio sources
 # that are not exported by any *-devel packages; thus they are internal and
