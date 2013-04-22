@@ -40,8 +40,7 @@
 #include "txrx.h"
 #include "list.h"
 #include "error.h"
-#include "libvchan.h"
-#include "u2mfnlib.h"
+#include <libvchan.h>
 
 #define QUBES_GUI_PROTOCOL_VERSION_LINUX (1 << 16 | 0)
 
@@ -71,6 +70,7 @@ struct _global_handles {
 	Atom wm_state_demands_attention; /* Atom: _NET_WM_STATE_DEMANDS_ATTENTION */
 	Atom wm_take_focus;	/* Atom: WM_TAKE_FOCUS */
 	int xserver_fd;
+	libvchan_t *vchan;
 	Window stub_win;    /* window for clipboard operations and to simulate LeaveNotify events */
 	unsigned char *clipboard_data;
 	unsigned int clipboard_data_len;
@@ -99,7 +99,7 @@ void send_wmnormalhints(Ghandles * g, XID window, int ignore_fail);
 void retrieve_wmhints(Ghandles * g, XID window, int ignore_fail);
 void retrieve_wmprotocols(Ghandles * g, XID window, int ignore_fail);
 
-void process_xevent_damage(Ghandles * UNUSED(g), XID window,
+void process_xevent_damage(Ghandles * g, XID window,
 			   int x, int y, int width, int height)
 {
 	struct msg_shmimage mx;
@@ -112,7 +112,7 @@ void process_xevent_damage(Ghandles * UNUSED(g), XID window,
 	mx.y = y;
 	mx.width = width;
 	mx.height = height;
-	write_message(hdr, mx);
+	write_message(g->vchan, hdr, mx);
 }
 
 void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
@@ -173,7 +173,7 @@ void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
 	crt.x = ev->x;
 	crt.y = ev->y;
 	crt.override_redirect = ev->override_redirect;
-	write_message(hdr, crt);
+	write_message(g->vchan, hdr, crt);
 	/* handle properties set before we process XCreateNotify */
 	send_wmnormalhints(g, hdr.window, 1);
 	retrieve_wmprotocols(g, hdr.window, 1);
@@ -264,9 +264,9 @@ void send_pixmap_mfns(Ghandles * g, XID window)
 	hdr.type = MSG_MFNDUMP;
 	hdr.window = window;
 	hdr.untrusted_len = sizeof(shmcmd) + size;
-	write_struct(hdr);
-	write_struct(shmcmd);
-	write_data((char *) mfnbuf, size);
+	write_struct(g->vchan, hdr);
+	write_struct(g->vchan, shmcmd);
+	write_data(g->vchan, (char *) mfnbuf, size);
 }
 
 void getwmname_tochar(Ghandles * g, XID window, char *outbuf, int bufsize)
@@ -301,7 +301,7 @@ void send_wmname(Ghandles * g, XID window)
 	getwmname_tochar(g, window, msg.data, sizeof(msg.data));
 	hdr.window = window;
 	hdr.type = MSG_WMNAME;
-	write_message(hdr, msg);
+	write_message(g->vchan, hdr, msg);
 }
 
 /*	Retrieve the supported WM Protocols
@@ -414,7 +414,7 @@ void send_wmnormalhints(Ghandles * g, XID window, int ignore_fail)
 	msg.base_height = size_hints.base_height;
 	hdr.window = window;
 	hdr.type = MSG_WINDOW_HINTS;
-	write_message(hdr, msg);
+	write_message(g->vchan, hdr, msg);
 }
 
 
@@ -453,7 +453,7 @@ void send_window_state(Ghandles * g, XID window)
 	}
 	hdr.window = window;
 	hdr.type = MSG_WINDOW_FLAGS;
-	write_message(hdr, flags);
+	write_message(g->vchan, hdr, flags);
 	XFree(state_list);
 }
 
@@ -477,7 +477,7 @@ void process_xevent_map(Ghandles * g, XID window)
 	map_info.override_redirect = attr.override_redirect;
 	hdr.type = MSG_MAP;
 	hdr.window = window;
-	write_message(hdr, map_info);
+	write_message(g->vchan, hdr, map_info);
 	send_wmname(g, window);
 //      process_xevent_damage(g, window, 0, 0, attr.width, attr.height);
 }
@@ -492,7 +492,7 @@ void process_xevent_unmap(Ghandles * g, XID window)
 	hdr.type = MSG_UNMAP;
 	hdr.window = window;
 	hdr.untrusted_len = 0;
-	write_struct(hdr);
+	write_struct(g->vchan, hdr);
 	XDeleteProperty(g->display, window, g->wm_state);
 }
 
@@ -514,7 +514,7 @@ void process_xevent_destroy(Ghandles * g, XID window)
 	hdr.type = MSG_DESTROY;
 	hdr.window = window;
 	hdr.untrusted_len = 0;
-	write_struct(hdr);
+	write_struct(g->vchan, hdr);
 	l = list_lookup(windows_list, window);
 	if (l->data) {
 		if (((struct window_data*)l->data)->is_docked) {
@@ -579,20 +579,22 @@ void process_xevent_configure(Ghandles * g, XID window,
 	conf.width = ev->width;
 	conf.height = ev->height;
 	conf.override_redirect = ev->override_redirect;
-	write_message(hdr, conf);
+	write_message(g->vchan, hdr, conf);
 	send_pixmap_mfns(g, window);
 }
 
-void send_clipboard_data(char *data, int len)
+void send_clipboard_data(libvchan_t *vchan, char *data, int len)
 {
 	struct msg_hdr hdr;
 	hdr.type = MSG_CLIPBOARD_DATA;
 	if (len > MAX_CLIPBOARD_SIZE)
 		len = MAX_CLIPBOARD_SIZE;
+	else
+		hdr.window = len;
 	hdr.window = len;
 	hdr.untrusted_len = len;
-	write_struct(hdr);
-	write_data((char *) data, len);
+	write_struct(vchan, hdr);
+	write_data(vchan, (char *) data, len);
 }
 
 void handle_targets_list(Ghandles * g, Atom Qprop, unsigned char *data,
@@ -660,7 +662,7 @@ void process_xevent_selection(Ghandles * g, XSelectionEvent * ev)
 				  Utf8_string_atom, Qprop,
 				  g->stub_win, CurrentTime);
 	else
-		send_clipboard_data((char *) data, len);
+		send_clipboard_data(g->vchan, (char *) data, len);
 	/* even if the clipboard owner does not support UTF8 and we requested
 	   XA_STRING, it is fine - ascii is legal UTF8 */
 	XFree(data);
@@ -876,7 +878,7 @@ void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
 			hdr.type = MSG_DOCK;
 			hdr.window = w;
 			hdr.untrusted_len = 0;
-			write_struct(hdr);
+			write_struct(g->vchan, hdr);
 			break;
 		default:
 			fprintf(stderr, "unhandled tray opcode: %ld\n",
@@ -907,7 +909,7 @@ void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
 		}
 		hdr.window = ev->window;
 		hdr.type = MSG_WINDOW_FLAGS;
-		write_message(hdr, msg);
+		write_message(g->vchan, hdr, msg);
 	}
 }
 
@@ -1044,7 +1046,7 @@ void handle_keypress(Ghandles * g, XID UNUSED(winid))
 	XkbStateRec state;
 //      XKeyEvent event;
 //        char buf[256];
-	read_data((char *) &key, sizeof(key));
+	read_data(g->vchan, (char *) &key, sizeof(key));
 #if 0
 //XGetInputFocus(g->display, &focus_return, &revert_to_return);
 //      fprintf(stderr, "vmside: type=%d keycode=%d currfoc=0x%x\n", key.type,
@@ -1139,7 +1141,7 @@ void handle_button(Ghandles * g, XID winid)
 	struct genlist *l = list_lookup(windows_list, winid);
 
 
-	read_data((char *) &key, sizeof(key));
+	read_data(g->vchan, (char *) &key, sizeof(key));
 	if (l && l->data && ((struct window_data*)l->data)->is_docked) {
 		/* get position of embeder, not icon itself*/
 		winid = ((struct window_data*)l->data)->embeder;
@@ -1189,7 +1191,7 @@ void handle_motion(Ghandles * g, XID winid)
 	int ret;
 	struct genlist *l = list_lookup(windows_list, winid);
 
-	read_data((char *) &key, sizeof(key));
+	read_data(g->vchan, (char *) &key, sizeof(key));
 	if (l && l->data && ((struct window_data*)l->data)->is_docked) {
 		/* get position of embeder, not icon itself*/
 		winid = ((struct window_data*)l->data)->embeder;
@@ -1241,7 +1243,7 @@ void handle_crossing(Ghandles * g, XID winid)
 		winid = ((struct window_data*)l->data)->embeder;
 	}
 
-	read_data((char *) &key, sizeof(key));
+	read_data(g->vchan, (char *) &key, sizeof(key));
 
 	if (key.mode != NotifyNormal)
 		return;
@@ -1312,7 +1314,7 @@ void handle_focus(Ghandles * g, XID winid)
 	int use_take_focus;
 //      XFocusChangeEvent event;
 
-	read_data((char *) &key, sizeof(key));
+	read_data(g->vchan, (char *) &key, sizeof(key));
 #if 0
 	event.display = g->display;
 	event.window = winid;
@@ -1374,7 +1376,7 @@ void handle_keymap_notify(Ghandles * g)
 {
 	int i;
 	unsigned char remote_keys[32], local_keys[32];
-	read_struct(remote_keys);
+	read_struct(g->vchan, remote_keys);
 	XQueryKeymap(g->display, (char *) local_keys);
 	for (i = 0; i < 256; i++) {
 		if (!bitset(remote_keys, i) && bitset(local_keys, i)) {
@@ -1394,7 +1396,7 @@ void handle_configure(Ghandles * g, XID winid)
 	struct genlist *l = list_lookup(windows_list, winid);
 	XWindowAttributes attr;
 	XGetWindowAttributes(g->display, winid, &attr);
-	read_data((char *) &r, sizeof(r));
+	read_data(g->vchan, (char *) &r, sizeof(r));
 	if (l && l->data && ((struct window_data*)l->data)->is_docked) {
 		XMoveResizeWindow(g->display, ((struct window_data*)l->data)->embeder, r.x, r.y, r.width, r.height);
 		XMoveResizeWindow(g->display, winid, 0, 0, r.width, r.height);
@@ -1413,7 +1415,7 @@ void handle_map(Ghandles * g, XID winid)
 {
 	struct msg_map_info inf;
 	XSetWindowAttributes attr;
-	read_data((char *) &inf, sizeof(inf));
+	read_data(g->vchan, (char *) &inf, sizeof(inf));
 	attr.override_redirect = inf.override_redirect;
 	XChangeWindowAttributes(g->display, winid,
 				CWOverrideRedirect, &attr);
@@ -1495,7 +1497,7 @@ void handle_clipboard_req(Ghandles * g, XID UNUSED(winid))
 		fprintf(stderr, "clipboard req, owner=0x%x\n",
 			(int) owner);
 	if (owner == None) {
-		send_clipboard_data(NULL, 0);
+		send_clipboard_data(g->vchan, NULL, 0);
 		return;
 	}
 	XConvertSelection(g->display, Clp, Targets, QProp,
@@ -1515,7 +1517,7 @@ void handle_clipboard_data(Ghandles * g, int len)
 		exit(1);
 	}
 	g->clipboard_data_len = len;
-	read_data((char *) g->clipboard_data, len);
+	read_data(g->vchan, (char *) g->clipboard_data, len);
 	g->clipboard_data[len] = 0;
 	XSetSelectionOwner(g->display, XA_PRIMARY, g->stub_win,
 			   CurrentTime);
@@ -1538,7 +1540,7 @@ void handle_window_flags(Ghandles *g, XID winid)
 	uint32_t tmp_flag;
 	unsigned long nitems, bytesleft;
 	struct msg_window_flags msg_flags;
-	read_data((char *) &msg_flags, sizeof(msg_flags));
+	read_data(g->vchan, (char *) &msg_flags, sizeof(msg_flags));
 
 	/* FIXME: only first 10 elements are parsed */
 	ret = XGetWindowProperty(g->display, winid, g->wm_state, 0, 10,
@@ -1581,7 +1583,7 @@ void handle_message(Ghandles * g)
 {
 	struct msg_hdr hdr;
 	char discard[256];
-	read_data((char *) &hdr, sizeof(hdr));
+	read_data(g->vchan, (char *) &hdr, sizeof(hdr));
 	if (g->log_level > 1)
 		fprintf(stderr, "received message type %d for 0x%x\n", hdr.type, hdr.window);
 	switch (hdr.type) {
@@ -1627,16 +1629,16 @@ void handle_message(Ghandles * g)
 	default:
 		fprintf(stderr, "got unknown msg type %d, ignoring\n", hdr.type);
 		while (hdr.untrusted_len > 0) {
-			hdr.untrusted_len -= read_data(discard, min(hdr.untrusted_len, sizeof(discard)));
+			hdr.untrusted_len -= read_data(g->vchan, discard, min(hdr.untrusted_len, sizeof(discard)));
 		}
 	}
 }
 
-void get_xconf_and_run_x()
+void get_xconf_and_run_x(libvchan_t *vchan)
 {
 	struct msg_xconf xconf;
 	char val[64];
-	read_struct(xconf);
+	read_struct(vchan, xconf);
 	snprintf(val, sizeof(val), "%d", xconf.w);
 	setenv("W", val, 1);
 	snprintf(val, sizeof(val), "%d", xconf.h);
@@ -1648,10 +1650,10 @@ void get_xconf_and_run_x()
 	do_execute(NULL, "/usr/bin/qubes-run-xorg.sh");
 }
 
-void send_protocol_version()
+void send_protocol_version(libvchan_t *vchan)
 {
 	uint32_t version = QUBES_GUI_PROTOCOL_VERSION_LINUX;
-	write_struct(version);
+	write_struct(vchan, version);
 }
 
 void handle_guid_disconnect()
@@ -1716,11 +1718,19 @@ int main(int argc, char **argv)
 	int xfd;
 	Ghandles g;
 
-	peer_server_init(6000);
+	/* FIXME: 0 is remote domain */
+	g.vchan = libvchan_server_init(0, 6000, 4096, 4096);
+	if (!g.vchan) {
+		fprintf(stderr, "vchan initialization failed\n");
+		exit(1);
+	}
+	/* wait for gui daemon */
+	while (!libvchan_is_open(g.vchan))
+		libvchan_wait(g.vchan);
 	saved_argv = argv;
 	vchan_register_at_eof(handle_guid_disconnect);
-	send_protocol_version();
-	get_xconf_and_run_x();
+	send_protocol_version(g.vchan);
+	get_xconf_and_run_x(g.vchan);
 	mkghandles(&g);
 	parse_args(&g, argc, argv);
 	for (i = 0; i < ScreenCount(g.display); i++)
@@ -1773,12 +1783,12 @@ int main(int argc, char **argv)
 				process_xevent(&g);
 				busy = 1;
 			}
-			while (read_ready()) {
+			while (libvchan_data_ready(g.vchan)) {
 				handle_message(&g);
 				busy = 1;
 			}
 		} while (busy);
-		wait_for_vchan_or_argfd(1, &xfd, NULL);
+		wait_for_vchan_or_argfd(g.vchan, 1, &xfd, NULL);
 	}
 	return 0;
 }

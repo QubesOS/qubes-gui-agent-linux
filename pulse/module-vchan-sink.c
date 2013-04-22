@@ -102,8 +102,8 @@ struct userdata {
 	pa_sink *sink;
 	pa_source *source;
 
-	struct libvchan *play_ctrl;
-	struct libvchan *rec_ctrl;
+	libvchan_t *play_ctrl;
+	libvchan_t *rec_ctrl;
 
 	pa_thread *thread;
 	pa_thread_mq thread_mq;
@@ -176,7 +176,7 @@ static int source_process_msg(pa_msgobject * o, int code, void *data,
 			else if (u->source->state -= PA_SOURCE_RUNNING && state != PA_SOURCE_RUNNING)
 				cmd = QUBES_PA_SOURCE_STOP_CMD;
 			if (cmd != 0) {
-				if (libvchan_write(u->rec_ctrl, (char*)&cmd, sizeof(cmd)) < 0) {
+				if (libvchan_send(u->rec_ctrl, (char*)&cmd, sizeof(cmd)) < 0) {
 					pa_log("vchan: failed to send record cmd");
 					return -1;
 				}
@@ -197,7 +197,7 @@ static int source_process_msg(pa_msgobject * o, int code, void *data,
 	return pa_source_process_msg(o, code, data, offset, chunk);
 }
 
-static int write_to_vchan(struct libvchan *ctrl, char *buf, int size)
+static int write_to_vchan(libvchan_t *ctrl, char *buf, int size)
 {
 	static int all = 0, waited = 0, nonwaited = 0, full = 0;
 	ssize_t l;
@@ -398,12 +398,14 @@ static void thread_func(void *userdata)
 static int do_conn(struct userdata *u)
 {
 	int fd;
-	u->play_ctrl = libvchan_server_init(QUBES_PA_SINK_VCHAN_PORT);
+    /* FIXME: 0 is remote domain ID */
+	u->play_ctrl = libvchan_server_init(0, QUBES_PA_SINK_VCHAN_PORT, 128, 2048);
 	if (!u->play_ctrl) {
 		pa_log("libvchan_server_init play failed\n");
 		return -1;
 	}
-	u->rec_ctrl = libvchan_server_init(QUBES_PA_SOURCE_VCHAN_PORT);
+    /* FIXME: 0 is remote domain ID */
+	u->rec_ctrl = libvchan_server_init(0, QUBES_PA_SOURCE_VCHAN_PORT, 2048, 128);
 	if (!u->rec_ctrl) {
 		pa_log("libvchan_server_init rec failed\n");
 		return -1;

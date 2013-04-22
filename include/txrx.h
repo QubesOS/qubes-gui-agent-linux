@@ -23,23 +23,18 @@
 #define _QUBES_TXRX_H
 
 #include <sys/select.h>
-int write_data(char *buf, int size);
-int real_write_message(char *hdr, int size, char *data, int datasize);
-int read_data(char *buf, int size);
-int read_ready();
-#define read_struct(x) read_data((char*)&x, sizeof(x))
-#define write_struct(x) write_data((char*)&x, sizeof(x))
-#define write_message(x,y) do {\
+#include <libvchan.h>
+
+int write_data(libvchan_t *vchan, char *buf, int size);
+int real_write_message(libvchan_t *vchan, char *hdr, int size, char *data, int datasize);
+int read_data(libvchan_t *vchan, char *buf, int size);
+#define read_struct(vchan, x) read_data(vchan, (char*)&x, sizeof(x))
+#define write_struct(vchan, x) write_data(vchan, (char*)&x, sizeof(x))
+#define write_message(vchan,x,y) do {\
 	x.untrusted_len = sizeof(y); \
-	real_write_message((char*)&x, sizeof(x), (char*)&y, sizeof(y)); \
+	real_write_message(vchan, (char*)&x, sizeof(x), (char*)&y, sizeof(y)); \
     } while(0)
-void wait_for_vchan_or_argfd(int nfd, int *fd, fd_set * retset);
-int peer_server_init(int port);
-char *get_vm_name(int dom, int *target_domid);
-void peer_client_init(int dom, int port);
-int peer_server_reinitialize(int port);
+void wait_for_vchan_or_argfd(libvchan_t *vchan, int nfd, int *fd, fd_set * retset);
 void vchan_register_at_eof(void (*new_vchan_at_eof)(void));
-void vchan_close();
-int vchan_fd();
 
 #endif /* _QUBES_TXRX_H */

@@ -23,113 +23,70 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <libvchan.h>
-#ifdef USE_XENSTORE_H
-#include <xenstore.h>
-#else
-#include <xs.h>
-#endif
-#include <xenctrl.h>
 #include <sys/select.h>
+#include <errno.h>
 
-struct libvchan *ctrl;
-int is_server;
 void (*vchan_at_eof)(void) = NULL;
-int vchan_is_closed = 0;
 
-
-void vchan_register_at_eof(void (*new_vchan_at_eof)(void)) {
+void vchan_register_at_eof(void (*new_vchan_at_eof)(void))
+{
 	vchan_at_eof = new_vchan_at_eof;
 }
 
-int write_data_exact(char *buf, int size)
+void handle_vchan_error(libvchan_t *vchan, const char *op)
+{
+    if (!libvchan_is_open(vchan) && vchan_at_eof)
+        vchan_at_eof();
+    fprintf(stderr, "Error while vchan %s\n, terminating", op);
+    exit(1);
+}
+
+int real_write_message(libvchan_t *vchan, char *hdr, int size, char *data, int datasize)
+{
+	if (libvchan_send(vchan, hdr, size) < 0)
+        handle_vchan_error(vchan, "send hdr");
+	if (libvchan_send(vchan, data, datasize) < 0)
+        handle_vchan_error(vchan, "send data");
+	return 0;
+}
+
+int write_data(libvchan_t *vchan, char *buf, int size)
 {
 	int written = 0;
 	int ret;
 
 	while (written < size) {
-		ret = libvchan_write(ctrl, buf + written, size - written);
-		if (ret <= 0) {
-			perror("write");
-			exit(1);
-		}
+        /* cannot use libvchan_send b/c buf can be bigger than ring buffer */
+		ret = libvchan_write(vchan, buf + written, size - written);
+		if (ret <= 0)
+            handle_vchan_error(vchan, "write data");
 		written += ret;
 	}
 //      fprintf(stderr, "sent %d bytes\n", size);
 	return size;
 }
 
-int write_data(char *buf, int size)
-{
-	return write_data_exact(buf, size); // this may block
-}
-
-int real_write_message(char *hdr, int size, char *data, int datasize)
-{
-	write_data(hdr, size);
-	write_data(data, datasize);
-	return 0;
-}
-
-int read_data(char *buf, int size)
+int read_data(libvchan_t *vchan, char *buf, int size)
 {
 	int written = 0;
 	int ret;
 	while (written < size) {
-		ret = libvchan_read(ctrl, buf + written, size - written);
-		if (ret == 0) {
-			fprintf(stderr, "EOF\n");
-			exit(1);
-		}
-		if (ret < 0) {
-			perror("read");
-			exit(1);
-		}
+		ret = libvchan_read(vchan, buf + written, size - written);
+		if (ret <= 0)
+            handle_vchan_error(vchan, "read data");
 		written += ret;
 	}
 //      fprintf(stderr, "read %d bytes\n", size);
 	return size;
 }
 
-int read_ready()
-{
-	return libvchan_data_ready(ctrl);
-}
-
-// if the remote domain is destroyed, we get no notification
-// thus, we check for the status periodically
-
-#ifdef XENCTRL_HAS_XC_INTERFACE
-static xc_interface *xc_handle = NULL;
-#else
-static int xc_handle = -1;
-#endif
-void slow_check_for_libvchan_is_eof(struct libvchan *ctrl)
-{
-	struct evtchn_status evst;
-	evst.port = ctrl->evport;
-	evst.dom = DOMID_SELF;
-	if (xc_evtchn_status(xc_handle, &evst)) {
-		perror("xc_evtchn_status");
-		vchan_is_closed = 1;
-		exit(1);
-	}
-	if (evst.status != EVTCHNSTAT_interdomain) {
-		fprintf(stderr, "event channel disconnected\n");
-		vchan_is_closed = 1;
-		if (vchan_at_eof != NULL)
-			vchan_at_eof();
-		exit(0);
-	}
-}
-
-
-int wait_for_vchan_or_argfd_once(int nfd, int *fd, fd_set * retset)
+int wait_for_vchan_or_argfd_once(libvchan_t *vchan, int nfd, int *fd, fd_set * retset)
 {
 	fd_set rfds;
 	int vfd, max = 0, ret, i;
 	struct timeval tv = { 0, 1000000 };
 	write_data(NULL, 0);	// trigger write of queued data, if any present
-	vfd = libvchan_fd_for_select(ctrl);
+	vfd = libvchan_fd_for_select(vchan);
 	FD_ZERO(&rfds);
 	for (i = 0; i < nfd; i++) {
 		int cfd = fd[i];
@@ -148,90 +105,22 @@ int wait_for_vchan_or_argfd_once(int nfd, int *fd, fd_set * retset)
 		perror("select");
 		exit(1);
 	}
-	if (libvchan_is_eof(ctrl)) {
+	if (!libvchan_is_open(vchan)) {
 		fprintf(stderr, "libvchan_is_eof\n");
-		vchan_is_closed = 1;
 		if (vchan_at_eof != NULL)
 			vchan_at_eof();
 		exit(0);
 	}
-	if (!is_server && ret == 0)
-		slow_check_for_libvchan_is_eof(ctrl);
 	if (FD_ISSET(vfd, &rfds))
 		// the following will never block; we need to do this to
 		// clear libvchan_fd pending state 
-		libvchan_wait(ctrl);
+		libvchan_wait(vchan);
 	if (retset)
 		*retset = rfds;
 	return ret;
 }
 
-void wait_for_vchan_or_argfd(int nfd, int *fd, fd_set * retset)
+void wait_for_vchan_or_argfd(libvchan_t *vchan, int nfd, int *fd, fd_set * retset)
 {
-	while (wait_for_vchan_or_argfd_once(nfd, fd, retset) == 0);
+	while (wait_for_vchan_or_argfd_once(vchan, nfd, fd, retset) == 0);
 }
-
-int peer_server_init(int port)
-{
-	is_server = 1;
-	ctrl = libvchan_server_init(port);
-	if (!ctrl) {
-		perror("libvchan_server_init");
-		exit(1);
-	}
-	return 0;
-}
-
-char *get_vm_name(int dom, int *target_dom)
-{
-	struct xs_handle *xs;
-	char buf[64];
-	char *name;
-	char *target_dom_str;
-	unsigned int len = 0;
-
-	xs = xs_daemon_open();
-	if (!xs) {
-		perror("xs_daemon_open");
-		exit(1);
-	}
-	snprintf(buf, sizeof(buf), "/local/domain/%d/target", dom);
-	target_dom_str = xs_read(xs, 0, buf, &len);
-	if (target_dom_str) {
-		errno = 0;
-		*target_dom = strtol(target_dom_str, (char **) NULL, 10);
-		if (errno != 0) {
-			perror("strtol");
-			exit(1);
-		}
-	} else
-		*target_dom = dom;
-	snprintf(buf, sizeof(buf), "/local/domain/%d/name", *target_dom);
-	name = xs_read(xs, 0, buf, &len);
-	if (!name) {
-		perror("xs_read domainname");
-		exit(1);
-	}
-	xs_daemon_close(xs);
-	return name;
-}
-
-int peer_server_reinitialize(int port)
-{
-	if (libvchan_cleanup(ctrl) < 0)
-		return -1;
-	return peer_server_init(port);
-}
-
-void vchan_close()
-{
-	if (!vchan_is_closed)
-		libvchan_close(ctrl);
-	vchan_is_closed = 1;
-}
-
-int vchan_fd()
-{
-	return libvchan_fd_for_select(ctrl);
-}
-

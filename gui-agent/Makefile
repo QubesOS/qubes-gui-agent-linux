@@ -20,9 +20,10 @@
 #
 
 CC=gcc
-CFLAGS+=-I../include/ -g -Wall -Wextra -Werror -pie -fPIC -O2
+CFLAGS+=-I../include/ `pkg-config --cflags vchan-$(BACKEND_VMM)` -g -Wall -Wextra -Werror -pie -fPIC
 OBJS=vmside.o xserver-fd.o \
 	../gui-common/txrx-vchan.o ../gui-common/error.o ../common/list.o 
+LIBS=-lX11 -lXdamage -lXcomposite `pkg-config --libs vchan-$(BACKEND_VMM)`
 
 _XENSTORE_H=$(wildcard /usr/include/xenstore.h)
 ifneq "$(_XENSTORE_H)" ""
@@ -33,6 +34,6 @@ endif
 all: qubes-gui
 qubes-gui: $(OBJS)
 	$(CC) $(LDFLAGS) -pie -g -o qubes-gui $(OBJS) \
-		-lX11 -lXdamage -lXcomposite -lvchan -lxenstore -lxenctrl
+		$(LIBS)
 clean:
 	rm -f qubes-gui *.o *~
