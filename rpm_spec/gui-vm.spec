@@ -104,6 +104,7 @@ install -D appvm-scripts/etc/sysconfig/desktop $RPM_BUILD_ROOT/etc/sysconfig/des
 install -D appvm-scripts/etc/sysconfig/modules/qubes-u2mfn.modules $RPM_BUILD_ROOT/etc/sysconfig/modules/qubes-u2mfn.modules
 install -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh $RPM_BUILD_ROOT/etc/X11/xinit/xinitrc.d/qubes-keymap.sh
 install -D appvm-scripts/etc/tmpfiles.d/qubes-pulseaudio.conf $RPM_BUILD_ROOT/usr/lib/tmpfiles.d/qubes-pulseaudio.conf
+install -D appvm-scripts/etc/tmpfiles.d/qubes-session.conf $RPM_BUILD_ROOT/usr/lib/tmpfiles.d/qubes-session.conf
 install -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop $RPM_BUILD_ROOT/etc/xdg/autostart/qubes-pulseaudio.desktop
 install -D appvm-scripts/qubes-gui-agent.service $RPM_BUILD_ROOT/lib/systemd/system/qubes-gui-agent.service
 install -D appvm-scripts/qubes-gui-vm.gschema.override $RPM_BUILD_ROOT%{_datadir}/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
@@ -168,5 +169,6 @@ rm -f %{name}-%{version}
 /etc/sysconfig/modules/qubes-u2mfn.modules
 /lib/systemd/system/qubes-gui-agent.service
 /usr/lib/tmpfiles.d/qubes-pulseaudio.conf
+/usr/lib/tmpfiles.d/qubes-session.conf
 %{_datadir}/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
 %dir /var/log/qubes
