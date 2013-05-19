@@ -84,8 +84,6 @@ int wait_for_vchan_or_argfd_once(libvchan_t *vchan, int nfd, int *fd, fd_set * r
 {
 	fd_set rfds;
 	int vfd, max = 0, ret, i;
-	struct timeval tv = { 0, 1000000 };
-	write_data(NULL, 0);	// trigger write of queued data, if any present
 	vfd = libvchan_fd_for_select(vchan);
 	FD_ZERO(&rfds);
 	for (i = 0; i < nfd; i++) {
@@ -98,7 +96,7 @@ int wait_for_vchan_or_argfd_once(libvchan_t *vchan, int nfd, int *fd, fd_set * r
 	if (vfd > max)
 		max = vfd;
 	max++;
-	ret = select(max, &rfds, NULL, NULL, &tv);
+	ret = select(max, &rfds, NULL, NULL, NULL);
 	if (ret < 0 && errno == EINTR)
 		return 0;
 	if (ret < 0) {
