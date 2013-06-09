@@ -47,9 +47,9 @@ shopt -s nullglob
 set -a
 
 # Get VM type from XenStore
-VMTYPE=`$XENSTORE_READ qubes-vm-type`
+VMTYPE=`/usr/bin/qubesdb-read /qubes-vm-type`
 
-UPDTYPE=`$XENSTORE_READ qubes-vm-updateable`
+UPDTYPE=`/usr/bin/qubesdb-read /qubes-vm-updateable`
 [[ $UPDTYPE == 'True' ]] && UPDTYPE="UpdateableVM" || UPDTYPE="NonUpdateableVM"
 
 # Gnome keyring is special case, as its env needed by nm-applet
