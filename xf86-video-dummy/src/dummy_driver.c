@@ -76,8 +76,8 @@ static Bool	dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
 /* 				int PowerManagementMode, int flags); */
 
 #define DUMMY_VERSION 4000
-#define DUMMY_NAME "DUMMY"
-#define DUMMY_DRIVER_NAME "dummy"
+#define DUMMY_NAME "DUMMYQBS"
+#define DUMMY_DRIVER_NAME "dummyqbs"
 
 #define DUMMY_MAJOR_VERSION PACKAGE_VERSION_MAJOR
 #define DUMMY_MINOR_VERSION PACKAGE_VERSION_MINOR
@@ -132,7 +132,7 @@ static MODULESETUPPROTO(dummySetup);
 
 static XF86ModuleVersionInfo dummyVersRec =
 {
-	"dummy",
+	"dummyqbs",
 	MODULEVENDORSTRING,
 	MODINFOSTRING1,
 	MODINFOSTRING2,
@@ -148,7 +148,7 @@ static XF86ModuleVersionInfo dummyVersRec =
  * This is the module init data.
  * Its name has to be the driver name followed by ModuleData
  */
-_X_EXPORT XF86ModuleData dummyModuleData = { &dummyVersRec, dummySetup, NULL };
+_X_EXPORT XF86ModuleData dummyqbsModuleData = { &dummyVersRec, dummySetup, NULL };
 
 static pointer
 dummySetup(pointer module, pointer opts, int *errmaj, int *errmin)
