@@ -94,6 +94,7 @@ install -D pulse/start-pulseaudio-with-vchan $RPM_BUILD_ROOT/usr/bin/start-pulse
 install -D pulse/qubes-default.pa $RPM_BUILD_ROOT/etc/pulse/qubes-default.pa
 install -D pulse/module-vchan-sink.so $RPM_BUILD_ROOT/%{_libdir}/pulse-%{pa_ver}/modules/module-vchan-sink.so
 install -D xf86-input-mfndev/src/.libs/qubes_drv.so $RPM_BUILD_ROOT/%{_libdir}/xorg/modules/drivers/qubes_drv.so
+install -D xf86-video-dummy/src/.libs/dummyqbs_drv.so $RPM_BUILD_ROOT/%{_libdir}/xorg/modules/drivers/dummyqbs_drv.so
 install -D relaxed-xf86ValidateModes/relaxed-xf86ValidateModes.so $RPM_BUILD_ROOT/%{_libdir}/relaxed-xf86ValidateModes.so
 install -D appvm-scripts/etc/X11/xorg-qubes.conf.template $RPM_BUILD_ROOT/etc/X11/xorg-qubes.conf.template
 install -D appvm-scripts/etc/init.d/qubes-gui-agent $RPM_BUILD_ROOT/etc/init.d/qubes-gui-agent
@@ -156,6 +157,7 @@ rm -f %{name}-%{version}
 /usr/bin/start-pulseaudio-with-vchan
 %{_libdir}/pulse-%{pa_ver}/modules/module-vchan-sink.so
 %{_libdir}/xorg/modules/drivers/qubes_drv.so
+%{_libdir}/xorg/modules/drivers/dummyqbs_drv.so
 %attr(4755,root,root) %{_libdir}/relaxed-xf86ValidateModes.so
 %attr(0644,root,root) /etc/X11/xorg-qubes.conf.template
 /etc/init.d/qubes-gui-agent

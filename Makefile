@@ -39,7 +39,9 @@ help:
 
 dom0: gui-daemon/qubes-guid shmoverride/shmoverride.so shmoverride/X-wrapper-qubes pulse/pacat-simple-vchan
 
-appvm: gui-agent/qubes-gui xf86-input-mfndev/src/.libs/qubes_drv.so pulse/module-vchan-sink.so relaxed-xf86ValidateModes/relaxed-xf86ValidateModes.so
+appvm: gui-agent/qubes-gui xf86-input-mfndev/src/.libs/qubes_drv.so \
+	xf86-video-dummy/src/.libs/dummyqbs_drv.so pulse/module-vchan-sink.so \
+	relaxed-xf86ValidateModes/relaxed-xf86ValidateModes.so
 
 gui-daemon/qubes-guid:
 	(cd gui-daemon; $(MAKE))
@@ -61,6 +63,9 @@ gui-agent/qubes-gui:
 
 xf86-input-mfndev/src/.libs/qubes_drv.so:
 	(cd xf86-input-mfndev && ./bootstrap && ./configure && make LDFLAGS=-lu2mfn)
+
+xf86-video-dummy/src/.libs/dummyqbs_drv.so:
+	(cd xf86-video-dummy && ./autogen.sh && make)
 
 pulse/module-vchan-sink.so:
 	$(MAKE) -C pulse module-vchan-sink.so

@@ -63,6 +63,7 @@ install -D pulse/start-pulseaudio-with-vchan $pkgdir/usr/bin/start-pulseaudio-wi
 install -D pulse/qubes-default.pa $pkgdir/etc/pulse/qubes-default.pa
 install -D pulse/module-vchan-sink.so $pkgdir/usr/lib/pulse-${pa_ver}/modules/module-vchan-sink.so
 install -D xf86-input-mfndev/src/.libs/qubes_drv.so $pkgdir/usr/lib/xorg/modules/drivers/qubes_drv.so
+install -D xf86-video-dummy/src/.libs/dummyqbs_drv.so $pkgdir/usr/lib/xorg/modules/drivers/dummyqbs_drv.so
 install -m 4555 -D relaxed-xf86ValidateModes/relaxed-xf86ValidateModes.so $pkgdir/usr/lib/relaxed-xf86ValidateModes.so
 install -D appvm-scripts/etc/X11/xorg-qubes.conf.template $pkgdir/etc/X11/xorg-qubes.conf.template
 install -D appvm-scripts/etc/init.d/qubes-gui-agent $pkgdir/etc/init.d/qubes-gui-agent
