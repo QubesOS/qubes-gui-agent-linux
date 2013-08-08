@@ -6,7 +6,7 @@ EndSection
 
 Section "Device"
         Identifier  "Videocard0"
-        Driver      "dummy"  
+        Driver      "dummyqbs"
 	VideoRam %MEM%
 EndSection
 
