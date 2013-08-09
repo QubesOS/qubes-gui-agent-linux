@@ -13,6 +13,8 @@
 
 #include "compat-api.h"
 
+#define DUMMY_MAX_SCREENS 4
+
 /* Supported chipsets */
 typedef enum {
     DUMMY_CHIP
@@ -64,6 +66,12 @@ typedef struct dummyRec
 #ifdef XvExtension
     XF86VideoAdaptorPtr overlayAdaptor;
 #endif
+    /* XRANDR support begin */
+    int num_screens;
+    struct _xf86Crtc *paCrtcs[DUMMY_MAX_SCREENS];
+    struct _xf86Output *paOutputs[DUMMY_MAX_SCREENS];
+    int connected_outputs;
+    /* XRANDR support end */
     int overlay;
     int overlay_offset;
     int videoKey;
