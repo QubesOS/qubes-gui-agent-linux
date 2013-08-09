@@ -7,7 +7,7 @@ EndSection
 Section "Device"
         Identifier  "Videocard0"
         Driver      "dummyqbs"
-	VideoRam %MEM%
+	VideoRam 64000
 EndSection
 
 Section "Monitor"
