@@ -85,31 +85,10 @@ make appvm
 
 %install
 rm -rf $RPM_BUILD_ROOT
-install -D gui-agent/qubes-gui $RPM_BUILD_ROOT/usr/bin/qubes-gui
-install -D appvm-scripts/usrbin/qubes-session $RPM_BUILD_ROOT/usr/bin/qubes-session
-install -D appvm-scripts/usrbin/qubes-run-xorg.sh $RPM_BUILD_ROOT/usr/bin/qubes-run-xorg.sh
-install -D appvm-scripts/usrbin/qubes-xorg-wrapper.sh $RPM_BUILD_ROOT/usr/bin/qubes-xorg-wrapper.sh
-install -D appvm-scripts/usrbin/qubes-change-keyboard-layout $RPM_BUILD_ROOT/usr/bin/qubes-change-keyboard-layout
-install -D pulse/start-pulseaudio-with-vchan $RPM_BUILD_ROOT/usr/bin/start-pulseaudio-with-vchan
-install -D pulse/qubes-default.pa $RPM_BUILD_ROOT/etc/pulse/qubes-default.pa
-install -D pulse/module-vchan-sink.so $RPM_BUILD_ROOT/%{_libdir}/pulse-%{pa_ver}/modules/module-vchan-sink.so
-install -D xf86-input-mfndev/src/.libs/qubes_drv.so $RPM_BUILD_ROOT/%{_libdir}/xorg/modules/drivers/qubes_drv.so
-install -D xf86-video-dummy/src/.libs/dummyqbs_drv.so $RPM_BUILD_ROOT/%{_libdir}/xorg/modules/drivers/dummyqbs_drv.so
-install -D relaxed-xf86ValidateModes/relaxed-xf86ValidateModes.so $RPM_BUILD_ROOT/%{_libdir}/relaxed-xf86ValidateModes.so
-install -D appvm-scripts/etc/X11/xorg-qubes.conf.template $RPM_BUILD_ROOT/etc/X11/xorg-qubes.conf.template
-install -D appvm-scripts/etc/init.d/qubes-gui-agent $RPM_BUILD_ROOT/etc/init.d/qubes-gui-agent
-install -D appvm-scripts/etc/profile.d/qubes-gui.sh $RPM_BUILD_ROOT/etc/profile.d/qubes-gui.sh
-install -D appvm-scripts/etc/profile.d/qubes-gui.csh $RPM_BUILD_ROOT/etc/profile.d/qubes-gui.csh
-install -D appvm-scripts/etc/profile.d/qubes-session.sh $RPM_BUILD_ROOT/etc/profile.d/qubes-session.sh
-install -D appvm-scripts/etc/sysconfig/desktop $RPM_BUILD_ROOT/etc/sysconfig/desktop
-install -D appvm-scripts/etc/sysconfig/modules/qubes-u2mfn.modules $RPM_BUILD_ROOT/etc/sysconfig/modules/qubes-u2mfn.modules
-install -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh $RPM_BUILD_ROOT/etc/X11/xinit/xinitrc.d/qubes-keymap.sh
-install -D appvm-scripts/etc/tmpfiles.d/qubes-pulseaudio.conf $RPM_BUILD_ROOT/usr/lib/tmpfiles.d/qubes-pulseaudio.conf
-install -D appvm-scripts/etc/tmpfiles.d/qubes-session.conf $RPM_BUILD_ROOT/usr/lib/tmpfiles.d/qubes-session.conf
-install -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop $RPM_BUILD_ROOT/etc/xdg/autostart/qubes-pulseaudio.desktop
-install -D appvm-scripts/qubes-gui-agent.service $RPM_BUILD_ROOT/lib/systemd/system/qubes-gui-agent.service
-install -D appvm-scripts/qubes-gui-vm.gschema.override $RPM_BUILD_ROOT%{_datadir}/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
-install -d $RPM_BUILD_ROOT/var/log/qubes
+make install DESTDIR=$RPM_BUILD_ROOT \
+                     LIBDIR=%{_libdir} \
+                     DATADIR=%{_datadir} \
+                     PA_VER=%{pa_ver}
 
 %post
 if [ -x /bin/systemctl ] && readlink /sbin/init | grep -q systemd; then

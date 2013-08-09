@@ -54,31 +54,7 @@ make appvm
 
 package() {
 
-install -D gui-agent/qubes-gui $pkgdir/usr/bin/qubes-gui
-install -D appvm-scripts/usrbin/qubes-session $pkgdir/usr/bin/qubes-session
-install -D appvm-scripts/usrbin/qubes-run-xorg.sh $pkgdir/usr/bin/qubes-run-xorg.sh
-install -D appvm-scripts/usrbin/qubes-xorg-wrapper.sh $pkgdir/usr/bin/qubes-xorg-wrapper.sh
-install -D appvm-scripts/usrbin/qubes-change-keyboard-layout $pkgdir/usr/bin/qubes-change-keyboard-layout
-install -D pulse/start-pulseaudio-with-vchan $pkgdir/usr/bin/start-pulseaudio-with-vchan
-install -D pulse/qubes-default.pa $pkgdir/etc/pulse/qubes-default.pa
-install -D pulse/module-vchan-sink.so $pkgdir/usr/lib/pulse-${pa_ver}/modules/module-vchan-sink.so
-install -D xf86-input-mfndev/src/.libs/qubes_drv.so $pkgdir/usr/lib/xorg/modules/drivers/qubes_drv.so
-install -D xf86-video-dummy/src/.libs/dummyqbs_drv.so $pkgdir/usr/lib/xorg/modules/drivers/dummyqbs_drv.so
-install -m 4555 -D relaxed-xf86ValidateModes/relaxed-xf86ValidateModes.so $pkgdir/usr/lib/relaxed-xf86ValidateModes.so
-install -D appvm-scripts/etc/X11/xorg-qubes.conf.template $pkgdir/etc/X11/xorg-qubes.conf.template
-install -D appvm-scripts/etc/init.d/qubes-gui-agent $pkgdir/etc/init.d/qubes-gui-agent
-install -D appvm-scripts/etc/profile.d/qubes-gui.sh $pkgdir/etc/profile.d/qubes-gui.sh
-install -D appvm-scripts/etc/profile.d/qubes-gui.csh $pkgdir/etc/profile.d/qubes-gui.csh
-install -D appvm-scripts/etc/profile.d/qubes-session.sh $pkgdir/etc/profile.d/qubes-session.sh
-install -D appvm-scripts/etc/sysconfig/desktop $pkgdir/etc/sysconfig/desktop
-install -D appvm-scripts/etc/sysconfig/modules/qubes-u2mfn.modules $pkgdir/etc/sysconfig/modules/qubes-u2mfn.modules
-install -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh $pkgdir/etc/X11/xinit/xinitrc.d/qubes-keymap.sh
-install -D appvm-scripts/etc/tmpfiles.d/qubes-pulseaudio.conf $pkgdir/usr/lib/tmpfiles.d/qubes-pulseaudio.conf
-install -D appvm-scripts/etc/tmpfiles.d/qubes-session.conf $pkgdir/usr/lib/tmpfiles.d/qubes-session.conf
-install -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop $pkgdir/etc/xdg/autostart/qubes-pulseaudio.desktop
-install -D appvm-scripts/qubes-gui-agent.service $pkgdir/lib/systemd/system/qubes-gui-agent.service
-install -D appvm-scripts/qubes-gui-vm.gschema.override $pkgdir/usr/share/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
-install -d $pkgdir/var/log/qubes
+make install DESTDIR=$pkgdir
 
 # Specific to archlinux: qubes session needs to be the last started script when Xorg starts.
 # For Fedora Qubes devs team choosed to populate it in /etc/sysconfig/desktop, but this is not supported by Archlinux

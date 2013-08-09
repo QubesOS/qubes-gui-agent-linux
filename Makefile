@@ -24,6 +24,10 @@ VERSION := $(shell cat version)
 
 DIST_DOM0 ?= fc13
 
+LIBDIR ?= /usr/lib64
+DATADIR ?= /usr/share
+PA_VER ?= $(shell pkg-config --modversion libpulse || echo 0.0)
+
 help:
 	@echo "Qubes GUI main Makefile:" ;\
 	    echo "make rpms                 <--- make all rpms and sign them";\
@@ -91,3 +95,29 @@ clean:
 	(cd xf86-input-mfndev; if [ -e Makefile ] ; then $(MAKE) distclean; fi; ./bootstrap --clean || echo )
 	$(MAKE) -C relaxed-xf86ValidateModes clean
 
+install: appvm
+	install -D gui-agent/qubes-gui $(DESTDIR)/usr/bin/qubes-gui
+	install -D appvm-scripts/usrbin/qubes-session $(DESTDIR)/usr/bin/qubes-session
+	install -D appvm-scripts/usrbin/qubes-run-xorg.sh $(DESTDIR)/usr/bin/qubes-run-xorg.sh
+	install -D appvm-scripts/usrbin/qubes-xorg-wrapper.sh $(DESTDIR)/usr/bin/qubes-xorg-wrapper.sh
+	install -D appvm-scripts/usrbin/qubes-change-keyboard-layout $(DESTDIR)/usr/bin/qubes-change-keyboard-layout
+	install -D pulse/start-pulseaudio-with-vchan $(DESTDIR)/usr/bin/start-pulseaudio-with-vchan
+	install -D pulse/qubes-default.pa $(DESTDIR)/etc/pulse/qubes-default.pa
+	install -D pulse/module-vchan-sink.so $(DESTDIR)$(LIBDIR)/pulse-$(PA_VER)/modules/module-vchan-sink.so
+	install -D xf86-input-mfndev/src/.libs/qubes_drv.so $(DESTDIR)$(LIBDIR)/xorg/modules/drivers/qubes_drv.so
+	install -D xf86-video-dummy/src/.libs/dummyqbs_drv.so $(DESTDIR)$(LIBDIR)/xorg/modules/drivers/dummyqbs_drv.so
+	install -D relaxed-xf86ValidateModes/relaxed-xf86ValidateModes.so $(DESTDIR)$(LIBDIR)/relaxed-xf86ValidateModes.so
+	install -D appvm-scripts/etc/X11/xorg-qubes.conf.template $(DESTDIR)/etc/X11/xorg-qubes.conf.template
+	install -D appvm-scripts/etc/init.d/qubes-gui-agent $(DESTDIR)/etc/init.d/qubes-gui-agent
+	install -D appvm-scripts/etc/profile.d/qubes-gui.sh $(DESTDIR)/etc/profile.d/qubes-gui.sh
+	install -D appvm-scripts/etc/profile.d/qubes-gui.csh $(DESTDIR)/etc/profile.d/qubes-gui.csh
+	install -D appvm-scripts/etc/profile.d/qubes-session.sh $(DESTDIR)/etc/profile.d/qubes-session.sh
+	install -D appvm-scripts/etc/sysconfig/desktop $(DESTDIR)/etc/sysconfig/desktop
+	install -D appvm-scripts/etc/sysconfig/modules/qubes-u2mfn.modules $(DESTDIR)/etc/sysconfig/modules/qubes-u2mfn.modules
+	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh $(DESTDIR)/etc/X11/xinit/xinitrc.d/qubes-keymap.sh
+	install -D appvm-scripts/etc/tmpfiles.d/qubes-pulseaudio.conf $(DESTDIR)/usr/lib/tmpfiles.d/qubes-pulseaudio.conf
+	install -D appvm-scripts/etc/tmpfiles.d/qubes-session.conf $(DESTDIR)/usr/lib/tmpfiles.d/qubes-session.conf
+	install -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop $(DESTDIR)/etc/xdg/autostart/qubes-pulseaudio.desktop
+	install -D appvm-scripts/qubes-gui-agent.service $(DESTDIR)/lib/systemd/system/qubes-gui-agent.service
+	install -D appvm-scripts/qubes-gui-vm.gschema.override $(DESTDIR)$(DATADIR)/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
+	install -d $(DESTDIR)/var/log/qubes
