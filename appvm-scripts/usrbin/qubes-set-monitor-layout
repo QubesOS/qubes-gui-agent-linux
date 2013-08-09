@@ -1,0 +1,24 @@
+#!/bin/sh
+
+output_no=0
+output_base=DUMMY
+output_max=3
+
+while read w h x y; do
+	output_name=$output_base$output_no
+	mode_name="QB${w}x${h}"
+	if ! xrandr | grep -q $mode_name; then
+		cvt=`cvt $w $h | tail -n 1 | cut -d ' ' -f 3-`
+		xrandr --newmode $mode_name $cvt
+		xrandr --addmode $output_name $mode_name
+	fi
+	# Do not set it at once b/c xserver resets position after output gets
+	# "connected" - the case for first mode set
+	xrandr --output $output_name --mode $mode_name
+	xrandr --output $output_name --pos ${x}x${y}
+	output_no=$[ $output_no + 1]
+done
+
+for i in `seq $output_no $output_max`; do
+	xrandr --output $output_base$i --off
+done

@@ -101,6 +101,7 @@ install: appvm
 	install -D appvm-scripts/usrbin/qubes-run-xorg.sh $(DESTDIR)/usr/bin/qubes-run-xorg.sh
 	install -D appvm-scripts/usrbin/qubes-xorg-wrapper.sh $(DESTDIR)/usr/bin/qubes-xorg-wrapper.sh
 	install -D appvm-scripts/usrbin/qubes-change-keyboard-layout $(DESTDIR)/usr/bin/qubes-change-keyboard-layout
+	install -D appvm-scripts/usrbin/qubes-set-monitor-layout $(DESTDIR)/usr/bin/qubes-set-monitor-layout
 	install -D pulse/start-pulseaudio-with-vchan $(DESTDIR)/usr/bin/start-pulseaudio-with-vchan
 	install -D pulse/qubes-default.pa $(DESTDIR)/etc/pulse/qubes-default.pa
 	install -D pulse/module-vchan-sink.so $(DESTDIR)$(LIBDIR)/pulse-$(PA_VER)/modules/module-vchan-sink.so
@@ -120,4 +121,5 @@ install: appvm
 	install -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop $(DESTDIR)/etc/xdg/autostart/qubes-pulseaudio.desktop
 	install -D appvm-scripts/qubes-gui-agent.service $(DESTDIR)/lib/systemd/system/qubes-gui-agent.service
 	install -D appvm-scripts/qubes-gui-vm.gschema.override $(DESTDIR)$(DATADIR)/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
+	install -m 0644 -D appvm-scripts/etc/qubes-rpc/qubes.SetMonitorLayout $(DESTDIR)/etc/qubes-rpc/qubes.SetMonitorLayout
 	install -d $(DESTDIR)/var/log/qubes

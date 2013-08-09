@@ -133,6 +133,7 @@ rm -f %{name}-%{version}
 /usr/bin/qubes-run-xorg.sh
 /usr/bin/qubes-xorg-wrapper.sh
 /usr/bin/qubes-change-keyboard-layout
+/usr/bin/qubes-set-monitor-layout
 /usr/bin/start-pulseaudio-with-vchan
 %{_libdir}/pulse-%{pa_ver}/modules/module-vchan-sink.so
 %{_libdir}/xorg/modules/drivers/qubes_drv.so
@@ -146,6 +147,7 @@ rm -f %{name}-%{version}
 /etc/pulse/qubes-default.pa
 /etc/xdg/autostart/qubes-pulseaudio.desktop
 /etc/X11/xinit/xinitrc.d/qubes-keymap.sh
+/etc/qubes-rpc/qubes.SetMonitorLayout
 %config /etc/sysconfig/desktop
 /etc/sysconfig/modules/qubes-u2mfn.modules
 /lib/systemd/system/qubes-gui-agent.service
