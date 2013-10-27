@@ -102,10 +102,6 @@ fi
 sed -i '/^autospawn/d' /etc/pulse/client.conf
 echo autospawn=no >> /etc/pulse/client.conf
 
-%postun
-if [ $1 -eq 0 ] ; then
-fi
-
 %preun
 if [ "$1" = 0 ] ; then
 	chkconfig qubes-gui-agent off
