@@ -26,7 +26,7 @@ DIST_DOM0 ?= fc13
 
 LIBDIR ?= /usr/lib64
 DATADIR ?= /usr/share
-PA_VER ?= $(shell pkg-config --modversion libpulse || echo 0.0)
+PA_VER ?= $(shell pkg-config --modversion libpulse | cut -d "-" -f 1 || echo 0.0)
 
 help:
 	@echo "Qubes GUI main Makefile:" ;\
