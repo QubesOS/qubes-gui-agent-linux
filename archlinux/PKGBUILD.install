@@ -1,10 +1,4 @@
 
-
-## arg 1:  the new package version
-#pre_install() {
-  # do something here
-#}
-
 ## arg 1:  the new package version
 post_install() {
 
@@ -19,26 +13,12 @@ echo "" > /etc/X11/xinit/xinitrc.d/pulseaudio
 # Then modify /etc/pacman.conf to ensure that this file won't be changed during upgrades. Add this line next to the commented NoUpgrade line:
 sed '/NoUpgrade/aNoUpgrade = /etc/X11/xinit/xinitrc.d/pulseaudio' -i /etc/pacman.conf
 
+ldconfig
 }
 
-
-## arg 1:  the new package version
-## arg 2:  the old package version
-#post_upgrade() {
-  # do something here
-#}
-
-## arg 1:  the new package version
-## arg 2:  the old package version
-#pre_upgrade() {
-  # do something here
-#}
-
-## arg 1:  the new package version
-## arg 2:  the old package version
-#post_upgrade() {
-  # do something here
-#}
+post_upgrade() {
+ldconfig
+}
 
 ## arg 1:  the old package version
 pre_remove() {
@@ -47,9 +27,7 @@ systemctl disable qubes-gui-agent.service
 
 }
 
-## arg 1:  the old package version
-#post_remove() {
-  # do something here
-#}
-
+post_remove() {
+ldconfig
+}
 
