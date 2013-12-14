@@ -10,8 +10,8 @@ while read w h x y; do
 	if ! xrandr | grep -q $mode_name; then
 		cvt=`cvt $w $h | tail -n 1 | cut -d ' ' -f 3-`
 		xrandr --newmode $mode_name $cvt
-		xrandr --addmode $output_name $mode_name
 	fi
+	xrandr --addmode $output_name $mode_name
 	# Do not set it at once b/c xserver resets position after output gets
 	# "connected" - the case for first mode set
 	xrandr --output $output_name --mode $mode_name
