@@ -2,7 +2,7 @@
 
 output_no=0
 output_base=DUMMY
-output_max=3
+output_max=$[ `xrandr | grep -c ^$output_base` - 1 ]
 
 while read w h x y; do
 	output_name=$output_base$output_no
