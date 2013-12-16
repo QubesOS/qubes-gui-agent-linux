@@ -9,6 +9,6 @@ module-vchan-sink.so: module-vchan-sink.o
 	$(CC) -shared -o module-vchan-sink.so module-vchan-sink.o \
 		$(VCHANLDFLAGS) $(VCHANLIBS)
 module-vchan-sink.o: module-vchan-sink.c
-	$(CC) -Wall -c $(VCHANCFLAGS) -fPIC module-vchan-sink.c  -DHAVE_CONFIG_H -I.
+	$(CC) -Wall -g -c $(VCHANCFLAGS) -fPIC module-vchan-sink.c  -DHAVE_CONFIG_H -I.
 clean:
 	rm -f *.so *.o *~
