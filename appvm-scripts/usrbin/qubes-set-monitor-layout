@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Wait for Xorg complete startup
+while ! xrandr -q &>/dev/null; do sleep 0.1; done
+
 output_no=0
 output_base=DUMMY
 output_max=$[ `xrandr | grep -c ^$output_base` - 1 ]
