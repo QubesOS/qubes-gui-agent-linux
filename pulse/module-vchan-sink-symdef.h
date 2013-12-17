@@ -4,6 +4,7 @@
 #include <pulsecore/core.h>
 #include <pulsecore/module.h>
 #include <pulsecore/macro.h>
+#include <pulse/version.h>
 
 #define pa__init module_vchan_sink_LTX_pa__init
 #define pa__done module_vchan_sink_LTX_pa__done
@@ -24,6 +25,12 @@ const char* pa__get_description(void);
 const char* pa__get_usage(void);
 const char* pa__get_version(void);
 const char* pa__get_deprecated(void);
+#if PA_CHECK_VERSION(2,1,0)
 bool pa__load_once(void);
+#else
+pa_bool_t pa__load_once(void);
+#define true TRUE
+#define false FALSE
+#endif
 
 #endif
