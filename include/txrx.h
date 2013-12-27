@@ -30,7 +30,7 @@ int read_ready();
 #define read_struct(x) read_data((char*)&x, sizeof(x))
 #define write_struct(x) write_data((char*)&x, sizeof(x))
 #define write_message(x,y) do {\
-	x.untrusted_len = sizeof(x); \
+	x.untrusted_len = sizeof(y); \
 	real_write_message((char*)&x, sizeof(x), (char*)&y, sizeof(y)); \
     } while(0)
 void wait_for_vchan_or_argfd(int nfd, int *fd, fd_set * retset);
