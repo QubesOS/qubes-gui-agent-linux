@@ -6,7 +6,7 @@
 # Maintainer: Olivier Medoc <o_medoc@yahoo.fr>
 pkgname=qubes-vm-gui
 pkgver=`cat version`
-pkgrel=3
+pkgrel=4
 epoch=
 pkgdesc="The Qubes GUI Agent for AppVMs"
 arch=("x86_64")
@@ -37,8 +37,9 @@ for source in Makefile appvm-scripts gui-common include pulse gui-agent common r
   (ln -s $srcdir/../$source $srcdir/$source)
 done
 
-# Bug fixes : /bin/touch does not exists under archlinux
-sed 's:ExecStartPre=/bin/touch:ExecStartPre=/usr/bin/touch:' -i appvm-scripts/qubes-gui-agent.service
+# Bug fixes : /var/run/console depends on consoleKit, which has been replace on archlinux by systemd-logind
+# As a consequece, /var/run/console does not exists and qubes-gui-agent will always fail
+sed 's:ExecStartPre=/bin/touch:#ExecStartPre=/bin/touch:' -i appvm-scripts/qubes-gui-agent.service
 
 # Fix for building with python2
 export PYTHON=python2
@@ -54,7 +55,7 @@ make appvm
 
 package() {
 
-make install DESTDIR=$pkgdir LIBDIR=$pkgdir/usr/lib DATADIR=$pkgdir/usr/share PA_VER=$pa_ver
+make install DESTDIR=$pkgdir PA_VER=$pa_ver
 
 # Specific to archlinux: qubes session needs to be the last started script when Xorg starts.
 # For Fedora Qubes devs team choosed to populate it in /etc/sysconfig/desktop, but this is not supported by Archlinux
