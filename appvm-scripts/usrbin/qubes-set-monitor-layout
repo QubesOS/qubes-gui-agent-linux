@@ -7,6 +7,8 @@ output_no=0
 output_base=DUMMY
 output_max=$[ `xrandr | grep -c ^$output_base` - 1 ]
 
+xrandr_cmd=""
+
 while read w h x y; do
 	output_name=$output_base$output_no
 	mode_name="QB${w}x${h}"
@@ -17,11 +19,12 @@ while read w h x y; do
 	xrandr --addmode $output_name $mode_name
 	# Do not set it at once b/c xserver resets position after output gets
 	# "connected" - the case for first mode set
-	xrandr --output $output_name --mode $mode_name
-	xrandr --output $output_name --pos ${x}x${y}
+	xrandr_cmd="$xrandr_cmd --output $output_name --mode $mode_name --pos ${x}x${y}"
 	output_no=$[ $output_no + 1]
 done
 
 for i in `seq $output_no $output_max`; do
-	xrandr --output $output_base$i --off
+	xrandr_cmd="$xrandr_cmd --output $output_base$i --off"
 done
+
+xrandr $xrandr_cmd
