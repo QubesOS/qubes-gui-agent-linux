@@ -107,7 +107,8 @@ install: appvm
 	install -D pulse/module-vchan-sink.so $(DESTDIR)$(LIBDIR)/pulse-$(PA_VER)/modules/module-vchan-sink.so
 	install -D xf86-input-mfndev/src/.libs/qubes_drv.so $(DESTDIR)$(LIBDIR)/xorg/modules/drivers/qubes_drv.so
 	install -D xf86-video-dummy/src/.libs/dummyqbs_drv.so $(DESTDIR)$(LIBDIR)/xorg/modules/drivers/dummyqbs_drv.so
-	install -D relaxed-xf86ValidateModes/relaxed-xf86ValidateModes.so $(DESTDIR)$(LIBDIR)/relaxed-xf86ValidateModes.so
+	# Install relaxed-xf86ValidateModes.so as SUID - because it is required to be started with LD_PRELOAD as a root
+	install -m 4555 -D relaxed-xf86ValidateModes/relaxed-xf86ValidateModes.so $(DESTDIR)$(LIBDIR)/relaxed-xf86ValidateModes.so
 	install -D appvm-scripts/etc/X11/xorg-qubes.conf.template $(DESTDIR)/etc/X11/xorg-qubes.conf.template
 	install -D appvm-scripts/etc/init.d/qubes-gui-agent $(DESTDIR)/etc/init.d/qubes-gui-agent
 	install -D appvm-scripts/etc/profile.d/qubes-gui.sh $(DESTDIR)/etc/profile.d/qubes-gui.sh
