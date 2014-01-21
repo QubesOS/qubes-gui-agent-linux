@@ -9,5 +9,10 @@ if [ -n "$QUBES_KEYMAP" ]; then
 fi
 
 if [ -n "$QUBES_USER_KEYMAP" ]; then
-    setxkbmap $QUBES_USER_KEYMAP
+    QUBES_USER_KEYMAP_LAYOUT=`echo $QUBES_USER_KEYMAP+ | cut -f 1 -d +`
+    QUBES_USER_KEYMAP_VARIANT=`echo $QUBES_USER_KEYMAP+ | cut -f 2 -d +`
+    if [ -n "$QUBES_USER_KEYMAP_VARIANT" ]; then
+        QUBES_USER_KEYMAP_VARIANT="-variant $QUBES_USER_KEYMAP_VARIANT"
+    fi
+    setxkbmap $QUBES_USER_KEYMAP_LAYOUT $QUBES_USER_KEYMAP_VARIANT
 fi
