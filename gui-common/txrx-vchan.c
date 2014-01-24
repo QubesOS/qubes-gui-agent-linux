@@ -219,11 +219,50 @@ char *get_vm_name(int dom, int *target_dom)
 	return name;
 }
 
+void wait_for_possible_dispvm_resume() {
+	struct xs_handle *xs;
+	char buf[64];
+	char *tmp;
+	char **vec;
+	unsigned int len = 0;
+
+	xs = xs_daemon_open();
+	if (!xs) {
+		perror("xs_daemon_open");
+		exit(1);
+	}
+	tmp=xs_read(xs, 0, "qubes-save-request", &len);
+	if (tmp) {
+		free(tmp);
+	} else
+		return;
+
+	xs_watch(xs, "qubes-restore-complete", "token");
+	do {
+		vec = xs_read_watch(xs, &len);
+		if (vec)
+			free(vec);
+		len = 0;
+		tmp = xs_read(xs, 0, "qubes-restore-complete", &len);
+		if (tmp)
+			free(tmp);
+	}
+	while (!tmp || !len); // wait for dom0 to create xenstore entry
+}
+
+
 int peer_server_reinitialize(int port)
 {
 	if (libvchan_cleanup(ctrl) < 0)
 		return -1;
 	return peer_server_init(port);
+}
+
+void vchan_cleanup()
+{
+	if (libvchan_cleanup(ctrl) < 0)
+		return -1;
+	ctrl = NULL;
 }
 
 void vchan_close()

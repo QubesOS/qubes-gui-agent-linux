@@ -41,5 +41,7 @@ int peer_server_reinitialize(int port);
 void vchan_register_at_eof(void (*new_vchan_at_eof)(void));
 void vchan_close();
 int vchan_fd();
+void wait_for_possible_dispvm_resume(void);
+void vchan_cleanup(void);
 
 #endif /* _QUBES_TXRX_H */
