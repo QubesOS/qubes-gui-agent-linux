@@ -364,6 +364,23 @@ void send_wmnormalhints(Ghandles * g, XID window)
 		fprintf(stderr, "error reading WM_NORMAL_HINTS\n");
 		return;
 	}
+	/* Nasty workaround for KDE bug affecting gnome-terminal (shrinks to minimal size) */
+	/* https://bugzilla.redhat.com/show_bug.cgi?id=707664 */
+	if ((size_hints.flags & (PBaseSize|PMinSize|PResizeInc)) ==
+			(PBaseSize|PMinSize|PResizeInc)) {
+		/* KDE incorrectly uses PMinSize when both are provided */
+		if (size_hints.width_inc > 1)
+			/* round up to neareset multiply of width_inc */
+			size_hints.min_width =
+				((size_hints.min_width-size_hints.base_width+1) / size_hints.width_inc)
+				* size_hints.width_inc + size_hints.base_width;
+		if (size_hints.height_inc > 1)
+			/* round up to neareset multiply of height_inc */
+			size_hints.min_height =
+				((size_hints.min_height-size_hints.base_height+1) / size_hints.height_inc)
+				* size_hints.height_inc + size_hints.base_height;
+	}
+
 	// pass only some hints
 	msg.flags =
 	    size_hints.flags & (PMinSize | PMaxSize | PResizeInc |
