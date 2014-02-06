@@ -830,7 +830,7 @@ void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
 				return;
 			};
 
-			memset(&resp, 0, sizeof(ev));
+			memset(&resp, 0, sizeof(resp));
 			resp.type = ClientMessage;
 			resp.window = w;
 			resp.message_type =
