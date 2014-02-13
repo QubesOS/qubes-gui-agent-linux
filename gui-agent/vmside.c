@@ -1272,7 +1272,7 @@ void take_focus(Ghandles * g, XID winid)
 	ev.data.l[1] = CurrentTime;
 	XSendEvent(ev.display, ev.window, TRUE, 0, (XEvent *) & ev);
 	if (g->log_level > 0)
-		fprintf(stderr, "wm_TAKE_FOCUS sent for 0x%x\n",
+		fprintf(stderr, "WM_TAKE_FOCUS sent for 0x%x\n",
 			(int) winid);
 
 }
