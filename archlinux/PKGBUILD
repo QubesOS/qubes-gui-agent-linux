@@ -6,7 +6,7 @@
 # Maintainer: Olivier Medoc <o_medoc@yahoo.fr>
 pkgname=qubes-vm-gui
 pkgver=`cat version`
-pkgrel=4
+pkgrel=5
 epoch=
 pkgdesc="The Qubes GUI Agent for AppVMs"
 arch=("x86_64")
@@ -37,9 +37,11 @@ for source in Makefile appvm-scripts gui-common include pulse gui-agent common r
   (ln -s $srcdir/../$source $srcdir/$source)
 done
 
-# Bug fixes : /var/run/console depends on consoleKit, which has been replace on archlinux by systemd-logind
+# Bug fixes : /var/run/console depends on pam_console, which is fedora specific
 # As a consequece, /var/run/console does not exists and qubes-gui-agent will always fail
 sed 's:ExecStartPre=/bin/touch:#ExecStartPre=/bin/touch:' -i appvm-scripts/qubes-gui-agent.service
+# Ensure that qubes-gui-agent starts after user autologin
+sed 's/After=\(.*\)qubes-misc-post.service/After=\1qubes-misc-post.service getty.target/' -i appvm-scripts/qubes-gui-agent.service
 
 # Fix for building with python2
 export PYTHON=python2
