@@ -17,12 +17,20 @@ post_install() {
 
   glib-compile-schemas /usr/share/glib-2.0/schemas &> /dev/null || :
 
+  echo "Fixing bug in xinitrc"
+  # Archlinux specific: Fix potential bug in xinitrc making dbus to not initilize correctly
+  sed 's:for f in /etc/X11/xinit/xinitrc.d/?\*\.sh:for f in /etc/X11/xinit/xinitrc.d/?\*:' -i /etc/X11/xinit/xinitrc
+
 }
 
 post_upgrade() {
 
   ldconfig
   glib-compile-schemas /usr/share/glib-2.0/schemas &> /dev/null || :
+
+  echo "Fixing bug in xinitrc"
+  # Archlinux specific: Fix potential bug in xinitrc making dbus to not initilize correctly
+  sed 's:for f in /etc/X11/xinit/xinitrc.d/?\*\.sh:for f in /etc/X11/xinit/xinitrc.d/?\*:' -i /etc/X11/xinit/xinitrc
 
 }
 
