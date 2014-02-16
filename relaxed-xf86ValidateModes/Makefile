@@ -20,7 +20,7 @@
 #
 #
 
-CFLAGS+=-g -fPIC
+CFLAGS+=-Wall -Wextra -Werror -g -fPIC
 CC=gcc
 
 all: relaxed-xf86ValidateModes.so

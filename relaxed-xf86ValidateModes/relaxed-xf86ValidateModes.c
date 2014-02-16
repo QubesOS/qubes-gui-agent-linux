@@ -28,6 +28,10 @@ extern int xf86ValidateModes(xf86ValidateModes_ARGS);
 int (*real_xf86ValidateModes) (xf86ValidateModes_ARGS);
 int relaxed_xf86ValidateModes(xf86ValidateModes_ARGS)
 {
+	/* unused parameters */
+	(void) maxPitch;
+	(void) maxHeight;
+
 	return real_xf86ValidateModes(scrp, availModes, modeNames,
 				      clockRanges, linePitches, minPitch,
 				      65536, pitchInc, minHeight, 65536,

@@ -45,6 +45,12 @@
 
 #define QUBES_GUI_PROTOCOL_VERSION_LINUX (1 << 16 | 0)
 
+#ifdef __GNUC__
+#  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
+#else
+#  define UNUSED(x) UNUSED_ ## x
+#endif
+
 int damage_event, damage_error;
 
 char **saved_argv;
@@ -89,7 +95,7 @@ typedef struct _global_handles Ghandles;
 
 #define SKIP_NONMANAGED_WINDOW if (!list_lookup(windows_list, window)) return
 
-void process_xevent_damage(Ghandles * g, XID window,
+void process_xevent_damage(Ghandles * UNUSED(g), XID window,
 			   int x, int y, int width, int height)
 {
 	struct msg_shmimage mx;
@@ -194,7 +200,7 @@ void read_discarding(int fd, int size)
 	char buf[1024];
 	int n, count, total = 0;
 	while (total < size) {
-		if (size > sizeof(buf))
+		if (size > (int)sizeof(buf))
 			count = sizeof(buf);
 		else
 			count = size;
@@ -413,7 +419,8 @@ static inline uint32_t flags_from_atom(Ghandles * g, Atom a) {
 
 void send_window_state(Ghandles * g, XID window)
 {
-	int ret, i;
+	int ret;
+	unsigned i;
 	Atom *state_list;
 	Atom act_type;
 	int act_fmt;
@@ -637,7 +644,7 @@ void process_xevent_selection(Ghandles * g, XSelectionEvent * ev)
 	// this is workaround for Opera web browser...
 	else if (ev->target == XA_ATOM && len >= 4 && len <= 8 &&
 		 // compare only first 4 bytes
-		 *((int *) data) == Targets)
+		 *((unsigned *) data) == Targets)
 		XConvertSelection(g->display, Clp,
 				  Utf8_string_atom, Qprop,
 				  g->stub_win, CurrentTime);
@@ -1020,7 +1027,7 @@ void mkghandles(Ghandles * g)
 	g->wm_take_focus = XInternAtom(g->display, "WM_TAKE_FOCUS", False);
 }
 
-void handle_keypress(Ghandles * g, XID winid)
+void handle_keypress(Ghandles * g, XID UNUSED(winid))
 {
 	struct msg_keypress key;
 	XkbStateRec state;
@@ -1205,7 +1212,6 @@ void handle_motion(Ghandles * g, XID winid)
 void handle_crossing(Ghandles * g, XID winid)
 {
 	struct msg_crossing key;
-	XCrossingEvent event;
 	XWindowAttributes attr;
 	int ret;
 	struct genlist *l = list_lookup(windows_list, winid);
@@ -1451,7 +1457,7 @@ void handle_execute()
 }
 
 #define CLIPBOARD_4WAY
-void handle_clipboard_req(Ghandles * g, XID winid)
+void handle_clipboard_req(Ghandles * g, XID UNUSED(winid))
 {
 	Atom Clp;
 	Atom QProp = XInternAtom(g->display, "QUBES_SELECTION", False);
@@ -1501,7 +1507,8 @@ void handle_clipboard_data(Ghandles * g, int len)
 
 void handle_window_flags(Ghandles *g, XID winid)
 {
-	int ret, i, j, changed;
+	int ret, j, changed;
+	unsigned i;
 	Atom *state_list;
 	Atom new_state_list[12];
 	Atom act_type;

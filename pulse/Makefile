@@ -1,4 +1,5 @@
 CC=gcc
+CFLAGS=-Wall -Wextra -Werror
 VCHANLIBS=-lxenctrl -lxenstore -lvchan
 VCHANCFLAGS=-I../vchan/vchan
 VCHANLDFLAGS=-L../vchan/vchan
@@ -9,6 +10,6 @@ module-vchan-sink.so: module-vchan-sink.o
 	$(CC) -shared -o module-vchan-sink.so module-vchan-sink.o \
 		$(VCHANLDFLAGS) $(VCHANLIBS)
 module-vchan-sink.o: module-vchan-sink.c
-	$(CC) -Wall -g -c $(VCHANCFLAGS) -fPIC module-vchan-sink.c  -DHAVE_CONFIG_H -I.
+	$(CC) $(CFLAGS) -g -c $(VCHANCFLAGS) -fPIC module-vchan-sink.c  -DHAVE_CONFIG_H -I.
 clean:
 	rm -f *.so *.o *~
