@@ -41,20 +41,9 @@ help:
 	    echo "make update-repo-installer -- copy dom0 rpms to installer repo"
 	    @exit 0;
 
-dom0: gui-daemon/qubes-guid shmoverride/shmoverride.so shmoverride/X-wrapper-qubes pulse/pacat-simple-vchan
-
 appvm: gui-agent/qubes-gui xf86-input-mfndev/src/.libs/qubes_drv.so \
 	xf86-video-dummy/src/.libs/dummyqbs_drv.so pulse/module-vchan-sink.so
 
-gui-daemon/qubes-guid:
-	(cd gui-daemon; $(MAKE))
-
-shmoverride/shmoverride.so:
-	(cd shmoverride; $(MAKE) shmoverride.so)
-
-shmoverride/X-wrapper-qubes:
-	(cd shmoverride; $(MAKE) X-wrapper-qubes)
-	
 pulse/pacat-simple-vchan:
 	$(MAKE) -C pulse pacat-simple-vchan
 
