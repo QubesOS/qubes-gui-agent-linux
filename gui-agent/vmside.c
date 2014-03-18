@@ -229,7 +229,7 @@ void send_pixmap_mfns(Ghandles * g, XID window)
 		perror("unix read shmcmd");
 		exit(1);
 	}
-	if (shmcmd.num_mfn == 0 || shmcmd.num_mfn > MAX_MFN_COUNT ||
+	if (shmcmd.num_mfn == 0 || shmcmd.num_mfn > (unsigned)MAX_MFN_COUNT ||
 			shmcmd.width > MAX_WINDOW_WIDTH || shmcmd.height > MAX_WINDOW_HEIGHT) {
 		fprintf(stderr, "got num_mfn=0x%x for window 0x%x (%dx%d)\n",
 			shmcmd.num_mfn, (int) window, shmcmd.width, shmcmd.height);
