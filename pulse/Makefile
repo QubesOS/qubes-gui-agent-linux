@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -Werror
+CFLAGS=-Wall -Wextra -Werror -O2
 VCHANLIBS=-lxenctrl -lxenstore -lvchan
 VCHANCFLAGS=-I../vchan/vchan
 VCHANLDFLAGS=-L../vchan/vchan

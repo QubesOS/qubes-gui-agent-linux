@@ -20,7 +20,7 @@
 #
 
 CC=gcc
-CFLAGS+=-I../include/ -g -Wall -Wextra -Werror -pie -fPIC
+CFLAGS+=-I../include/ -g -Wall -Wextra -Werror -pie -fPIC -O2
 OBJS=vmside.o xserver-fd.o \
 	../gui-common/txrx-vchan.o ../gui-common/error.o ../common/list.o 
 
