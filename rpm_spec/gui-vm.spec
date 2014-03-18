@@ -127,14 +127,12 @@ rm -f %{name}-%{version}
 /usr/bin/qubes-gui
 /usr/bin/qubes-session
 /usr/bin/qubes-run-xorg.sh
-/usr/bin/qubes-xorg-wrapper.sh
 /usr/bin/qubes-change-keyboard-layout
 /usr/bin/qubes-set-monitor-layout
 /usr/bin/start-pulseaudio-with-vchan
 %{_libdir}/pulse-%{pa_ver}/modules/module-vchan-sink.so
 %{_libdir}/xorg/modules/drivers/qubes_drv.so
 %{_libdir}/xorg/modules/drivers/dummyqbs_drv.so
-%attr(4755,root,root) %{_libdir}/relaxed-xf86ValidateModes.so
 %attr(0644,root,root) /etc/X11/xorg-qubes.conf.template
 /etc/init.d/qubes-gui-agent
 /etc/profile.d/qubes-gui.sh

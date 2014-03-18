@@ -33,7 +33,7 @@ pa_ver=`pkg-config --modversion libpulse | cut -f 1 -d "-"`
 
 build() {
 
-for source in Makefile appvm-scripts gui-common include pulse gui-agent common relaxed-xf86ValidateModes xf86-input-mfndev xf86-video-dummy ; do
+for source in Makefile appvm-scripts gui-common include pulse gui-agent common xf86-input-mfndev xf86-video-dummy ; do
   (ln -s $srcdir/../$source $srcdir/$source)
 done
 

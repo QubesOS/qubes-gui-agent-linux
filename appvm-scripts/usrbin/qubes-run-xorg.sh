@@ -47,7 +47,7 @@ sed -e  s/%MEM%/$MEM/ \
 	    > /etc/X11/xorg-qubes.conf
 if [ -f /etc/this_is_dvm ]; then
 	# Skip system xinitrc to speed up DispVM startup
-	exec su user -c '/usr/bin/xinit /usr/bin/qubes-session -- /usr/bin/qubes-xorg-wrapper.sh :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1'
+	exec su user -c '/usr/bin/xinit /usr/bin/qubes-session -- /usr/bin/X :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1'
 else
-	exec su user -c '/usr/bin/xinit /etc/X11/xinit/xinitrc -- /usr/bin/qubes-xorg-wrapper.sh :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1'
+	exec su user -c '/usr/bin/xinit /etc/X11/xinit/xinitrc -- /usr/bin/X :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1'
 fi
