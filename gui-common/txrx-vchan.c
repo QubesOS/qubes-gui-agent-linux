@@ -123,7 +123,7 @@ int wait_for_vchan_or_argfd_once(int nfd, int *fd, fd_set * retset)
 {
 	fd_set rfds;
 	int vfd, max = 0, ret, i;
-	struct timeval tv = { 0, 100000 };
+	struct timeval tv = { 0, 1000000 };
 	write_data(NULL, 0);	// trigger write of queued data, if any present
 	vfd = libvchan_fd_for_select(ctrl);
 	FD_ZERO(&rfds);
