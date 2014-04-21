@@ -45,9 +45,28 @@ sed -e  s/%MEM%/$MEM/ \
 	    -e  s/%VREFR_END%/"$VREFR_END"/ \
 	    -e  s/%RES%/QB$RES/ < /etc/X11/xorg-qubes.conf.template \
 	    > /etc/X11/xorg-qubes.conf
+
+XSESSION="/etc/X11/xinit/xinitrc"
+XORG="/usr/bin/X"
+if [ -f /etc/X11/Xsession ]; then
+	# Debian-based distro, set Xsession appropriately
+	XSESSION="/etc/X11/Xsession"
+	# Debian installs Xorg without setuid root bit, with a setuid wrapper.
+	# The wrapper is not useful for qubes, but it does not matter since
+	# we can Xorg with qubes drivers without root. But we need to call
+	# Xorg directly, not X (which is the wrapper). Also need to set
+	# the logfile to a user-writeable location.
+	XORG="/usr/bin/Xorg -logfile /tmp/Xorg.0.log"
+fi
+
+# Make qubes input socket readable by user in case Xorg is not running as
+# root (debian for example)
+chown root:user /var/run/xf86-qubes-socket
+chmod 770 /var/run/xf86-qubes-socket
+
 if [ -f /etc/this_is_dvm ]; then
 	# Skip system xinitrc to speed up DispVM startup
-	exec su user -c '/usr/bin/xinit /usr/bin/qubes-session -- /usr/bin/X :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1'
+	exec su user -c '/usr/bin/xinit /usr/bin/qubes-session -- $XORG :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1'
 else
-	exec su user -c '/usr/bin/xinit /etc/X11/xinit/xinitrc -- /usr/bin/X :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1'
+	exec su user -c "/usr/bin/xinit $XSESSION -- $XORG :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1"
 fi

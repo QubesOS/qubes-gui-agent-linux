@@ -1,0 +1,20 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+export DESTDIR=$(shell pwd)/debian/qubes-gui-agent
+export LIBDIR=/usr/lib
+export PA_VER=4.0
+
+%:
+	dh $@ 
+
+override_dh_auto_build:
+	ln -sf ../debian/pulsecore-4.0-jessie pulse/pulsecore
+	make appvm
+
+override_dh_auto_install:
+	make install-debian
+
