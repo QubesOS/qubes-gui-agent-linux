@@ -1635,7 +1635,9 @@ void send_protocol_version()
 void handle_guid_disconnect()
 {
 	/* cleanup old session */
-	system("killall Xorg");
+	if (system("killall Xorg") != 0) {
+		/* silence gcc warning */
+	}
 	unlink("/tmp/qubes-session-env");
 	unlink("/tmp/qubes-session-waiter");
 	/* start new gui agent */
