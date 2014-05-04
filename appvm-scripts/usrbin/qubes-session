@@ -23,6 +23,12 @@
 # Switch user to 'user'
 [[ ! -f /etc/this-is-dvm && "$USER" != "user" ]] && exec su user -c $0
 
+if [ -x /usr/sbin/xenstore-read ]; then
+        XENSTORE_READ="/usr/sbin/xenstore-read"
+else
+        XENSTORE_READ="/usr/bin/xenstore-read"
+fi
+
 # Set desktop background
 xsetroot -solid white
 
@@ -39,9 +45,9 @@ shopt -s nullglob
 set -a
 
 # Get VM type from XenStore
-VMTYPE=`/usr/bin/xenstore-read qubes-vm-type`
+VMTYPE=`$XENSTORE_READ qubes-vm-type`
 
-UPDTYPE=`/usr/bin/xenstore-read qubes-vm-updateable`
+UPDTYPE=`$XENSTORE_READ qubes-vm-updateable`
 [[ $UPDTYPE == 'True' ]] && UPDTYPE="UpdateableVM" || UPDTYPE="NonUpdateableVM"
 
 # Gnome keyring is special case, as its env needed by nm-applet
