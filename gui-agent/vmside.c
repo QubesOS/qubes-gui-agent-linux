@@ -390,8 +390,8 @@ void send_wmnormalhints(Ghandles * g, XID window)
 
 	// pass only some hints
 	msg.flags =
-	    size_hints.flags & (PMinSize | PMaxSize | PResizeInc |
-				PBaseSize);
+		size_hints.flags & (USPosition | PPosition | PMinSize | PMaxSize |
+				PResizeInc | PBaseSize);
 	msg.min_width = size_hints.min_width;
 	msg.min_height = size_hints.min_height;
 	msg.max_width = size_hints.max_width;
