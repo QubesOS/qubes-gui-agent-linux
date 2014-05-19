@@ -95,6 +95,10 @@ typedef struct _global_handles Ghandles;
 
 #define SKIP_NONMANAGED_WINDOW if (!list_lookup(windows_list, window)) return
 
+void send_wmnormalhints(Ghandles * g, XID window, int ignore_fail);
+void retrieve_wmhints(Ghandles * g, XID window, int ignore_fail);
+void retrieve_wmprotocols(Ghandles * g, XID window, int ignore_fail);
+
 void process_xevent_damage(Ghandles * UNUSED(g), XID window,
 			   int x, int y, int width, int height)
 {
@@ -170,6 +174,10 @@ void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
 	crt.y = ev->y;
 	crt.override_redirect = ev->override_redirect;
 	write_message(hdr, crt);
+	/* handle properties set before we process XCreateNotify */
+	send_wmnormalhints(g, hdr.window, 1);
+	retrieve_wmprotocols(g, hdr.window, 1);
+	retrieve_wmhints(g, hdr.window, 1);
 }
 
 void feed_xdriver(Ghandles * g, int type, int arg1, int arg2)
@@ -289,6 +297,7 @@ void send_wmname(Ghandles * g, XID window)
 {
 	struct msg_hdr hdr;
 	struct msg_wmname msg;
+	memset(&msg, 0, sizeof(msg));
 	getwmname_tochar(g, window, msg.data, sizeof(msg.data));
 	hdr.window = window;
 	hdr.type = MSG_WMNAME;
@@ -298,7 +307,7 @@ void send_wmname(Ghandles * g, XID window)
 /*	Retrieve the supported WM Protocols
 	We don't forward the info to dom0 as we only need specific client protocols
 */
-void retrieve_wmprotocols(Ghandles * g, XID window)
+void retrieve_wmprotocols(Ghandles * g, XID window, int ignore_fail)
 {
 	int nitems;
 	Atom *supported_protocols;
@@ -320,7 +329,8 @@ void retrieve_wmprotocols(Ghandles * g, XID window)
 			}
 		}
 	} else {
-		fprintf(stderr, "ERROR reading WM_PROTOCOLS\n");
+		if (!ignore_fail)
+			fprintf(stderr, "ERROR reading WM_PROTOCOLS\n");
 		return;
 	}
 	XFree(supported_protocols);
@@ -330,7 +340,7 @@ void retrieve_wmprotocols(Ghandles * g, XID window)
 /* 	Retrieve the 'real' WMHints.
 	We don't forward the info to dom0 as we only need InputHint and dom0 doesn't care about it
 */
-void retrieve_wmhints(Ghandles * g, XID window)
+void retrieve_wmhints(Ghandles * g, XID window, int ignore_fail)
 {
 	XWMHints *wm_hints;
 	struct genlist *l;
@@ -341,7 +351,8 @@ void retrieve_wmhints(Ghandles * g, XID window)
 	}
 
 	if (!(wm_hints = XGetWMHints(g->display, window))) {
-		fprintf(stderr, "ERROR reading WM_HINTS\n");
+		if (!ignore_fail)
+			fprintf(stderr, "ERROR reading WM_HINTS\n");
 		return;
 	}
 
@@ -359,7 +370,7 @@ void retrieve_wmhints(Ghandles * g, XID window)
 	XFree(wm_hints);
 }
 
-void send_wmnormalhints(Ghandles * g, XID window)
+void send_wmnormalhints(Ghandles * g, XID window, int ignore_fail)
 {
 	struct msg_hdr hdr;
 	struct msg_window_hints msg;
@@ -368,7 +379,8 @@ void send_wmnormalhints(Ghandles * g, XID window)
 
 	if (!XGetWMNormalHints
 	    (g->display, window, &size_hints, &supplied_hints)) {
-		fprintf(stderr, "error reading WM_NORMAL_HINTS\n");
+		if (!ignore_fail)
+			fprintf(stderr, "error reading WM_NORMAL_HINTS\n");
 		return;
 	}
 	/* Nasty workaround for KDE bug affecting gnome-terminal (shrinks to minimal size) */
@@ -723,13 +735,13 @@ void process_xevent_property(Ghandles * g, XID window, XPropertyEvent * ev)
 		send_wmname(g, window);
 	else if (ev->atom ==
 		 XInternAtom(g->display, "WM_NORMAL_HINTS", False))
-		send_wmnormalhints(g, window);
+		send_wmnormalhints(g, window, 0);
 	else if (ev->atom ==
 		 XInternAtom(g->display, "WM_HINTS", False))
-		retrieve_wmhints(g,window);
+		retrieve_wmhints(g,window, 0);
 	else if (ev->atom ==
 		 XInternAtom(g->display, "WM_PROTOCOLS", False))
-		retrieve_wmprotocols(g,window);
+		retrieve_wmprotocols(g,window, 0);
 	else if (ev->atom == g->xembed_info) {
 		struct genlist *l = list_lookup(windows_list, window);
 		Atom act_type;
