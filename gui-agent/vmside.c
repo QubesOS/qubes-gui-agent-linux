@@ -156,7 +156,7 @@ void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
 	/* Default values for window_data. By default, window should receive InputFocus events */
 	wd->is_docked = False;
 	wd->input_hint = True;
-	wd->support_take_focus = True;
+	wd->support_take_focus = False;
 	list_insert(windows_list, ev->window, wd);
 
 	if (attr.class != InputOnly)
