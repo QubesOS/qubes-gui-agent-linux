@@ -19,6 +19,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 #
+
+type pulseaudio >/dev/null 2> /dev/null || exit 0
+
 pulseaudio --start \
     -n --file=/etc/pulse/qubes-default.pa \
 	--exit-idle-time=-1

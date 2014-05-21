@@ -45,7 +45,9 @@ UPDTYPE=`/usr/bin/xenstore-read qubes-vm-updateable`
 [[ $UPDTYPE == 'True' ]] && UPDTYPE="UpdateableVM" || UPDTYPE="NonUpdateableVM"
 
 # Gnome keyring is special case, as its env needed by nm-applet
-eval `/usr/bin/gnome-keyring-daemon --start | tee -a /tmp/qubes-session-env`
+if [ -x /usr/bin/gnome-keyring-daemon ]; then
+    eval `/usr/bin/gnome-keyring-daemon --start | tee -a /tmp/qubes-session-env`
+fi
 
 for D in /etc/xdg/autostart/*.desktop; do
 	MATCH="\(QUBES\|$VMTYPE\|$UPDTYPE\)"
