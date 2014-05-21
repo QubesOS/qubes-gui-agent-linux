@@ -55,6 +55,7 @@ BuildRequires:	qubes-gui-common-devel
 Requires:	qubes-core-vm >= 2.1.2
 Requires:	xen-qubes-vm-essentials
 Requires:	xorg-x11-drv-dummy
+Requires:	xorg-x11-xinit
 
 # The vchan sink needs .h files from pulseaudio sources
 # that are not exported by any *-devel packages; thus they are internal and
@@ -62,7 +63,6 @@ Requires:	xorg-x11-drv-dummy
 # It is possible that our code will work fine with any later pulseaudio
 # version; but this needs to be verified for each pulseaudio version.
 Requires:	pulseaudio = %{pa_ver}
-AutoReq: 0
 
 %define _builddir %(pwd)
 
