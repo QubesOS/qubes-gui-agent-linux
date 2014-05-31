@@ -1137,8 +1137,15 @@ void handle_button(Ghandles * g, XID winid)
 //      XButtonEvent event;
 //	XWindowAttributes attr;
 //	int ret;
+	struct genlist *l = list_lookup(windows_list, winid);
+
 
 	read_data((char *) &key, sizeof(key));
+	if (l && l->data && ((struct window_data*)l->data)->is_docked) {
+		/* get position of embeder, not icon itself*/
+		winid = ((struct window_data*)l->data)->embeder;
+		XRaiseWindow(g->display, winid);
+	}
 #if 0
 	ret = XGetWindowAttributes(g->display, winid, &attr);
 	if (ret != 1) {
@@ -1325,6 +1332,8 @@ void handle_focus(Ghandles * g, XID winid)
 		if ( (l=list_lookup(windows_list, winid)) && (l->data) ) {
 			input_hint = ((struct window_data*)l->data)->input_hint;
 			use_take_focus = ((struct window_data*)l->data)->support_take_focus;
+			if (((struct window_data*)l->data)->is_docked)
+				XRaiseWindow(g->display, ((struct window_data*)l->data)->embeder);
 		} else {
 			fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
 			input_hint = True;
