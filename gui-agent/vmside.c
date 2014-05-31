@@ -1244,6 +1244,8 @@ void handle_crossing(Ghandles * g, XID winid)
 
 	read_data((char *) &key, sizeof(key));
 
+	if (key.mode != NotifyNormal)
+		return;
 	ret = XGetWindowAttributes(g->display, winid, &attr);
 	if (ret != 1) {
 		fprintf(stderr,
