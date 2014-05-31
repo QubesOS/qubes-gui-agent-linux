@@ -1135,10 +1135,11 @@ void handle_button(Ghandles * g, XID winid)
 {
 	struct msg_button key;
 //      XButtonEvent event;
-	XWindowAttributes attr;
-	int ret;
+//	XWindowAttributes attr;
+//	int ret;
 
 	read_data((char *) &key, sizeof(key));
+#if 0
 	ret = XGetWindowAttributes(g->display, winid, &attr);
 	if (ret != 1) {
 		fprintf(stderr,
@@ -1147,7 +1148,6 @@ void handle_button(Ghandles * g, XID winid)
 		return;
 	};
 
-#if 0
 	XSetInputFocus(g->display, winid, RevertToParent, CurrentTime);
 //      XRaiseWindow(g->display, winid);
 	event.display = g->display;
