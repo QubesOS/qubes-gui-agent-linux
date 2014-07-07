@@ -588,10 +588,9 @@ void send_clipboard_data(char *data, int len)
 	struct msg_hdr hdr;
 	hdr.type = MSG_CLIPBOARD_DATA;
 	if (len > MAX_CLIPBOARD_SIZE)
-		hdr.window = MAX_CLIPBOARD_SIZE;
-	else
-		hdr.window = len;
-	hdr.untrusted_len = hdr.window;
+		len = MAX_CLIPBOARD_SIZE;
+	hdr.window = len;
+	hdr.untrusted_len = len;
 	write_struct(hdr);
 	write_data((char *) data, len);
 }
