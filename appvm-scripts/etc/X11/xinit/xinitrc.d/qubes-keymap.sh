@@ -7,7 +7,7 @@ else
 fi
 
 QUBES_KEYMAP="`$XENSTORE_READ qubes-keyboard`"
-QUBES_KEYMAP="`echo -e $QUBES_KEYMAP`"
+QUBES_KEYMAP="`/bin/echo -e $QUBES_KEYMAP`"
 QUBES_USER_KEYMAP=`cat $HOME/.config/qubes-keyboard-layout.rc 2> /dev/null`
 
 if [ -n "$QUBES_KEYMAP" ]; then
