@@ -44,9 +44,6 @@ help:
 appvm: gui-agent/qubes-gui xf86-input-mfndev/src/.libs/qubes_drv.so \
 	xf86-video-dummy/src/.libs/dummyqbs_drv.so pulse/module-vchan-sink.so
 
-pulse/pacat-simple-vchan:
-	$(MAKE) -C pulse pacat-simple-vchan
-
 gui-agent/qubes-gui:
 	(cd gui-agent; $(MAKE))
 
@@ -65,9 +62,6 @@ rpms: rpms-dom0 rpms-vm
 
 rpms-vm:
 	rpmbuild --define "_rpmdir rpm/" -bb rpm_spec/gui-vm.spec
-
-rpms-dom0:
-	rpmbuild --define "_rpmdir rpm/" -bb rpm_spec/gui-dom0.spec
 
 tar:
 	git archive --format=tar --prefix=qubes-gui/ HEAD -o qubes-gui.tar
