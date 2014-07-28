@@ -23,7 +23,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <libvchan.h>
+#ifdef USE_XENSTORE_H
+#include <xenstore.h>
+#else
 #include <xs.h>
+#endif
 #include <xenctrl.h>
 #include <sys/select.h>
 
