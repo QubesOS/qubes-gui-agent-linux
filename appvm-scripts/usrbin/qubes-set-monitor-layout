@@ -28,3 +28,4 @@ for i in `seq $output_no $output_max`; do
 done
 
 xrandr $xrandr_cmd
+xrandr --query >/dev/null
