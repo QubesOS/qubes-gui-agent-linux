@@ -1,3 +1,44 @@
+qubes-gui-agent (2.1.28) jessie; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * Import pulseaudio 5.0 headers
+  * Fix compiler warning - warn_unused_result
+  * Send position WM hints (#655)
+  * Fix race condition while handling window creation notify
+  * Check for binaries before starting 3rd party programs
+  * vmside: do not sent WM_TAKE_FOCUS when its support not advertised by
+    application
+  * rpm: fix package dependencies
+  * version 2.1.23
+  * Increase buttons count of emulated input device to 7
+  * version 2.1.24
+  * xside: disable unused code
+  * vmside: raise embedder window on focus or mouse button event (#812)
+  * vmside: ignore grab enter/leave virtual notify
+  * version 2.1.25
+  * vmside: fix enforcing clipboard size limit
+  * version 2.1.26
+  * rpm: update pulseaudio max version
+  * version 2.1.27
+
+  [ Davíð Steinn Geirsson ]
+  * qubes-set-monitor-layout is bash-specific, declare it explicitly
+  * Use xenstore.h instead of xs.h on xen >= 4.2
+  * gui-agent-linux: Support xenstore-read in /usr/sbin as well as
+    /usr/bin
+  * Initial debian packaging
+
+  [ Marek Marczykowski-Górecki ]
+  * debian: remove pulsecore-4.0 headers - jessie uses 5.0 now
+  * Remove dom0 leftovers from makefile
+  * Update pulseaudio headers symlink just before build
+  * debian: add missing build deps
+  * gitignore
+  * Update keymap script for debian (make it dash compatible)
+  * debian: do not restart service during upgrade
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 28 Jul 2014 03:42:25 +0200
+
 qubes-gui-agent (2.1.22) jessie; urgency=low
 
   * Initial Release.
