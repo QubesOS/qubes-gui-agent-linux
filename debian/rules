@@ -8,7 +8,7 @@ export DESTDIR=$(shell pwd)/debian/qubes-gui-agent
 export LIBDIR=/usr/lib
 
 %:
-	dh $@ 
+	dh $@ --with systemd
 
 override_dh_auto_build:
 	make appvm
@@ -16,5 +16,6 @@ override_dh_auto_build:
 override_dh_auto_install:
 	make install-debian
 
-override_dh_installinit:
-	dh_installinit --no-restart-on-upgrade
+override_dh_systemd_start:
+	dh_systemd_start --no-restart-on-upgrade
+
