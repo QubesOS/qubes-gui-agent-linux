@@ -4,7 +4,7 @@ After=qubes-meminfo-writer.service qubes-dvm.service qubes-misc-post.service
 
 [Service]
 # pretend tha user is at local console
-ExecStartPre=/bin/touch /var/run/console/user
+ExecStartPre=/bin/mkdir -p /var/run/console ; /bin/touch /var/run/console/user
 # clean env
 ExecStartPre=/bin/rm -f /tmp/qubes-session-env /tmp/qubes-session-waiter
 ExecStart=/usr/bin/qubes-gui $GUI_OPTS
