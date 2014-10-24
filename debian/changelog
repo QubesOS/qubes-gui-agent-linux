@@ -1,3 +1,15 @@
+qubes-gui-agent (2.1.29) jessie; urgency=medium
+
+  [ Jason Mehring ]
+  * Added pulsecore-2.0 and modified module-vchan-sink-symdef.h to use
+    it for Debian Wheezy template builds
+
+  [ Marek Marczykowski-Górecki ]
+  * Remove non-header files from pulsecore-2.0
+  * debian: convert to systemd native service
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 25 Oct 2014 01:51:38 +0200
+
 qubes-gui-agent (2.1.28) jessie; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
