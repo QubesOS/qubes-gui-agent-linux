@@ -23,6 +23,8 @@
 # Switch user to 'user'
 [[ ! -f /etc/this-is-dvm && "$USER" != "user" ]] && exec su user -c $0
 
+loginctl activate "$XDG_SESSION_ID"
+
 if [ -x /usr/sbin/xenstore-read ]; then
         XENSTORE_READ="/usr/sbin/xenstore-read"
 else
