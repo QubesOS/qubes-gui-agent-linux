@@ -1,3 +1,19 @@
+qubes-gui-agent (3.0.0) jessie; urgency=medium
+
+  [ Matt McCutchen ]
+  * Create an active systemd-logind session.
+
+  [ HW42 ]
+  * debian: add missing build-dep on libltdl-dev
+
+  [ Marek Marczykowski ]
+  * Update for new vchan API
+  * Remove unused code.
+  * spec: vchan dependencies
+  * Don't check if dom0/GUI domain is still alive too often
+
+ -- Marek Marczykowski <marmarek@invisiblethingslab.com>  Sat, 22 Nov 2014 16:24:21 +0100
+
 qubes-gui-agent (2.1.29) jessie; urgency=medium
 
   [ Jason Mehring ]
