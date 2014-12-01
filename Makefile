@@ -87,8 +87,11 @@ install-rh: appvm install-common
 
 install-debian: appvm install-common
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh $(DESTDIR)/etc/X11/Xsession.d/90qubes-keymap
-	install -D debian/xsession_qubes $(DESTDIR)/etc/X11/Xsession.d/98qubes-session
-	install -D appvm-scripts/qubes-gui-agent.service $(DESTDIR)/lib/systemd/system/qubes-gui-agent.service
+	install -d $(DESTDIR)/etc/X11/Xsession.d
+	install appvm-scripts/etc/X11/Xsession.d/* $(DESTDIR)/etc/X11/Xsession.d/
+	install -d $(DESTDIR)/etc/xdg
+	install -m 0644 appvm-scripts/etc/xdg-debian/* $(DESTDIR)/etc/xdg
+	install -m 0644 -D appvm-scripts/qubes-gui-agent.service $(DESTDIR)/lib/systemd/system/qubes-gui-agent.service
 
 install-common:
 	install -D gui-agent/qubes-gui $(DESTDIR)/usr/bin/qubes-gui

@@ -1,0 +1,19 @@
+Gtk/ButtonImages 1
+Gtk/CursorThemeName "Vanilla-DMZ"
+Gtk/FontName "sans 10"
+Gtk/KeyThemeName "Adwaita"
+Gtk/MenuImages 1
+Gtk/ToolbarIconSize 2
+Gtk/ToolbarStyle "Icons"
+
+Net/EnableEventSounds 0
+Net/EnableInputFeedbackSounds 0
+Net/FallbackIconTheme "gnome"
+Net/IconThemeName "gnome"
+Net/ThemeName "Adwaita"
+
+Xft/Antialias 1
+Xft/Hinting 1
+Xft/HintStyle "hintslight"
+Xft/RGBA "rgb"
+Xft/lcdfilter "lcddefault"
