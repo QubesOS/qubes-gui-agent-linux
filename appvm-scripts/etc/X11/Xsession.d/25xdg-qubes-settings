@@ -1,0 +1,18 @@
+#!/bin/sh
+
+installConfigurationFile() {
+    file="${1}"
+
+    if ! [ -f "${HOME}/.${file}" ]; then
+        if [ -f "/etc/xdg/${file}" ]; then
+            cp "/etc/xdg/${file}" "${HOME}/.${file}"
+        fi
+    fi
+}
+
+if [ -x /usr/bin/xsettingsd ]; then
+    installConfigurationFile "xsettingsd"
+    installConfigurationFile "fonts.conf"
+    installConfigurationFile "Xresources"
+    /usr/bin/xsettingsd &
+fi
