@@ -1,3 +1,16 @@
+qubes-gui-agent (2.1.30) jessie; urgency=medium
+
+  [ Matt McCutchen ]
+  * Create an active systemd-logind session.
+
+  [ HW42 ]
+  * debian: add missing build-dep on libltdl-dev
+
+  [ Marek Marczykowski-Górecki ]
+  * debian: provide default GTK and fonts config
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 01 Dec 2014 04:22:55 +0100
+
 qubes-gui-agent (2.1.29) jessie; urgency=medium
 
   [ Jason Mehring ]
