@@ -21,6 +21,10 @@ post_install() {
   # Archlinux specific: Fix potential bug in xinitrc making dbus to not initilize correctly
   sed 's:for f in /etc/X11/xinit/xinitrc.d/?\*\.sh:for f in /etc/X11/xinit/xinitrc.d/?\*:' -i /etc/X11/xinit/xinitrc
 
+  echo "Fixing fake console session not handled in archlinux"
+  echo "allowed_users = anybody" >  /etc/X11/Xwrapper.config
+  echo "needs_root_rights = yes" >> /etc/X11/Xwrapper.config
+
 }
 
 post_upgrade() {
@@ -31,6 +35,10 @@ post_upgrade() {
   echo "Fixing bug in xinitrc"
   # Archlinux specific: Fix potential bug in xinitrc making dbus to not initilize correctly
   sed 's:for f in /etc/X11/xinit/xinitrc.d/?\*\.sh:for f in /etc/X11/xinit/xinitrc.d/?\*:' -i /etc/X11/xinit/xinitrc
+
+  echo "Fixing fake console session not handled in archlinux"
+  echo "allowed_users = anybody" >  /etc/X11/Xwrapper.config
+  echo "needs_root_rights = yes" >> /etc/X11/Xwrapper.config
 
 }
 
