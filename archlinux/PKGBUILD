@@ -57,7 +57,7 @@ make appvm
 
 package() {
 
-make install DESTDIR=$pkgdir PA_VER=$pa_ver
+make install DESTDIR=$pkgdir PA_VER=$pa_ver SYSLIBDIR=/usr/lib LIBDIR=/usr/lib
 
 # Specific to archlinux: qubes session needs to be the last started script when Xorg starts.
 # For Fedora Qubes devs team choosed to populate it in /etc/sysconfig/desktop, but this is not supported by Archlinux
