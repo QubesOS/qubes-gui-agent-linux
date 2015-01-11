@@ -37,7 +37,7 @@ URL:		http://www.qubes-os.org
 
 Source:		.
 
-%define pa_ver %(pkg-config --modversion libpulse 2> /dev/null|| echo 0.0)
+%define pa_ver %(pkg-config --modversion libpulse 2> /dev/null | cut -d "-" -f 1 || echo 0.0)
 
 BuildRequires:	gcc
 BuildRequires:	libX11-devel
