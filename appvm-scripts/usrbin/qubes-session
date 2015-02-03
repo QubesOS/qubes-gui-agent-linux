@@ -92,6 +92,12 @@ XDG_CONFIG_ALL="${XDG_CONFIG_HOME}:${XDG_CONFIG_DIRS}"
 
 declare -A CACHE
 for D in $(find ${XDG_CONFIG_ALL//:/\/autostart }/autostart -name "*.desktop" -print 2> /dev/null); do
+	# Skip if already in cache since higher priority directory already executed it
+	[[ ${CACHE[${D##*/}]+_} ]] && continue
+	
+	# Add $D to cache and follow though to execute
+	CACHE[${D##*/}]=1
+
 	MATCH="\(QUBES\|$VMTYPE\|$UPDTYPE\)"
 
 	# Skip Terminal, Hidden, NotShowIn=QUBES and ! OnlyShowIn=QUBES
@@ -100,12 +106,6 @@ for D in $(find ${XDG_CONFIG_ALL//:/\/autostart }/autostart -name "*.desktop" -p
 	# Extract Exec= line
 	EXEC="`sed -n '/^Exec[ \t=]/s/^[^=]\+=[ \t]*//p' $D | tail -n1`"
 	[[ -z "$EXEC" ]] && continue
-
-	# Skip if already in cache since higher priority directory already executed it
-	[[ ${CACHE[${D##*/}]+_} ]] && continue
-
-	# Add $D to cache and follow though to execute
-	CACHE[${D##*/}]=1
 
 	if grep -qiL ^Terminal=false $D; then
 		$EXEC &
