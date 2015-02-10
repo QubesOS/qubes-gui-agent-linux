@@ -1,3 +1,22 @@
+qubes-gui-agent (2.1.31) jessie; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * spec: strip pulseaudio version suffix
+
+  [ Wojciech Zygmunt Porczyk ]
+  * Fix "spec: strip pulseaudio version suffix"
+
+  [ Marek Marczykowski-Górecki ]
+  * Fix "spec: strip pulseaudio version suffix" one more time
+
+  [ Olivier MEDOC ]
+  * archlinux: fix new packaging guidlines related to lib64 sbin, run
+    ...
+  * archlinux: Fix temporarily non working rootless xorg.
+  * configure: ensure libtoolize binary is used
+
+ -- Olivier MEDOC <o_medoc@yahoo.fr>  Tue, 10 Feb 2015 14:57:03 +0100
+
 qubes-gui-agent (2.1.30) jessie; urgency=medium
 
   [ Matt McCutchen ]
