@@ -57,15 +57,56 @@ if [ -x /usr/bin/gnome-keyring-daemon ]; then
     eval `/usr/bin/gnome-keyring-daemon --start | tee -a /tmp/qubes-session-env`
 fi
 
-for D in /etc/xdg/autostart/*.desktop; do
+################################################################################
+# XDG Base Directory Specification
+# http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
+#
+# $XDG_CONFIG_HOME defines the base directory relative to which user specific
+# configuration files should be stored. If $XDG_CONFIG_HOME is either not set
+# or empty, a default equal to $HOME/.config should be used.
+#
+# $XDG_CONFIG_DIRS defines the preference-ordered set of base directories to
+# search for configuration files in addition to the $XDG_CONFIG_HOME base 
+# directory. The directories in $XDG_CONFIG_DIRS should be seperated with a 
+# colon ':'.
+#
+# If $XDG_CONFIG_DIRS is either not set or empty, a value equal to /etc/xdg 
+# should be used.
+#
+# The order of base directories denotes their importance; the first directory 
+# listed is the most important. When the same information is defined in multiple
+# places the information defined relative to the more important base directory
+# takes precedent. The base directory defined by $XDG_DATA_HOME is considered 
+# more important than any of the base directories defined by $XDG_DATA_DIRS. The
+# base directory defined by $XDG_CONFIG_HOME is considered more important than
+# any of the base directories defined by $XDG_CONFIG_DIRS. 
+################################################################################
+
+export XDG_CONFIG_DIRS="${XDG_CONFIG_DIRS:-/etc/xdg}"
+XDG_CONFIG_QUBES="/usr/share/qubes/xdg"
+[[ "${XDG_CONFIG_DIRS}" =~ ${XDG_CONFIG_QUBES} ]] || {
+	XDG_CONFIG_DIRS="${XDG_CONFIG_QUBES}:${XDG_CONFIG_DIRS}"
+}
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-"$HOME/.config"}"
+XDG_CONFIG_ALL="${XDG_CONFIG_HOME}:${XDG_CONFIG_DIRS}"
+
+declare -A CACHE
+for D in $(find ${XDG_CONFIG_ALL//:/\/autostart }/autostart -name "*.desktop" -print 2> /dev/null); do
+	# Skip if already in cache since higher priority directory already executed it
+	[[ ${CACHE[${D##*/}]+_} ]] && continue
+	
+	# Add $D to cache and follow though to execute
+	CACHE[${D##*/}]=1
+
 	MATCH="\(QUBES\|$VMTYPE\|$UPDTYPE\)"
-	[[ -n "$XDG_CONFIG_DIRS" ]] && [[ -d "$XDG_CONFIG_DIRS/autostart" ]] && USER_AUTOSTART="$XDG_CONFIG_DIRS/autostart" || USER_AUTOSTART="$HOME/.config/autostart"
-	[[ -r "$USER_AUTOSTART/${D##*/}" ]] && D="$D $USER_AUTOSTART/${D##*/}"
+
 	# Skip Terminal, Hidden, NotShowIn=QUBES and ! OnlyShowIn=QUBES
 	[[ -n "`sed -n "/^Terminal.*[tT1]/p;/^Hidden.*[tT1]/p;/^X-GNOME-Autostart-enabled.*[fF0]/p;/^NotShowIn.*=.*$MATCH/p;/^OnlyShowIn/{s/.*$MATCH.*//;p}" $D`" ]] && continue
+
 	# Extract Exec= line
 	EXEC="`sed -n '/^Exec[ \t=]/s/^[^=]\+=[ \t]*//p' $D | tail -n1`"
 	[[ -z "$EXEC" ]] && continue
+
 	if grep -qiL ^Terminal=false $D; then
 		$EXEC &
 	else
@@ -74,7 +115,7 @@ for D in /etc/xdg/autostart/*.desktop; do
 	fi
 done
 
-unset EXEC MATCH UPDTYPE D USER_AUTOSTART
+unset EXEC MATCH UPDTYPE D XDG_CONFIG_QUBES XDG_CONFIG_ALL CACHE
 
 else # ! DispVM
 	# DispVM do not load system xinitrc, so manually load selected services
