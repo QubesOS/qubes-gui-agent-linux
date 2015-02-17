@@ -153,6 +153,10 @@ fi
 # Set desktop background
 xsetroot -solid white
 
+if [ -x /usr/bin/qrexec-fork-server ]; then
+    /usr/bin/qrexec-fork-server
+fi
+
 # Wait some time to pick up zombie children
 wait
 
