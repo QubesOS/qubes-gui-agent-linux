@@ -153,6 +153,8 @@ fi
 # Set desktop background
 xsetroot -solid white
 
+cd $HOME
+
 if [ -x /usr/bin/qrexec-fork-server ]; then
     /usr/bin/qrexec-fork-server
 fi
