@@ -376,7 +376,11 @@ static void thread_func(void *userdata)
 		play_pollfd->events = POLLIN;
 		rec_pollfd->events = POLLIN;
 
+#if PA_CHECK_VERSION(6,0,0)
+		if ((ret = pa_rtpoll_run(u->rtpoll)) < 0)
+#else
 		if ((ret = pa_rtpoll_run(u->rtpoll, true)) < 0)
+#endif
 			goto fail;
 
 		if (ret == 0)
