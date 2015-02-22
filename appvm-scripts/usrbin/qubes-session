@@ -147,9 +147,6 @@ if [ -f /etc/X11/Xsession.d/90qubes-keymap ]; then
 	. /etc/X11/Xsession.d/90qubes-keymap
 fi
 
-# Wake waiting for environment processes
-[ -s /tmp/qubes-session-waiter ] && kill -KILL `cat /tmp/qubes-session-waiter`
-
 # Set desktop background
 xsetroot -solid white
 
@@ -158,6 +155,9 @@ cd $HOME
 if [ -x /usr/bin/qrexec-fork-server ]; then
     /usr/bin/qrexec-fork-server
 fi
+
+# Wake waiting for environment processes
+[ -s /tmp/qubes-session-waiter ] && kill -KILL `cat /tmp/qubes-session-waiter`
 
 # Wait some time to pick up zombie children
 wait
