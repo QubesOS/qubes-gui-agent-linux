@@ -1024,7 +1024,7 @@ void send_full_window_info(Ghandles *g, XID w, struct window_data *wd)
 	crt.x = attr.x;
 	crt.y = attr.y;
 	crt.override_redirect = attr.override_redirect;
-	write_message(hdr, crt);
+	write_message(g->vchan, hdr, crt);
 
 	hdr.type = MSG_CONFIGURE;
 	conf.x = attr.x;
@@ -1032,20 +1032,20 @@ void send_full_window_info(Ghandles *g, XID w, struct window_data *wd)
 	conf.width = attr.width;
 	conf.height = attr.height;
 	conf.override_redirect = attr.override_redirect;
-	write_message(hdr, conf);
+	write_message(g->vchan, hdr, conf);
 	send_pixmap_mfns(g, w);
 
-	send_wmnormalhints(g, w);
+	send_wmnormalhints(g, w, 1);
 
 	if (wd->is_docked) {
 		hdr.type = MSG_DOCK;
 		hdr.untrusted_len = 0;
-		write_struct(hdr);
+		write_struct(g->vchan, hdr);
 	} else if (attr.map_state != IsUnmapped) {
 		hdr.type = MSG_MAP;
 		map_info.override_redirect = attr.override_redirect;
 		map_info.transient_for = transient;
-		write_message(hdr, map_info);
+		write_message(g->vchan, hdr, map_info);
 		send_wmname(g, w);
 		send_window_state(g, w);
 	}
@@ -1728,12 +1728,15 @@ void handle_guid_disconnect()
 	Ghandles *g = ghandles_for_vchan_reinitialize;
 	struct msg_xconf xconf;
 
-	vchan_cleanup();
+	libvchan_close(g->vchan);
 	wait_for_possible_dispvm_resume();
-	peer_server_reinitialize(6000);
-	send_protocol_version();
+	g->vchan = libvchan_server_init(0, 6000, 4096, 4096);
+	/* wait for gui daemon */
+	while (!libvchan_is_open(g->vchan))
+		libvchan_wait(g->vchan);
+	send_protocol_version(g->vchan);
 	/* discard */
-	read_struct(xconf);
+	read_struct(g->vchan, xconf);
 	send_all_windows_info(g);
 }
 
