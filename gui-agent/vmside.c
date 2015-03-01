@@ -92,6 +92,7 @@ struct embeder_data {
 struct genlist *windows_list;
 struct genlist *embeder_list;
 typedef struct _global_handles Ghandles;
+Ghandles *ghandles_for_vchan_reinitialize;
 
 #define SKIP_NONMANAGED_WINDOW if (!list_lookup(windows_list, window)) return
 
@@ -975,6 +976,90 @@ void process_xevent(Ghandles * g)
 
 }
 
+void send_full_window_info(Ghandles *g, XID w, struct window_data *wd)
+{
+	struct msg_hdr hdr;
+	struct msg_create crt;
+	struct msg_configure conf;
+	struct msg_map_info map_info;
+
+	XWindowAttributes attr;
+	int ret;
+	Window *children_list;
+	Window root;
+	Window parent;
+	Window transient;
+	unsigned int children_count;
+
+	if (wd->is_docked)
+		ret = XGetWindowAttributes(g->display, wd->embeder, &attr);
+	else
+		ret = XGetWindowAttributes(g->display, w, &attr);
+	if (ret != 1) {
+		fprintf(stderr, "XGetWindowAttributes for 0x%x failed in "
+				"send_window_state, ret=0x%x\n", (int) w,
+				ret);
+		return;
+	};
+	if (wd->is_docked)
+		ret = XQueryTree(g->display, wd->embeder, &root, &parent, &children_list, &children_count);
+	else
+		ret = XQueryTree(g->display, w, &root, &parent, &children_list, &children_count);
+	if (ret != 1) {
+		fprintf(stderr, "XQueryTree for 0x%x failed in "
+				"send_window_state, ret=0x%x\n", (int) w,
+				ret);
+		return;
+	};
+	if (children_list)
+		XFree(children_list);
+	if (!XGetTransientForHint(g->display, w, &transient))
+		transient = 0;
+
+	hdr.window = w;
+	hdr.type = MSG_CREATE;
+	crt.width = attr.width;
+	crt.height = attr.height;
+	crt.parent = parent;
+	crt.x = attr.x;
+	crt.y = attr.y;
+	crt.override_redirect = attr.override_redirect;
+	write_message(hdr, crt);
+
+	hdr.type = MSG_CONFIGURE;
+	conf.x = attr.x;
+	conf.y = attr.y;
+	conf.width = attr.width;
+	conf.height = attr.height;
+	conf.override_redirect = attr.override_redirect;
+	write_message(hdr, conf);
+	send_pixmap_mfns(g, w);
+
+	send_wmnormalhints(g, w);
+
+	if (wd->is_docked) {
+		hdr.type = MSG_DOCK;
+		hdr.untrusted_len = 0;
+		write_struct(hdr);
+	} else if (attr.map_state != IsUnmapped) {
+		hdr.type = MSG_MAP;
+		map_info.override_redirect = attr.override_redirect;
+		map_info.transient_for = transient;
+		write_message(hdr, map_info);
+		send_wmname(g, w);
+		send_window_state(g, w);
+	}
+}
+
+void send_all_windows_info(Ghandles *g) {
+	struct genlist *curr = windows_list->next;
+
+	while (curr != windows_list) {
+		send_full_window_info(g, curr->key, (struct window_data *)curr->data);
+		curr = curr->next;
+	}
+}
+
 extern void wait_for_unix_socket(int *fd);
 
 void mkghandles(Ghandles * g)
@@ -1640,16 +1725,16 @@ void send_protocol_version(libvchan_t *vchan)
 
 void handle_guid_disconnect()
 {
-	/* cleanup old session */
-	if (system("killall Xorg") != 0) {
-		/* silence gcc warning */
-	}
-	unlink("/tmp/qubes-session-env");
-	unlink("/tmp/qubes-session-waiter");
-	/* start new gui agent */
-	execv("/usr/bin/qubes-gui", saved_argv);
-	perror("execv");
-	exit(1);
+	Ghandles *g = ghandles_for_vchan_reinitialize;
+	struct msg_xconf xconf;
+
+	vchan_cleanup();
+	wait_for_possible_dispvm_resume();
+	peer_server_reinitialize(6000);
+	send_protocol_version();
+	/* discard */
+	read_struct(xconf);
+	send_all_windows_info(g);
 }
 
 void usage()
@@ -1714,6 +1799,7 @@ int main(int argc, char **argv)
 	send_protocol_version(g.vchan);
 	get_xconf_and_run_x(g.vchan);
 	mkghandles(&g);
+	ghandles_for_vchan_reinitialize = &g;
 	parse_args(&g, argc, argv);
 	for (i = 0; i < ScreenCount(g.display); i++)
 		XCompositeRedirectSubwindows(g.display,

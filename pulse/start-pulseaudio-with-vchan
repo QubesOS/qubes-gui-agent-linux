@@ -22,6 +22,12 @@
 
 type pulseaudio >/dev/null 2> /dev/null || exit 0
 
+if [ -f /etc/this-is-dvm ]; then
+    # ... wait until qubes-restore.c (in Dom0) recreates VM-specific keys
+    while ! xenstore-read qubes-restore-complete 2>/dev/null ; do
+        usleep 100
+    done
+fi
 pulseaudio --start \
     -n --file=/etc/pulse/qubes-default.pa \
 	--exit-idle-time=-1

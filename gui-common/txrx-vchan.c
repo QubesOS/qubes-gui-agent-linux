@@ -105,9 +105,11 @@ int wait_for_vchan_or_argfd_once(libvchan_t *vchan, int nfd, int *fd, fd_set * r
 	}
 	if (!libvchan_is_open(vchan)) {
 		fprintf(stderr, "libvchan_is_eof\n");
-		if (vchan_at_eof != NULL)
+		if (vchan_at_eof != NULL) {
 			vchan_at_eof();
-		exit(0);
+			return 0;
+		} else
+			exit(0);
 	}
 	if (FD_ISSET(vfd, &rfds))
 		// the following will never block; we need to do this to
@@ -121,4 +123,35 @@ int wait_for_vchan_or_argfd_once(libvchan_t *vchan, int nfd, int *fd, fd_set * r
 void wait_for_vchan_or_argfd(libvchan_t *vchan, int nfd, int *fd, fd_set * retset)
 {
 	while (wait_for_vchan_or_argfd_once(vchan, nfd, fd, retset) == 0);
+}
+
+void wait_for_possible_dispvm_resume() {
+	struct xs_handle *xs;
+	char buf[64];
+	char *tmp;
+	char **vec;
+	unsigned int len = 0;
+
+	xs = xs_daemon_open();
+	if (!xs) {
+		perror("xs_daemon_open");
+		exit(1);
+	}
+	tmp=xs_read(xs, 0, "qubes-save-request", &len);
+	if (tmp) {
+		free(tmp);
+	} else
+		return;
+
+	xs_watch(xs, "qubes-restore-complete", "token");
+	do {
+		vec = xs_read_watch(xs, &len);
+		if (vec)
+			free(vec);
+		len = 0;
+		tmp = xs_read(xs, 0, "qubes-restore-complete", &len);
+		if (tmp)
+			free(tmp);
+	}
+	while (!tmp || !len); // wait for dom0 to create xenstore entry
 }
