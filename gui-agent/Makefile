@@ -23,7 +23,7 @@ CC=gcc
 CFLAGS+=-I../include/ `pkg-config --cflags vchan-$(BACKEND_VMM)` -g -Wall -Wextra -Werror -pie -fPIC
 OBJS=vmside.o xserver-fd.o \
 	../gui-common/txrx-vchan.o ../gui-common/error.o ../common/list.o 
-LIBS=-lX11 -lXdamage -lXcomposite `pkg-config --libs vchan-$(BACKEND_VMM)`
+LIBS=-lX11 -lXdamage -lXcomposite `pkg-config --libs vchan-$(BACKEND_VMM)` -lqubesdb
 
 _XENSTORE_H=$(wildcard /usr/include/xenstore.h)
 ifneq "$(_XENSTORE_H)" ""

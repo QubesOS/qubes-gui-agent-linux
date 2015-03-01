@@ -25,6 +25,7 @@
 #include <libvchan.h>
 #include <sys/select.h>
 #include <errno.h>
+#include <qubesdb-client.h>
 
 void (*vchan_at_eof)(void) = NULL;
 
@@ -107,7 +108,7 @@ int wait_for_vchan_or_argfd_once(libvchan_t *vchan, int nfd, int *fd, fd_set * r
 		fprintf(stderr, "libvchan_is_eof\n");
 		if (vchan_at_eof != NULL) {
 			vchan_at_eof();
-			return 0;
+			return -1;
 		} else
 			exit(0);
 	}
@@ -126,32 +127,25 @@ void wait_for_vchan_or_argfd(libvchan_t *vchan, int nfd, int *fd, fd_set * retse
 }
 
 void wait_for_possible_dispvm_resume() {
-	struct xs_handle *xs;
-	char buf[64];
+	qdb_handle_t qdb;
 	char *tmp;
-	char **vec;
-	unsigned int len = 0;
 
-	xs = xs_daemon_open();
-	if (!xs) {
-		perror("xs_daemon_open");
+	qdb = qdb_open(NULL);
+	if (!qdb) {
+		perror("qdb_open");
 		exit(1);
 	}
-	tmp=xs_read(xs, 0, "qubes-save-request", &len);
+	tmp = qdb_read(qdb, "/qubes-save-request", NULL);
 	if (tmp) {
 		free(tmp);
 	} else
 		return;
 
-	xs_watch(xs, "qubes-restore-complete", "token");
+	qdb_watch(qdb, "/qubes-restore-complete");
 	do {
-		vec = xs_read_watch(xs, &len);
-		if (vec)
-			free(vec);
-		len = 0;
-		tmp = xs_read(xs, 0, "qubes-restore-complete", &len);
+		tmp = qdb_read_watch(qdb);
 		if (tmp)
 			free(tmp);
 	}
-	while (!tmp || !len); // wait for dom0 to create xenstore entry
+	while (!tmp); // wait for dom0 to create qubesdb entry
 }
