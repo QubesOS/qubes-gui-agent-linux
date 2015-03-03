@@ -20,16 +20,7 @@
 #
 #
 
-# Switch user to 'user'
-[[ ! -f /etc/this-is-dvm && "$USER" != "user" ]] && exec su user -c $0
-
 loginctl activate "$XDG_SESSION_ID"
-
-if [ -x /usr/sbin/xenstore-read ]; then
-        XENSTORE_READ="/usr/sbin/xenstore-read"
-else
-        XENSTORE_READ="/usr/bin/xenstore-read"
-fi
 
 # Set desktop background
 xsetroot -solid white
@@ -37,8 +28,6 @@ xsetroot -solid white
 # Save user environment
 umask 0077
 rm -f /tmp/qubes-session-env
-
-if [ ! -f /etc/this-is-dvm ]; then
 
 env | grep -v "^\(PWD\|TERM\|SHELL\|RUNLEVEL\|PATH\|SHLVL\|LOGNAME\|USER\|MEM\|_\)=" > /tmp/qubes-session-env.tmp
 
@@ -116,29 +105,6 @@ for D in $(find ${XDG_CONFIG_ALL//:/\/autostart }/autostart -name "*.desktop" -p
 done
 
 unset EXEC MATCH UPDTYPE D XDG_CONFIG_QUBES XDG_CONFIG_ALL CACHE
-
-else # ! DispVM
-	# DispVM do not load system xinitrc, so manually load selected services
-
-	# Set up i18n environment
-	if [ -r /etc/profile.d/lang.sh ]; then
-		. /etc/profile.d/lang.sh
-	fi
-
-	[ -r $HOME/.profile ] && . $HOME/.profile
-
-	if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
-		eval `dbus-launch --sh-syntax --exit-with-session`
-	fi
-
-	[ -x /usr/bin/xhost ] && [ -x /usr/bin/id ] &&
-		xhost +si:localuser:`id -un` >& /dev/null
-	# start pulseaudio in DispVM (normally done from /etc/xdg/autostart)
-	/usr/bin/start-pulseaudio-with-vchan
-
-	# and save environment
-	env | grep -v "^\(PWD\|TERM\|SHELL\|RUNLEVEL\|PATH\|SHLVL\|LOGNAME\|USER\|MEM\|_\)=" > /tmp/qubes-session-env.tmp
-fi # DispVM
 
 if [ -f /etc/X11/xinit/xinitrc.d/qubes-keymap.sh ]; then
 	. /etc/X11/xinit/xinitrc.d/qubes-keymap.sh

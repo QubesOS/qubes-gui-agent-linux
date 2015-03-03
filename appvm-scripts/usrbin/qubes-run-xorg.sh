@@ -66,9 +66,4 @@ chmod 770 /var/run/xf86-qubes-socket
 
 export XDG_SEAT=seat0 XDG_VTNR=7
 
-if [ -f /etc/this_is_dvm ]; then
-	# Skip system xinitrc to speed up DispVM startup
-	exec su user -c '/usr/bin/xinit /usr/bin/qubes-session -- $XORG :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1'
-else
-	exec su user -c "/usr/bin/xinit $XSESSION -- $XORG :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1"
-fi
+exec su user -c "/usr/bin/xinit $XSESSION -- $XORG :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1"
