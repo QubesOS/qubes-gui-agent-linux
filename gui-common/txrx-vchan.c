@@ -141,6 +141,12 @@ void wait_for_possible_dispvm_resume() {
 	} else
 		return;
 
+    qdb_watch(qdb, "/qubes-restore-complete");
+    tmp = qdb_read(qdb, "/qubes-restore-complete", NULL);
+    if (tmp) {
+        free(tmp);
+        goto out;
+    }
 	qdb_watch(qdb, "/qubes-restore-complete");
 	do {
 		tmp = qdb_read_watch(qdb);
@@ -148,4 +154,6 @@ void wait_for_possible_dispvm_resume() {
 			free(tmp);
 	}
 	while (!tmp); // wait for dom0 to create qubesdb entry
+out:
+    qdb_close(qdb);
 }
