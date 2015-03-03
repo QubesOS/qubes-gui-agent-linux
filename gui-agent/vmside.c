@@ -976,7 +976,8 @@ void process_xevent(Ghandles * g)
 
 }
 
-void send_full_window_info(Ghandles *g, XID w, struct window_data *wd)
+/* return 1 if info sent, 0 otherwise */
+int send_full_window_info(Ghandles *g, XID w, struct window_data *wd)
 {
 	struct msg_hdr hdr;
 	struct msg_create crt;
@@ -999,7 +1000,7 @@ void send_full_window_info(Ghandles *g, XID w, struct window_data *wd)
 		fprintf(stderr, "XGetWindowAttributes for 0x%x failed in "
 				"send_window_state, ret=0x%x\n", (int) w,
 				ret);
-		return;
+		return 0;
 	};
 	if (wd->is_docked)
 		ret = XQueryTree(g->display, wd->embeder, &root, &parent, &children_list, &children_count);
@@ -1009,7 +1010,7 @@ void send_full_window_info(Ghandles *g, XID w, struct window_data *wd)
 		fprintf(stderr, "XQueryTree for 0x%x failed in "
 				"send_window_state, ret=0x%x\n", (int) w,
 				ret);
-		return;
+		return 0;
 	};
 	if (children_list)
 		XFree(children_list);
@@ -1049,14 +1050,23 @@ void send_full_window_info(Ghandles *g, XID w, struct window_data *wd)
 		send_wmname(g, w);
 		send_window_state(g, w);
 	}
+	return 1;
 }
 
 void send_all_windows_info(Ghandles *g) {
 	struct genlist *curr = windows_list->next;
+	int ret;
 
 	while (curr != windows_list) {
-		send_full_window_info(g, curr->key, (struct window_data *)curr->data);
+		ret = send_full_window_info(g, curr->key, (struct window_data *)curr->data);
 		curr = curr->next;
+		if (!ret) {
+			/* gui-daemon did not received this window, so prevent further
+			 * updates on it */
+			if (curr->prev->data)
+				free(curr->prev->data);
+			list_remove(curr->prev);
+		}
 	}
 }
 

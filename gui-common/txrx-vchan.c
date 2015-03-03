@@ -127,19 +127,19 @@ void wait_for_vchan_or_argfd(libvchan_t *vchan, int nfd, int *fd, fd_set * retse
 }
 
 void wait_for_possible_dispvm_resume() {
-	qdb_handle_t qdb;
-	char *tmp;
+    qdb_handle_t qdb;
+    char *tmp;
 
-	qdb = qdb_open(NULL);
-	if (!qdb) {
-		perror("qdb_open");
-		exit(1);
-	}
-	tmp = qdb_read(qdb, "/qubes-save-request", NULL);
-	if (tmp) {
-		free(tmp);
-	} else
-		return;
+    qdb = qdb_open(NULL);
+    if (!qdb) {
+        perror("qdb_open");
+        exit(1);
+    }
+    tmp = qdb_read(qdb, "/qubes-save-request", NULL);
+    if (tmp) {
+        free(tmp);
+    } else
+        goto out;
 
     qdb_watch(qdb, "/qubes-restore-complete");
     tmp = qdb_read(qdb, "/qubes-restore-complete", NULL);
@@ -147,13 +147,12 @@ void wait_for_possible_dispvm_resume() {
         free(tmp);
         goto out;
     }
-	qdb_watch(qdb, "/qubes-restore-complete");
-	do {
-		tmp = qdb_read_watch(qdb);
-		if (tmp)
-			free(tmp);
-	}
-	while (!tmp); // wait for dom0 to create qubesdb entry
+    do {
+        tmp = qdb_read_watch(qdb);
+        if (tmp)
+            free(tmp);
+    }
+    while (!tmp); // wait for dom0 to create qubesdb entry
 out:
     qdb_close(qdb);
 }
