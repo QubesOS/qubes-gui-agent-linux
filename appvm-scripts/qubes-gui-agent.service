@@ -6,8 +6,8 @@ After=qubes-meminfo-writer.service qubes-dvm.service qubes-misc-post.service
 # pretend tha user is at local console
 ExecStartPre=/bin/mkdir -p /var/run/console ; /bin/touch /var/run/console/user
 # clean env
-ExecStartPre=/bin/rm -f /tmp/qubes-session-env /tmp/qubes-session-waiter
 ExecStart=/usr/bin/qubes-gui $GUI_OPTS
+ExecStopPost=/bin/rm -f /tmp/qubes-session-env /tmp/qubes-session-waiter
 StandardOutput=syslog
 Environment=DISPLAY=:0
 EnvironmentFile=-/var/run/qubes-service-environment
