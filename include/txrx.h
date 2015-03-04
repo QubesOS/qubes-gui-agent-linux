@@ -36,5 +36,6 @@ int read_data(libvchan_t *vchan, char *buf, int size);
     } while(0)
 void wait_for_vchan_or_argfd(libvchan_t *vchan, int nfd, int *fd, fd_set * retset);
 void vchan_register_at_eof(void (*new_vchan_at_eof)(void));
+void wait_for_possible_dispvm_resume(void);
 
 #endif /* _QUBES_TXRX_H */

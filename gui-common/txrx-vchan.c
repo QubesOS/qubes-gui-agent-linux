@@ -25,6 +25,7 @@
 #include <libvchan.h>
 #include <sys/select.h>
 #include <errno.h>
+#include <qubesdb-client.h>
 
 void (*vchan_at_eof)(void) = NULL;
 
@@ -105,9 +106,11 @@ int wait_for_vchan_or_argfd_once(libvchan_t *vchan, int nfd, int *fd, fd_set * r
 	}
 	if (!libvchan_is_open(vchan)) {
 		fprintf(stderr, "libvchan_is_eof\n");
-		if (vchan_at_eof != NULL)
+		if (vchan_at_eof != NULL) {
 			vchan_at_eof();
-		exit(0);
+			return -1;
+		} else
+			exit(0);
 	}
 	if (FD_ISSET(vfd, &rfds))
 		// the following will never block; we need to do this to
@@ -121,4 +124,35 @@ int wait_for_vchan_or_argfd_once(libvchan_t *vchan, int nfd, int *fd, fd_set * r
 void wait_for_vchan_or_argfd(libvchan_t *vchan, int nfd, int *fd, fd_set * retset)
 {
 	while (wait_for_vchan_or_argfd_once(vchan, nfd, fd, retset) == 0);
+}
+
+void wait_for_possible_dispvm_resume() {
+    qdb_handle_t qdb;
+    char *tmp;
+
+    qdb = qdb_open(NULL);
+    if (!qdb) {
+        perror("qdb_open");
+        exit(1);
+    }
+    tmp = qdb_read(qdb, "/qubes-save-request", NULL);
+    if (tmp) {
+        free(tmp);
+    } else
+        goto out;
+
+    qdb_watch(qdb, "/qubes-restore-complete");
+    tmp = qdb_read(qdb, "/qubes-restore-complete", NULL);
+    if (tmp) {
+        free(tmp);
+        goto out;
+    }
+    do {
+        tmp = qdb_read_watch(qdb);
+        if (tmp)
+            free(tmp);
+    }
+    while (!tmp); // wait for dom0 to create qubesdb entry
+out:
+    qdb_close(qdb);
 }
