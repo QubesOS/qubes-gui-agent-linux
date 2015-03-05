@@ -1,3 +1,13 @@
+qubes-gui-agent (2.1.32) wheezy; urgency=medium
+
+  [ Jason Mehring ]
+  * Handle desktop entry config files that were moved into a Qubes
+    xdg/autostart directory preserving the originals
+  * Corrected handling of .desktop entry config files for xdg/autostart
+  * debian: Added maintainer scripts and triggers
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 05 Mar 2015 03:42:08 +0100
+
 qubes-gui-agent (2.1.31) jessie; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
