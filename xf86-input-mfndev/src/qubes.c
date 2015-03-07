@@ -277,7 +277,7 @@ static int _qubes_init_buttons(DeviceIntPtr device)
 	for (i = 0; i < num_buttons; i++)
 		map[i] = i;
 
-	pQubes->labels = malloc(sizeof(Atom));
+	pQubes->labels = calloc(num_buttons, sizeof(Atom));
 
 	if (!InitButtonClassDeviceStruct
 	    (device, num_buttons, pQubes->labels, map)) {
