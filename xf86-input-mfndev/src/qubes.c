@@ -270,11 +270,11 @@ static int _qubes_init_buttons(DeviceIntPtr device)
 	int ret = Success;
 	const int num_buttons = 7;
 
-	map = calloc(num_buttons, sizeof(CARD8));
+	map = calloc(num_buttons+1, sizeof(CARD8));
 
 	xf86Msg(X_INFO, "%s: num_buttons=%d\n", pInfo->name, num_buttons);
 	
-	for (i = 0; i < num_buttons; i++)
+	for (i = 1; i <= num_buttons; i++)
 		map[i] = i;
 
 	pQubes->labels = calloc(num_buttons, sizeof(Atom));
