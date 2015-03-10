@@ -163,4 +163,4 @@ wait
 # | /|\
 # | / \
 # |
-kill -STOP $$
+while sleep 365d; do true; done
