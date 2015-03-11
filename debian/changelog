@@ -1,3 +1,13 @@
+qubes-gui-agent (2.1.33) wheezy; urgency=medium
+
+  * xf86-input: fix buttons labels initialization
+  * xf86-input: fix setting buttons map
+  * Import pulseaudio-6.0 headers
+  * Update vchan-sink module for pulseaudio-6.0
+  * Do not kill -STOP qubes-session, logind will hang on cleaning it up
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 11 Mar 2015 18:02:40 +0100
+
 qubes-gui-agent (2.1.32) wheezy; urgency=medium
 
   [ Jason Mehring ]
