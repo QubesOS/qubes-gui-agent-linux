@@ -298,7 +298,7 @@ static int process_source_data(struct userdata *u)
 	p = pa_memblock_acquire(u->memchunk_source.memblock);
 	l = libvchan_read(u->rec_ctrl, p + u->memchunk_source.index, pa_memblock_get_length(u->memchunk_source.memblock) - u->memchunk_source.index);
 	pa_memblock_release(u->memchunk_source.memblock);
-	pa_log_debug("process_source_data %d", l);
+	pa_log_debug("process_source_data %lu", l);
 
 	if (l <= 0) {
 		/* vchan disconnected/error */
