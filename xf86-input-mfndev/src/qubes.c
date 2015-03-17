@@ -558,7 +558,7 @@ static void process_request(int fd, InputInfoPtr pInfo)
             xf86PostKeyboardEvent(pInfo->dev, cmd.arg1, cmd.arg2);
             break;
         default:
-            xf86Msg(X_INFO, "randdev: unknown command %c\n", cmd.type);
+            xf86Msg(X_INFO, "randdev: unknown command %u\n", cmd.type);
         }
 }
 
