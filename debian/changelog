@@ -1,3 +1,63 @@
+qubes-gui-agent (3.0.1) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * debian: provide default GTK and fonts config
+  * spec: strip pulseaudio version suffix
+
+  [ Wojciech Zygmunt Porczyk ]
+  * Fix "spec: strip pulseaudio version suffix"
+
+  [ Marek Marczykowski-Górecki ]
+  * Fix "spec: strip pulseaudio version suffix" one more time
+
+  [ Jason Mehring ]
+  * Handle desktop entry config files that were moved into a Qubes
+    xdg/autostart directory preserving the originals
+  * Corrected handling of .desktop entry config files for xdg/autostart
+  * debian: Added maintainer scripts and triggers
+
+  [ Marek Marczykowski-Górecki ]
+  * Start qrexec-fork-server if installed
+  * Enter home directory before starting fork server
+  * Import pulseaudio-6.0 headers
+  * Update vchan-sink module for pulseaudio-6.0
+  * Start qrexec-fork-server before signaling the session as ready
+  * Make qubes-session-env available only when ready
+  * vchan wrapper: do not exit after calling vchan_at_eof callback
+  * vchan wrapper: two functions needed for reconnecting to guid for
+    DispVM
+  * Better support guid reconnect - send all windows state
+  * Delay pulseaudio startup for DispVM - wait for real DispVM, not its
+    template
+  * guid reconnect: update the code for R3 vchan API
+  * guid reconnect: update the code for QubesDB
+  * Fix race condition in DispVM restore detection code
+  * xside/reconnect: do not send updates on windows not sent to dom0
+    initially
+  * qubes-session: do not treat DispVM specially
+  * systemd: fix race condition with qubes.WaitForSession
+  * systemd: update dependencies for new qubes-mount-home.service
+
+  [ Jason Mehring ]
+  * debian:  Added new qubesdb-dev to debian build depends
+
+  [ Marek Marczykowski-Górecki ]
+  * xf86-input: fix buttons labels initialization
+  * xf86-input: fix setting buttons map
+  * Do not kill -STOP qubes-session, logind will hang on cleaning it up
+
+  [ Jason Mehring ]
+  * cmd.type is an unsigned int; changed to relect that
+  * pa_log_debug refered to 'l' and an int when in fact its an unsigned
+    long int
+  * Changed pulseaudio build depend to allow pulse-lib <=6.0 instead of
+    5.0 to allow fc22 to build
+
+  [ Marek Marczykowski-Górecki ]
+  * Fix systemd service permissions
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 27 Mar 2015 00:28:35 +0100
+
 qubes-gui-agent (3.0.0) jessie; urgency=medium
 
   [ Matt McCutchen ]
