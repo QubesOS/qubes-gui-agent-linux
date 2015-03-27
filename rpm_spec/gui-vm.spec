@@ -140,6 +140,7 @@ rm -f %{name}-%{version}
 /etc/profile.d/qubes-session.sh
 /etc/pulse/qubes-default.pa
 /etc/xdg/autostart/qubes-pulseaudio.desktop
+/etc/xdg/Trolltech.conf
 /etc/X11/xinit/xinitrc.d/qubes-keymap.sh
 /etc/qubes-rpc/qubes.SetMonitorLayout
 %config /etc/sysconfig/desktop
