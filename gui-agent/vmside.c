@@ -1079,11 +1079,13 @@ void mkghandles(Ghandles * g)
 	Atom supported[6];
 
 	wait_for_unix_socket(&g->xserver_fd);	// wait for Xorg qubes_drv to connect to us
-	g->display = XOpenDisplay(NULL);
-	if (!g->display) {
-		perror("XOpenDisplay");
-		exit(1);
-	}
+	do {
+		g->display = XOpenDisplay(NULL);
+		if (!g->display && errno != EAGAIN) {
+			perror("XOpenDisplay");
+			exit(1);
+		}
+	} while (!g->display);
 	if (g->log_level > 0)
 		fprintf(stderr,
 			"Connection to local X server established.\n");
