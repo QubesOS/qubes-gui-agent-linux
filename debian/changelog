@@ -1,3 +1,18 @@
+qubes-gui-agent (3.0.2) wheezy; urgency=medium
+
+  [ Jason Mehring ]
+  * Stops Qt form using the MIT-SHM X11 Shared Memory Extension
+  * Added a default QT configuration file to /etx/xdg
+  * Added Trolltech.conf to install section of Makefile
+  * debian: Added qt4-qtconfig to recommends
+  * Added /etc/xdg/Trolltech.conf to spec file
+
+  [ Marek Marczykowski-Górecki ]
+  * rpm: mark Trolltech.conf as a config file
+  * vmside: retry connection to X server if failed with EAGAIN
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 02 Apr 2015 01:13:31 +0200
+
 qubes-gui-agent (3.0.1) wheezy; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
