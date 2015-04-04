@@ -89,10 +89,6 @@ load-module module-role-cork
 load-module module-filter-heuristics
 load-module module-filter-apply
 
-### Load DBus protocol
-.ifexists module-dbus-protocol.so
-load-module module-dbus-protocol
-.endif
 
 ### Register ourselves in the X11 session manager
 #load-module module-x11-xsmp
