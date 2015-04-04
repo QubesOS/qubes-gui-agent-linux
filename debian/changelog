@@ -1,3 +1,10 @@
+qubes-gui-agent (3.0.3) wheezy; urgency=medium
+
+  * pulse: do not load module-dbus-protocol module
+  * pulse: load module-udev-detect by default
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 04 Apr 2015 22:02:34 +0200
+
 qubes-gui-agent (3.0.2) wheezy; urgency=medium
 
   [ Jason Mehring ]
