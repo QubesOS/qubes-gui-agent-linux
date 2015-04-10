@@ -30,6 +30,7 @@ umask 0077
 rm -f /tmp/qubes-session-env
 
 env | grep -v "^\(PWD\|TERM\|SHELL\|RUNLEVEL\|PATH\|SHLVL\|LOGNAME\|USER\|MEM\|_\)=" > /tmp/qubes-session-env.tmp
+umask 0022
 
 # Process XDG Autostart files
 shopt -s nullglob
