@@ -1,3 +1,10 @@
+qubes-gui-agent (3.0.4) wheezy; urgency=medium
+
+  * qubes-session: restore sane umask
+  * vmside: log X11 errors only in verbose loglevel
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 11 Apr 2015 03:40:04 +0200
+
 qubes-gui-agent (3.0.3) wheezy; urgency=medium
 
   * pulse: do not load module-dbus-protocol module
