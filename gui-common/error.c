@@ -24,12 +24,18 @@
 #include <unistd.h>
 #include  <X11/Xlib.h>
 #include <X11/Xlibint.h>
+
+int print_x11_errors = 0;
+
 int dummy_handler(Display * dpy, XErrorEvent * ev)
 {
 #define ERROR_BUF_SIZE 256
 	char buf[ERROR_BUF_SIZE];
 	char request[ERROR_BUF_SIZE];
 	_XExtension *ext = NULL;
+
+    if (!print_x11_errors)
+        return 0;
 
 	XGetErrorText(dpy, ev->error_code, buf, sizeof(buf));
 	fprintf(stderr, "ErrorHandler: %s\n", buf);

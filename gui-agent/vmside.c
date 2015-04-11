@@ -51,6 +51,8 @@
 #endif
 
 int damage_event, damage_error;
+/* from gui-common/error.c */
+extern int print_x11_errors;
 
 char **saved_argv;
 
@@ -1792,6 +1794,9 @@ void parse_args(Ghandles * g, int argc, char **argv)
 			exit(1);
 		}
 	}
+
+	if (g->log_level >= 2)
+		print_x11_errors = 1;
 }
 
 int main(int argc, char **argv)
