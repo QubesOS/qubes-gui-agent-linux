@@ -23,6 +23,8 @@
  * The Qubes OS Project, http://www.qubes-os.org
  *
  * Copyright (C) 2010  Rafal Wojtczuk  <rafal@invisiblethingslab.com>
+ * Copyright (C) 2015  Marek Marczykowski-Górecki
+ *                              <marmarek@invisiblethingslab.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -78,7 +80,7 @@
 #include "qubes-vchan-sink.h"
 #include <libvchan.h>
 
-PA_MODULE_AUTHOR("Lennart Poettering");
+PA_MODULE_AUTHOR("Marek Marczykowski-Górecki");
 PA_MODULE_DESCRIPTION("VCHAN sink/source");
 PA_MODULE_VERSION(PACKAGE_VERSION);
 PA_MODULE_LOAD_ONCE(false);
@@ -485,7 +487,7 @@ int pa__init(pa_module * m)
 			 PA_PROP_DEVICE_STRING, DEFAULT_SINK_NAME);
 	pa_proplist_setf(data_sink.proplist,
 			PA_PROP_DEVICE_DESCRIPTION,
-			"Unix VCHAN sink");
+			"Qubes VCHAN sink");
 	pa_sink_new_data_set_sample_spec(&data_sink, &ss);
 	pa_sink_new_data_set_channel_map(&data_sink, &map);
 
@@ -527,7 +529,7 @@ int pa__init(pa_module * m)
 	data_source.module = m;
 	pa_source_new_data_set_name(&data_source, pa_modargs_get_value(ma, "source_name", DEFAULT_SOURCE_NAME));
 	pa_proplist_sets(data_source.proplist, PA_PROP_DEVICE_STRING, DEFAULT_SOURCE_NAME);
-	pa_proplist_setf(data_source.proplist, PA_PROP_DEVICE_DESCRIPTION, "Unix VCHAN source");
+	pa_proplist_setf(data_source.proplist, PA_PROP_DEVICE_DESCRIPTION, "Qubes VCHAN source");
 	pa_source_new_data_set_sample_spec(&data_source, &ss);
 	pa_source_new_data_set_channel_map(&data_source, &map);
 
