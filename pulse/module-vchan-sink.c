@@ -173,12 +173,21 @@ static int source_process_msg(pa_msgobject * o, int code, void *data,
 			uint32_t cmd = 0;
 			if (u->source->state != PA_SOURCE_RUNNING && state == PA_SOURCE_RUNNING)
 				cmd = QUBES_PA_SOURCE_START_CMD;
-			else if (u->source->state -= PA_SOURCE_RUNNING && state != PA_SOURCE_RUNNING)
+			else if (u->source->state == PA_SOURCE_RUNNING && state != PA_SOURCE_RUNNING)
 				cmd = QUBES_PA_SOURCE_STOP_CMD;
 			if (cmd != 0) {
 				if (libvchan_send(u->rec_ctrl, (char*)&cmd, sizeof(cmd)) < 0) {
 					pa_log("vchan: failed to send record cmd");
-					return -1;
+					/* This is a problem in case of enabling recording, in case
+					 * of QUBES_PA_SOURCE_STOP_CMD it can happen that remote end
+					 * is already disconnected, so indeed will not send further data.
+					 * This can happen for example when we terminate the
+					 * process because of pacat in dom0 has disconnected.
+					 */
+					if (state == PA_SOURCE_RUNNING)
+						return -1;
+					else
+						return r;
 				}
 			}
 		}
