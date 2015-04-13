@@ -1,3 +1,10 @@
+qubes-gui-agent (3.0.5) wheezy; urgency=medium
+
+  * pulse: fix handling record stop event
+  * pulse: update module name and author
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 13 Apr 2015 13:30:58 +0200
+
 qubes-gui-agent (3.0.4) wheezy; urgency=medium
 
   * qubes-session: restore sane umask
