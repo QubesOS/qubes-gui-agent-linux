@@ -1256,6 +1256,7 @@ void handle_crossing(Ghandles * g, XID winid)
 	if (key.type == EnterNotify) {
 		// hide stub window
 		XUnmapWindow(g->display, g->stub_win);
+		feed_xdriver(g, 'M', attr.x + key.x, attr.y + key.y);
 	} else if (key.type == LeaveNotify) {
 		XID window_under_pointer, root_returned;
 		int root_x, root_y, win_x, win_y;
