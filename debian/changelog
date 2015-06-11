@@ -1,3 +1,10 @@
+qubes-gui-agent (3.0.6) wheezy; urgency=medium
+
+  * vmsite: Synchronize mouse position when it enters the window
+  * Include Xwrapper.config used in Fedora >= 21
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 11 Jun 2015 04:49:39 +0200
+
 qubes-gui-agent (3.0.5) wheezy; urgency=medium
 
   * pulse: fix handling record stop event
