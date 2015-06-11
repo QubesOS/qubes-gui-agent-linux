@@ -84,6 +84,7 @@ install-rh: appvm install-common
 	install -D appvm-scripts/etc/sysconfig/desktop $(DESTDIR)/etc/sysconfig/desktop
 	install -D appvm-scripts/etc/sysconfig/modules/qubes-u2mfn.modules $(DESTDIR)/etc/sysconfig/modules/qubes-u2mfn.modules
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh $(DESTDIR)/etc/X11/xinit/xinitrc.d/qubes-keymap.sh
+	install -m 0644 -D appvm-scripts/etc/X11/Xwrapper.config $(DESTDIR)/etc/X11/Xwrapper.config
 
 install-debian: appvm install-common
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh $(DESTDIR)/etc/X11/Xsession.d/90qubes-keymap

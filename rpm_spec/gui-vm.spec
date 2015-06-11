@@ -145,6 +145,7 @@ rm -f %{name}-%{version}
 /etc/xdg/autostart/qubes-pulseaudio.desktop
 %config /etc/xdg/Trolltech.conf
 /etc/X11/xinit/xinitrc.d/qubes-keymap.sh
+%config /etc/X11/Xwrapper.config
 /etc/qubes-rpc/qubes.SetMonitorLayout
 %config /etc/sysconfig/desktop
 /etc/sysconfig/modules/qubes-u2mfn.modules
