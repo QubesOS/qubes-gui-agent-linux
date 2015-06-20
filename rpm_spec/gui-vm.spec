@@ -138,6 +138,7 @@ rm -f %{name}-%{version}
 /etc/profile.d/qubes-gui.sh
 /etc/profile.d/qubes-gui.csh
 /etc/profile.d/qubes-session.sh
+%config /etc/security/limits.d/90-qubes-gui.conf
 /etc/pulse/qubes-default.pa
 /etc/xdg/autostart/qubes-pulseaudio.desktop
 %config /etc/xdg/Trolltech.conf

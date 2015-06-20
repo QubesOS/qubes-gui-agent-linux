@@ -112,6 +112,7 @@ install-common:
 	install -D appvm-scripts/etc/profile.d/qubes-session.sh $(DESTDIR)/etc/profile.d/qubes-session.sh
 	install -D appvm-scripts/etc/tmpfiles.d/qubes-pulseaudio.conf $(DESTDIR)/usr/lib/tmpfiles.d/qubes-pulseaudio.conf
 	install -D appvm-scripts/etc/tmpfiles.d/qubes-session.conf $(DESTDIR)/usr/lib/tmpfiles.d/qubes-session.conf
+	install -m 0644 -D appvm-scripts/etc/securitylimits.d/90-qubes-gui.conf $(DESTDIR)/etc/security/limits.d/90-qubes-gui.conf
 	install -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop $(DESTDIR)/etc/xdg/autostart/qubes-pulseaudio.desktop
 	install -D appvm-scripts/etc/xdg/Trolltech.conf $(DESTDIR)/etc/xdg/Trolltech.conf
 	install -D appvm-scripts/qubes-gui-vm.gschema.override $(DESTDIR)$(DATADIR)/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
