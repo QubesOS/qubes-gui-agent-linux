@@ -70,6 +70,7 @@ struct _global_handles {
 	Atom wm_state_fullscreen; /* Atom: _NET_WM_STATE_FULLSCREEN */
 	Atom wm_state_demands_attention; /* Atom: _NET_WM_STATE_DEMANDS_ATTENTION */
 	Atom wm_take_focus;	/* Atom: WM_TAKE_FOCUS */
+	Atom net_wm_name; /* Atom: _NET_WM_NAME */
 	int xserver_fd;
 	Window stub_win;    /* window for clipboard operations and to simulate LeaveNotify events */
 	unsigned char *clipboard_data;
@@ -95,6 +96,7 @@ typedef struct _global_handles Ghandles;
 
 #define SKIP_NONMANAGED_WINDOW if (!list_lookup(windows_list, window)) return
 
+void send_wmname(Ghandles * g, XID window);
 void send_wmnormalhints(Ghandles * g, XID window, int ignore_fail);
 void retrieve_wmhints(Ghandles * g, XID window, int ignore_fail);
 void retrieve_wmprotocols(Ghandles * g, XID window, int ignore_fail);
@@ -176,6 +178,7 @@ void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
 	write_message(hdr, crt);
 	/* handle properties set before we process XCreateNotify */
 	send_wmnormalhints(g, hdr.window, 1);
+	send_wmname(g, hdr.window);
 	retrieve_wmprotocols(g, hdr.window, 1);
 	retrieve_wmhints(g, hdr.window, 1);
 }
@@ -269,7 +272,66 @@ void send_pixmap_mfns(Ghandles * g, XID window)
 	write_data((char *) mfnbuf, size);
 }
 
-void getwmname_tochar(Ghandles * g, XID window, char *outbuf, int bufsize)
+/* return 1 on success, 0 otherwise */
+int get_net_wmname(Ghandles * g, XID window, char *outbuf, size_t bufsize) {
+	Atom type_return;
+	int format_return;
+	unsigned long bytes_after_return, items_return;
+	unsigned char *property_data;
+
+	if (XGetWindowProperty(g->display, window, g->net_wm_name,
+				0, /* offset, in 32-bit quantities */
+				bufsize/4, /* length, in 32-bit quantities */
+				False, /* delete */
+				g->utf8_string_atom, /* req_type */
+				&type_return, /* actual_type_return */
+				&format_return, /* actual_format_return */
+				&items_return, /* nitems_return */
+				&bytes_after_return, /* bytes_after_return */
+				&property_data /* prop_return */
+				) == Success) {
+		if (type_return != g->utf8_string_atom) {
+			if (g->log_level > 0)
+				fprintf(stderr, "get_net_wmname(0x%lx): unexpected property type: 0x%lx\n",
+						window, type_return);
+			/* property_data not filled in this case */
+			return 0;
+		}
+		if (format_return != 8) {
+			if (g->log_level > 0)
+				fprintf(stderr, "get_net_wmname(0x%lx): unexpected format: %d\n",
+						window, format_return);
+			Xfree(property_data);
+			return 0;
+		}
+		if (bytes_after_return > 0) {
+			if (g->log_level > 0)
+				fprintf(stderr, "get_net_wmname(0x%lx): window title too long, %ld bytes truncated\n",
+						window, bytes_after_return);
+		}
+
+		if (items_return > bufsize) {
+			if (g->log_level > 0)
+				fprintf(stderr, "get_net_wmname(0x%lx): too much data returned (%ld), bug?\n",
+						window, items_return);
+			Xfree(property_data);
+			return 0;
+		}
+		memcpy(outbuf, property_data, items_return);
+		/* make sure there is trailing \0 */
+		outbuf[bufsize-1] = 0;
+		Xfree(property_data);
+		if (g->log_level > 0)
+			fprintf(stderr, "got net_wm_name=%s\n", outbuf);
+		return 1;
+	}
+	if (g->log_level > 1)
+		fprintf(stderr, "window %lx has no _NET_WM_NAME\n", window);
+	return 0;
+}
+
+/* return 1 on success, 0 otherwise */
+int getwmname_tochar(Ghandles * g, XID window, char *outbuf, int bufsize)
 {
 	XTextProperty text_prop_return;
 	char **list;
@@ -278,19 +340,20 @@ void getwmname_tochar(Ghandles * g, XID window, char *outbuf, int bufsize)
 	outbuf[0] = 0;
 	if (!XGetWMName(g->display, window, &text_prop_return) ||
 	    !text_prop_return.value || !text_prop_return.nitems)
-		return;
+		return 0;
 	if (Xutf8TextPropertyToTextList(g->display,
 					&text_prop_return, &list,
 					&count) < 0 || count <= 0
 	    || !*list) {
 		XFree(text_prop_return.value);
-		return;
+		return 0;
 	}
 	strncat(outbuf, list[0], bufsize);
 	XFree(text_prop_return.value);
 	XFreeStringList(list);
 	if (g->log_level > 0)
 		fprintf(stderr, "got wmname=%s\n", outbuf);
+	return 1;
 }
 
 void send_wmname(Ghandles * g, XID window)
@@ -298,7 +361,10 @@ void send_wmname(Ghandles * g, XID window)
 	struct msg_hdr hdr;
 	struct msg_wmname msg;
 	memset(&msg, 0, sizeof(msg));
-	getwmname_tochar(g, window, msg.data, sizeof(msg.data));
+	/* try _NET_WM_NAME, then fallback to WM_NAME */
+	if (!get_net_wmname(g, window, msg.data, sizeof(msg.data)))
+		if (!getwmname_tochar(g, window, msg.data, sizeof(msg.data)))
+			return;
 	hdr.window = window;
 	hdr.type = MSG_WMNAME;
 	write_message(hdr, msg);
@@ -730,7 +796,9 @@ void process_xevent_property(Ghandles * g, XID window, XPropertyEvent * ev)
 		fprintf(stderr, "handle property %s for window 0x%x\n",
 			XGetAtomName(g->display, ev->atom),
 			(int) ev->window);
-	if (ev->atom == XInternAtom(g->display, "WM_NAME", False))
+	if (ev->atom == XA_WM_NAME)
+		send_wmname(g, window);
+	else if (ev->atom == g->net_wm_name)
 		send_wmname(g, window);
 	else if (ev->atom ==
 		 XInternAtom(g->display, "WM_NORMAL_HINTS", False))
@@ -978,7 +1046,7 @@ extern void wait_for_unix_socket(int *fd);
 void mkghandles(Ghandles * g)
 {
 	char tray_sel_atom_name[64];
-	Atom net_wm_name, net_supporting_wm_check, net_supported;
+	Atom net_supporting_wm_check, net_supported;
 	Atom supported[6];
 
 	wait_for_unix_socket(&g->xserver_fd);	// wait for Xorg qubes_drv to connect to us
@@ -1004,7 +1072,7 @@ void mkghandles(Ghandles * g)
 					       WhitePixel(g->display,
 							  g->screen));
 	/* pretend that GUI agent is window manager */
-	net_wm_name = XInternAtom(g->display, "_NET_WM_NAME", False);
+	g->net_wm_name = XInternAtom(g->display, "_NET_WM_NAME", False);
 	net_supporting_wm_check = XInternAtom(g->display, "_NET_SUPPORTING_WM_CHECK", False);
 	net_supported = XInternAtom(g->display, "_NET_SUPPORTED", False);
 	supported[0] = net_supported;
@@ -1014,7 +1082,7 @@ void mkghandles(Ghandles * g)
 	supported[3] = XInternAtom(g->display, "_NET_WM_STATE", False);
 	supported[4] = XInternAtom(g->display, "_NET_WM_STATE_FULLSCREEN", False);
 	supported[5] = XInternAtom(g->display, "_NET_WM_STATE_DEMANDS_ATTENTION", False);
-	XChangeProperty(g->display, g->stub_win, net_wm_name, g->utf8_string_atom,
+	XChangeProperty(g->display, g->stub_win, g->net_wm_name, g->utf8_string_atom,
 			8, PropModeReplace, (unsigned char*)"Qubes", 5);
 	XChangeProperty(g->display, g->stub_win, net_supporting_wm_check, XA_WINDOW,
 			32, PropModeReplace, (unsigned char*)&g->stub_win, 1);
