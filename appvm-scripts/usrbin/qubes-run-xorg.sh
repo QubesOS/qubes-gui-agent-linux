@@ -50,7 +50,7 @@ XSESSION="/etc/X11/xinit/xinitrc"
 XORG="/usr/bin/X"
 if [ -f /etc/X11/Xsession ]; then
 	# Debian-based distro, set Xsession appropriately
-	XSESSION="/etc/X11/Xsession"
+	XSESSION="/etc/X11/Xsession qubes-session"
 	# Debian installs Xorg without setuid root bit, with a setuid wrapper.
 	# The wrapper is not useful for qubes, but it does not matter since
 	# we can Xorg with qubes drivers without root. But we need to call
