@@ -1,3 +1,12 @@
+qubes-gui-agent (3.0.7) wheezy; urgency=medium
+
+  * vmside: handle both _NET_WM_NAME (preferred) and WM_NAME property
+    (#1026)
+  * Fix garbage window content on Debian (#1028)
+  * debian: use more proper way to call qubes-session
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 01 Jul 2015 07:06:34 +0200
+
 qubes-gui-agent (3.0.6) wheezy; urgency=medium
 
   * vmsite: Synchronize mouse position when it enters the window
