@@ -86,6 +86,7 @@ struct window_data {
 	XID embeder;   /* for docked icon points embeder window */
 	int input_hint; /* the window should get input focus - False=Never */
 	int support_take_focus;
+	int mfndump_pending; /* send MSG_MFNDUMP at next damage notification */
 };
 
 struct embeder_data {
@@ -101,6 +102,7 @@ Ghandles *ghandles_for_vchan_reinitialize;
 
 void send_wmname(Ghandles * g, XID window);
 void send_wmnormalhints(Ghandles * g, XID window, int ignore_fail);
+void send_pixmap_mfns(Ghandles * g, XID window);
 void retrieve_wmhints(Ghandles * g, XID window, int ignore_fail);
 void retrieve_wmprotocols(Ghandles * g, XID window, int ignore_fail);
 
@@ -109,7 +111,18 @@ void process_xevent_damage(Ghandles * g, XID window,
 {
 	struct msg_shmimage mx;
 	struct msg_hdr hdr;
-	SKIP_NONMANAGED_WINDOW;
+	struct genlist *l;
+	struct window_data *wd;
+
+	l = list_lookup(windows_list, window);
+	if (!l)
+		return;
+
+	wd = l->data;
+	if (wd->mfndump_pending) {
+		send_pixmap_mfns(g, window);
+		wd->mfndump_pending = False;
+	}
 
 	hdr.type = MSG_SHMIMAGE;
 	hdr.window = window;
@@ -162,6 +175,7 @@ void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
 	wd->is_docked = False;
 	wd->input_hint = True;
 	wd->support_take_focus = False;
+	wd->mfndump_pending = False;
 	list_insert(windows_list, ev->window, wd);
 
 	if (attr.class != InputOnly)
@@ -532,11 +546,14 @@ void process_xevent_map(Ghandles * g, XID window)
 	struct msg_hdr hdr;
 	struct msg_map_info map_info;
 	Window transient;
+	struct window_data *wd;
 	SKIP_NONMANAGED_WINDOW;
+
+	wd = list_lookup(windows_list, window)->data;
 
 	if (g->log_level > 1)
 		fprintf(stderr, "MAP for window 0x%x\n", (int)window);
-	send_pixmap_mfns(g, window);
+	wd->mfndump_pending = True;
 	send_window_state(g, window);
 	XGetWindowAttributes(g->display, window, &attr);
 	if (XGetTransientForHint(g->display, window, &transient))
