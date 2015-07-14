@@ -1,3 +1,15 @@
+qubes-gui-agent (2.1.36) wheezy; urgency=medium
+
+  * vmside: handle both _NET_WM_NAME (preferred) and WM_NAME property
+    (#1026)
+  * Fix garbage window content on Debian (#1028)
+  * debian: use more proper way to call qubes-session
+  * vmside: delay MSG_MFNDUMP until first damage notify event
+  * vmside: compile fix of "delay MSG_MFNDUMP until first damage notify
+    event"
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 14 Jul 2015 22:41:14 +0200
+
 qubes-gui-agent (2.1.35) wheezy; urgency=medium
 
   * vmsite: Synchronize mouse position when it enters the window
