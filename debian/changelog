@@ -1,3 +1,9 @@
+qubes-gui-agent (3.0.8) wheezy; urgency=medium
+
+  * vmside: delay MSG_MFNDUMP until first damage notify event
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 14 Jul 2015 22:24:58 +0200
+
 qubes-gui-agent (3.0.7) wheezy; urgency=medium
 
   * vmside: handle both _NET_WM_NAME (preferred) and WM_NAME property
