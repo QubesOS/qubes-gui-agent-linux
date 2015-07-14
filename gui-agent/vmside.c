@@ -103,7 +103,7 @@ void send_pixmap_mfns(Ghandles * g, XID window);
 void retrieve_wmhints(Ghandles * g, XID window, int ignore_fail);
 void retrieve_wmprotocols(Ghandles * g, XID window, int ignore_fail);
 
-void process_xevent_damage(Ghandles * UNUSED(g), XID window,
+void process_xevent_damage(Ghandles * g, XID window,
 			   int x, int y, int width, int height)
 {
 	struct msg_shmimage mx;
