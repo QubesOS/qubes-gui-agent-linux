@@ -25,6 +25,8 @@ VERSION := $(shell cat version)
 DIST_DOM0 ?= fc13
 
 LIBDIR ?= /usr/lib64
+USRLIBDIR ?= /usr/lib
+SYSLIBDIR ?= /lib
 DATADIR ?= /usr/share
 PA_VER ?= $(shell pkg-config --modversion libpulse | cut -d "-" -f 1 || echo 0.0)
 
@@ -80,7 +82,7 @@ install: install-rh
 
 install-rh: appvm install-common
 	install -D appvm-scripts/etc/init.d/qubes-gui-agent $(DESTDIR)/etc/init.d/qubes-gui-agent
-	install -m 0644 -D appvm-scripts/qubes-gui-agent.service $(DESTDIR)/lib/systemd/system/qubes-gui-agent.service
+	install -m 0644 -D appvm-scripts/qubes-gui-agent.service $(DESTDIR)/$(SYSLIBDIR)/systemd/system/qubes-gui-agent.service
 	install -D appvm-scripts/etc/sysconfig/desktop $(DESTDIR)/etc/sysconfig/desktop
 	install -D appvm-scripts/etc/sysconfig/modules/qubes-u2mfn.modules $(DESTDIR)/etc/sysconfig/modules/qubes-u2mfn.modules
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh $(DESTDIR)/etc/X11/xinit/xinitrc.d/qubes-keymap.sh
@@ -92,7 +94,7 @@ install-debian: appvm install-common
 	install appvm-scripts/etc/X11/Xsession.d/* $(DESTDIR)/etc/X11/Xsession.d/
 	install -d $(DESTDIR)/etc/xdg
 	install -m 0644 appvm-scripts/etc/xdg-debian/* $(DESTDIR)/etc/xdg
-	install -m 0644 -D appvm-scripts/qubes-gui-agent.service $(DESTDIR)/lib/systemd/system/qubes-gui-agent.service
+	install -m 0644 -D appvm-scripts/qubes-gui-agent.service $(DESTDIR)/$(SYSLIBDIR)/systemd/system/qubes-gui-agent.service
 
 install-common:
 	install -D gui-agent/qubes-gui $(DESTDIR)/usr/bin/qubes-gui
@@ -109,8 +111,8 @@ install-common:
 	install -D appvm-scripts/etc/profile.d/qubes-gui.sh $(DESTDIR)/etc/profile.d/qubes-gui.sh
 	install -D appvm-scripts/etc/profile.d/qubes-gui.csh $(DESTDIR)/etc/profile.d/qubes-gui.csh
 	install -D appvm-scripts/etc/profile.d/qubes-session.sh $(DESTDIR)/etc/profile.d/qubes-session.sh
-	install -D appvm-scripts/etc/tmpfiles.d/qubes-pulseaudio.conf $(DESTDIR)/usr/lib/tmpfiles.d/qubes-pulseaudio.conf
-	install -D appvm-scripts/etc/tmpfiles.d/qubes-session.conf $(DESTDIR)/usr/lib/tmpfiles.d/qubes-session.conf
+	install -D appvm-scripts/etc/tmpfiles.d/qubes-pulseaudio.conf $(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-pulseaudio.conf
+	install -D appvm-scripts/etc/tmpfiles.d/qubes-session.conf $(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-session.conf
 	install -m 0644 -D appvm-scripts/etc/securitylimits.d/90-qubes-gui.conf $(DESTDIR)/etc/security/limits.d/90-qubes-gui.conf
 	install -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop $(DESTDIR)/etc/xdg/autostart/qubes-pulseaudio.desktop
 	install -D appvm-scripts/etc/xdg/Trolltech.conf $(DESTDIR)/etc/xdg/Trolltech.conf

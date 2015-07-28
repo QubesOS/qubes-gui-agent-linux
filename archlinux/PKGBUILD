@@ -6,7 +6,7 @@
 # Maintainer: Olivier Medoc <o_medoc@yahoo.fr>
 pkgname=qubes-vm-gui
 pkgver=`cat version`
-pkgrel=5
+pkgrel=1
 epoch=
 pkgdesc="The Qubes GUI Agent for AppVMs"
 arch=("x86_64")
@@ -57,7 +57,7 @@ make appvm
 
 package() {
 
-make install DESTDIR=$pkgdir PA_VER=$pa_ver
+make install DESTDIR=$pkgdir PA_VER=$pa_ver LIBDIR=/usr/lib USRLIBDIR=/usr/lib SYSLIBDIR=/usr/lib
 
 # Specific to archlinux: qubes session needs to be the last started script when Xorg starts.
 # For Fedora Qubes devs team choosed to populate it in /etc/sysconfig/desktop, but this is not supported by Archlinux
