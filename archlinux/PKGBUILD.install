@@ -1,4 +1,12 @@
 
+# Imported from core-agent-linux
+configure_pulseaudio() {
+ 
+	sed -i '/^\(Not\|Only\)ShowIn/d' /etc/xdg/autostart/pulseaudio.desktop
+	echo 'NotShowIn=QUBES;' >> /etc/xdg/autostart/pulseaudio.desktop
+
+}
+
 ## arg 1:  the new package version
 post_install() {
 
@@ -7,7 +15,7 @@ post_install() {
   sed -i '/^autospawn/d' /etc/pulse/client.conf
   echo autospawn=no >> /etc/pulse/client.conf
 
-  # Remove pulseaudio autostart script
+  # Disable pulseaudio autostart script
   echo "" > /etc/X11/xinit/xinitrc.d/pulseaudio
 
   # Then modify /etc/pacman.conf to ensure that this file won't be changed during upgrades. Add this line next to the commented NoUpgrade line:
@@ -21,6 +29,8 @@ post_install() {
   # Archlinux specific: Fix potential bug in xinitrc making dbus to not initilize correctly
   sed 's:for f in /etc/X11/xinit/xinitrc.d/?\*\.sh:for f in /etc/X11/xinit/xinitrc.d/?\*:' -i /etc/X11/xinit/xinitrc
 
+  echo "Configuring pulseaudio"
+  configure_pulseaudio
 }
 
 post_upgrade() {
@@ -31,6 +41,9 @@ post_upgrade() {
   echo "Fixing bug in xinitrc"
   # Archlinux specific: Fix potential bug in xinitrc making dbus to not initilize correctly
   sed 's:for f in /etc/X11/xinit/xinitrc.d/?\*\.sh:for f in /etc/X11/xinit/xinitrc.d/?\*:' -i /etc/X11/xinit/xinitrc
+
+  echo "Configuring pulseaudio"
+  configure_pulseaudio
 
 }
 
