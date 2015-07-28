@@ -15,15 +15,14 @@ post_install() {
   sed -i '/^autospawn/d' /etc/pulse/client.conf
   echo autospawn=no >> /etc/pulse/client.conf
 
-  # Disable pulseaudio autostart script
+  ldconfig
+  glib-compile-schemas /usr/share/glib-2.0/schemas &> /dev/null || :
+
+  # Archlinux specific: Disable pulseaudio autostart script
   echo "" > /etc/X11/xinit/xinitrc.d/pulseaudio
 
-  # Then modify /etc/pacman.conf to ensure that this file won't be changed during upgrades. Add this line next to the commented NoUpgrade line:
+  # Archlinux specific: Then modify /etc/pacman.conf to ensure that this file won't be changed during upgrades. Add this line next to the commented NoUpgrade line:
   sed '/NoUpgrade/aNoUpgrade = /etc/X11/xinit/xinitrc.d/pulseaudio' -i /etc/pacman.conf
-
-  ldconfig
-
-  glib-compile-schemas /usr/share/glib-2.0/schemas &> /dev/null || :
 
   echo "Fixing bug in xinitrc"
   # Archlinux specific: Fix potential bug in xinitrc making dbus to not initilize correctly
@@ -35,15 +34,7 @@ post_install() {
 
 post_upgrade() {
 
-  ldconfig
-  glib-compile-schemas /usr/share/glib-2.0/schemas &> /dev/null || :
-
-  echo "Fixing bug in xinitrc"
-  # Archlinux specific: Fix potential bug in xinitrc making dbus to not initilize correctly
-  sed 's:for f in /etc/X11/xinit/xinitrc.d/?\*\.sh:for f in /etc/X11/xinit/xinitrc.d/?\*:' -i /etc/X11/xinit/xinitrc
-
-  echo "Configuring pulseaudio"
-  configure_pulseaudio
+  post_install
 
 }
 
@@ -51,7 +42,7 @@ post_upgrade() {
 pre_remove() {
 
   systemctl disable qubes-gui-agent.service
-
+  glib-compile-schemas /usr/share/glib-2.0/schemas &> /dev/null || :
 }
 
 post_remove() {
