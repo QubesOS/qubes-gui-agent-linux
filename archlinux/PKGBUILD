@@ -6,14 +6,14 @@
 # Maintainer: Olivier Medoc <o_medoc@yahoo.fr>
 pkgname=qubes-vm-gui
 pkgver=`cat version`
-pkgrel=1
+pkgrel=2
 epoch=
 pkgdesc="The Qubes GUI Agent for AppVMs"
 arch=("x86_64")
 url="http://qubes-os.org/"
 license=('GPL')
 groups=()
-depends=(pulseaudio qubes-vm-core xorg-xinit alsa-lib alsa-utils pulseaudio-alsa libxcomposite zenity qubes-libvchan-xen)
+depends=('pulseaudio>=6.0' 'pulseaudio<7.0' 'xorg-server>=1.17.0' 'xorg-server<1.18.0' 'qubes-vm-core' 'xorg-xinit' 'alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'libxcomposite' 'zenity' 'qubes-libvchan-xen')
 makedepends=(pkg-config make gcc patch git automake autoconf libtool xorg-server-devel xorg-util-macros qubes-vm-gui-common pulseaudio xf86dgaproto qubes-libvchan-xen qubes-db-vm)
 checkdepends=()
 optdepends=()
