@@ -6,15 +6,15 @@
 # Maintainer: Olivier Medoc <o_medoc@yahoo.fr>
 pkgname=qubes-vm-gui
 pkgver=`cat version`
-pkgrel=5
+pkgrel=2
 epoch=
 pkgdesc="The Qubes GUI Agent for AppVMs"
 arch=("x86_64")
 url="http://qubes-os.org/"
 license=('GPL')
 groups=()
-depends=(pulseaudio qubes-vm-core xorg-xinit alsa-lib alsa-utils pulseaudio-alsa libxcomposite zenity)
-makedepends=(pkg-config make gcc patch git automake autoconf libtool xorg-server-devel xorg-util-macros qubes-vm-gui-common pulseaudio xf86dgaproto)
+depends=('pulseaudio>=6.0' 'pulseaudio<7.0' 'xorg-server>=1.17.0' 'xorg-server<1.18.0' 'qubes-vm-core' 'xorg-xinit' 'alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'libxcomposite' 'zenity' 'qubes-libvchan-xen')
+makedepends=(pkg-config make gcc patch git automake autoconf libtool xorg-server-devel xorg-util-macros qubes-vm-gui-common pulseaudio xf86dgaproto qubes-libvchan-xen qubes-db-vm)
 checkdepends=()
 optdepends=()
 provides=()
@@ -29,7 +29,7 @@ source=(PKGBUILD-z-qubes-session.sh)
 
 noextract=()
 md5sums=() #generate with 'makepkg -g'
-pa_ver=`pkg-config --modversion libpulse | cut -f 1 -d "-"`
+pa_ver=`(pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-"`
 
 build() {
 
@@ -47,7 +47,7 @@ sed 's/After=\(.*\)qubes-misc-post.service/After=\1qubes-misc-post.service getty
 export PYTHON=python2
 sed 's:!/usr/bin/python:!/usr/bin/python2:' -i appvm-scripts/usrbin/qubes-change-keyboard-layout
 
-pa_ver=`pkg-config --modversion libpulse | cut -f 1 -d "-"`
+pa_ver=`(pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-"`
 rm -f pulse/pulsecore
 ln -s pulsecore-$pa_ver pulse/pulsecore
 
@@ -57,7 +57,7 @@ make appvm
 
 package() {
 
-make install DESTDIR=$pkgdir PA_VER=$pa_ver
+make install DESTDIR=$pkgdir PA_VER=$pa_ver LIBDIR=/usr/lib USRLIBDIR=/usr/lib SYSLIBDIR=/usr/lib
 
 # Specific to archlinux: qubes session needs to be the last started script when Xorg starts.
 # For Fedora Qubes devs team choosed to populate it in /etc/sysconfig/desktop, but this is not supported by Archlinux
