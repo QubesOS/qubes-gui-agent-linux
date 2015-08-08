@@ -1,3 +1,18 @@
+qubes-gui-agent (3.0.9) wheezy; urgency=medium
+
+  [ Olivier MEDOC ]
+  * xf86-input-mfndev: enable usage of libtoolize
+  * archlinux: enable pulseaudio configuration in gui agent instead of
+    core agent because pulseaudio is a dependency of gui-agent
+  * archlinux: ensure /usr/lib64 or /lib is not used to follow archlinux
+    packaging guidelines
+  * archlinux: update dependencies and install script to match rpm spec
+    file
+  * archlinux: ensure that packet is dependant on xorg and pulseaudio
+    versions it has been compiled for
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 08 Aug 2015 04:43:19 +0200
+
 qubes-gui-agent (3.0.8) wheezy; urgency=medium
 
   * vmside: delay MSG_MFNDUMP until first damage notify event
