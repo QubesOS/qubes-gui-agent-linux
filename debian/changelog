@@ -1,3 +1,11 @@
+qubes-gui-agent (3.0.10) wheezy; urgency=medium
+
+  * qubes-session: use '/var/lib/qubes/xdg' instead of
+    '/usr/share/qubes/xdg'
+  * Require new enough core-agent for moved qubes xdg dir
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 09 Aug 2015 13:40:05 +0200
+
 qubes-gui-agent (3.0.9) wheezy; urgency=medium
 
   [ Olivier MEDOC ]
