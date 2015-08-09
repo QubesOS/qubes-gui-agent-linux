@@ -73,7 +73,7 @@ fi
 ################################################################################
 
 export XDG_CONFIG_DIRS="${XDG_CONFIG_DIRS:-/etc/xdg}"
-XDG_CONFIG_QUBES="/usr/share/qubes/xdg"
+XDG_CONFIG_QUBES="/var/lib/qubes/xdg"
 [[ "${XDG_CONFIG_DIRS}" =~ ${XDG_CONFIG_QUBES} ]] || {
 	XDG_CONFIG_DIRS="${XDG_CONFIG_QUBES}:${XDG_CONFIG_DIRS}"
 }
