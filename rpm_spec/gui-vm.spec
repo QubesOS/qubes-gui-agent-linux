@@ -54,7 +54,7 @@ BuildRequires:	xorg-x11-server-devel
 BuildRequires:	qubes-libvchan-%{backend_vmm}-devel
 BuildRequires:	qubes-gui-common-devel
 BuildRequires:	qubes-db-devel
-Requires:	qubes-core-vm >= 2.1.2
+Requires:	qubes-core-vm >= 3.0.14
 Requires:	xen-qubes-vm-essentials
 Requires:	xorg-x11-drv-dummy
 Requires:	xorg-x11-xinit
