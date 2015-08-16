@@ -143,6 +143,7 @@ rm -f %{name}-%{version}
 /etc/xdg/autostart/qubes-pulseaudio.desktop
 %config /etc/xdg/Trolltech.conf
 /etc/X11/xinit/xinitrc.d/qubes-keymap.sh
+/etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh
 %config /etc/X11/Xwrapper.config
 /etc/qubes-rpc/qubes.SetMonitorLayout
 %config /etc/sysconfig/desktop
