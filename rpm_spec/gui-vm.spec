@@ -147,6 +147,7 @@ rm -f %{name}-%{version}
 %config /etc/xdg/Trolltech.conf
 /etc/X11/xinit/xinitrc.d/qubes-keymap.sh
 /etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh
+/etc/X11/xinit/xinitrc.d/20qt-gnome-desktop-session-id.sh
 %config /etc/X11/Xwrapper.config
 /etc/qubes-rpc/qubes.SetMonitorLayout
 %config /etc/sysconfig/desktop
