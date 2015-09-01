@@ -1,0 +1,1 @@
+../../Xsession.d/20qt-x11-no-mitshm.sh
