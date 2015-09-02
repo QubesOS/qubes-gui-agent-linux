@@ -8,4 +8,4 @@ Type=Application
 Categories=
 GenericName=
 X-GNOME-Autostart-Phase=Initialization
-OnlyShowIn=QUBES;
+OnlyShowIn=X-QUBES;
