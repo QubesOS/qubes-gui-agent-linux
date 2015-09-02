@@ -49,7 +49,7 @@ fi
 
 # process /etc/xdg/autostart and friends (according to Desktop Application
 # Autostart Specification)
-/usr/bin/qubes-session-autostart X-QUBES "X-$VMTYPE" "X-$UPDTYPE"
+/usr/bin/qubes-session-autostart QUBES X-QUBES "X-$VMTYPE" "X-$UPDTYPE"
 
 if [ -f /etc/X11/xinit/xinitrc.d/qubes-keymap.sh ]; then
 	. /etc/X11/xinit/xinitrc.d/qubes-keymap.sh
