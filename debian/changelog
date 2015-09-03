@@ -1,3 +1,22 @@
+qubes-gui-agent (3.0.11) wheezy; urgency=medium
+
+  [ Jason Mehring ]
+  * env QT_X11_NO_MITSHM: Stops QT from using the MIT-SHM X11 Shared
+    Memory Extension
+  * env GNOME_DESKTOP_SESSION_ID: Prevents QT from displaying ugly QT
+    theme
+
+  [ Marek Marczykowski-Górecki ]
+  * Update .desktop files - use OnlyShowIn=X-QUBES
+  * Revert "qubes-session: use '/var/lib/qubes/xdg' instead of
+    '/usr/share/qubes/xdg'"
+  * qubes-session: use qubes-session-autostart instead of poor man shell
+    version
+  * Support environment "QUBES" in addition to "X-QUBES" for backward
+    compat
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 03 Sep 2015 02:46:18 +0200
+
 qubes-gui-agent (3.0.10) wheezy; urgency=medium
 
   * qubes-session: use '/var/lib/qubes/xdg' instead of
