@@ -554,7 +554,7 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
     ClockRangePtr clockRanges;
     int i;
     DUMMYPtr dPtr;
-    int maxClock = 230000;
+    int maxClock = 300000;
     GDevPtr device = xf86GetEntityInfo(pScrn->entityList[0])->device;
 
     if (flags & PROBE_DETECT) 
@@ -664,7 +664,7 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
     clockRanges->next = NULL;
     clockRanges->ClockMulFactor = 1;
     clockRanges->minClock = 11000;   /* guessed §§§ */
-    clockRanges->maxClock = 300000;
+    clockRanges->maxClock = maxClock;
     clockRanges->clockIndex = -1;		/* programmable */
     clockRanges->interlaceAllowed = TRUE; 
     clockRanges->doubleScanAllowed = TRUE;
