@@ -156,4 +156,6 @@ rm -f %{name}-%{version}
 /usr/lib/tmpfiles.d/qubes-pulseaudio.conf
 /usr/lib/tmpfiles.d/qubes-session.conf
 %{_datadir}/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
+/usr/lib/qubes/icon-sender
+/etc/xdg/autostart/qubes-icon-sender.desktop
 %dir /var/log/qubes
