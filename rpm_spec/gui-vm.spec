@@ -59,6 +59,7 @@ Requires:	xen-qubes-vm-essentials
 Requires:	xorg-x11-drv-dummy
 Requires:	xorg-x11-xinit
 Requires:	qubes-libvchan-%{backend_vmm}
+Requires:	python-xpyb
 
 # The vchan sink needs .h files from pulseaudio sources
 # that are not exported by any *-devel packages; thus they are internal and
