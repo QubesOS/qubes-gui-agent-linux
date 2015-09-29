@@ -1,3 +1,13 @@
+qubes-gui-agent (2.1.37) wheezy; urgency=medium
+
+  [ Jason Mehring ]
+  * env QT_X11_NO_MITSHM: Stops QT from using the MIT-SHM X11 Shared
+    Memory Extension
+  * env GNOME_DESKTOP_SESSION_ID: Prevents QT from displaying ugly QT
+    theme
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 29 Sep 2015 12:51:37 +0200
+
 qubes-gui-agent (2.1.36) wheezy; urgency=medium
 
   * vmside: handle both _NET_WM_NAME (preferred) and WM_NAME property
