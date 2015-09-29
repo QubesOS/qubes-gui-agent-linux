@@ -59,6 +59,7 @@ Requires:	xen-qubes-vm-essentials
 Requires:	xorg-x11-drv-dummy
 Requires:	xorg-x11-xinit
 Requires:	qubes-libvchan-%{backend_vmm}
+Requires:	python-xpyb
 
 # The vchan sink needs .h files from pulseaudio sources
 # that are not exported by any *-devel packages; thus they are internal and
@@ -156,4 +157,6 @@ rm -f %{name}-%{version}
 /usr/lib/tmpfiles.d/qubes-pulseaudio.conf
 /usr/lib/tmpfiles.d/qubes-session.conf
 %{_datadir}/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
+/usr/lib/qubes/icon-sender
+/etc/xdg/autostart/qubes-icon-sender.desktop
 %dir /var/log/qubes

@@ -1,0 +1,147 @@
+#!/usr/bin/python
+# -*- encoding: utf8 -*-
+#
+# The Qubes OS Project, http://www.qubes-os.org
+#
+# Copyright (C) 2015 Marek Marczykowski-Górecki
+#                              <marmarek@invisiblethingslab.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#
+#
+
+# Tool for sending windows icon over qrexec to dom0/GUI domain. Icons will be
+#  tainted by dom0 and then attached to appropriate windows.
+# Usage: qrexec-client-vm dom0 qubes.WindowIconUpdater ./icon-sender
+
+import xcb
+import xcb.xproto
+import sys
+import struct
+
+ICON_MAX_SIZE = 128
+
+
+class NoIconError(KeyError):
+    pass
+
+
+class IconRetriever(object):
+    def __init__(self):
+        self.conn = xcb.connect()
+        self.setup = self.conn.get_setup()
+        self.root = self.setup.roots[0].root
+
+        # just created windows for which icon wasn't sent yet - should
+        # be send on MapNotifyEvent
+        self.window_queue = set()
+
+        self.atom_net_wm_icon = self.conn.core.InternAtom(
+            False, len("_NET_WM_ICON"), "_NET_WM_ICON").reply().atom
+
+
+    def watch_window(self, w):
+        self.conn.core.ChangeWindowAttributesChecked(
+            w, xcb.xproto.CW.EventMask, [xcb.xproto.EventMask.PropertyChange])
+
+    def get_icons(self, w):
+        # check for initial icon now:
+        prop_cookie = self.conn.core.GetProperty(
+            False,  # delete
+            w,  # window
+            self.atom_net_wm_icon,
+            xcb.xproto.Atom.CARDINAL,
+            0,  # long_offset
+            512 * 1024  # long_length
+        )
+        try:
+            icon = prop_cookie.reply()
+        except xcb.xproto.BadWindow:
+            # Window disappeared in the meantime
+            raise NoIconError()
+
+        if icon.format == 0:
+            raise NoIconError()
+        # convert it later to a proper int array
+        icon_data = str(icon.value.buf())
+        if icon.bytes_after:
+            prop_cookie = self.conn.core.GetProperty(
+                False,  # delete
+                w,  # window
+                self.atom_net_wm_icon,
+                xcb.xproto.Atom.CARDINAL,
+                icon.value_len,  # long_offset
+                icon.bytes_after  # long_length
+            )
+            icon_cont = prop_cookie.reply()
+            icon_data += str(icon_cont.value.buf())
+
+        # join each 4 bytes into a single int
+        icon_data = struct.unpack("%dI" % (len(icon_data) / 4), icon_data)
+        icons = {}
+        index = 0
+        # split the array into icons
+        while index < len(icon_data):
+            size = (icon_data[index], icon_data[index + 1])
+            icons[size] = icon_data[index + 2:index + 2 + (size[0] * size[1])]
+            index += 2 + (size[0] * size[1])
+        return icons
+
+    def send_icon(self, w):
+        try:
+            icons = self.get_icons(w)
+            chosen_size = sorted([k for k in icons.keys() if
+                                  k[0] < ICON_MAX_SIZE and k[
+                                      1] < ICON_MAX_SIZE])[-1]
+
+            sys.stdout.write("{}\n".format(w))
+            sys.stdout.write("{} {}\n".format(chosen_size[0], chosen_size[1]))
+            sys.stdout.write(''.join(
+                [struct.pack('>I', ((b << 8) & 0xffffff00) | (b >> 24)) for b in
+                 icons[chosen_size]]))
+            sys.stdout.flush()
+        except NoIconError:
+            pass
+
+    def initial_sync(self):
+        cookie = self.conn.core.QueryTree(self.root)
+        root_tree = cookie.reply()
+        for w in root_tree.children:
+            self.watch_window(w)
+            self.send_icon(w)
+
+    def watch_and_send_icons(self):
+        self.conn.core.ChangeWindowAttributesChecked(
+            self.root, xcb.xproto.CW.EventMask,
+            [xcb.xproto.EventMask.SubstructureNotify])
+        self.conn.flush()
+        self.initial_sync()
+
+        for ev in iter(self.conn.wait_for_event, None):
+            if isinstance(ev, xcb.xproto.CreateNotifyEvent):
+                self.window_queue.add(ev.window)
+                self.watch_window(ev.window)
+            elif isinstance(ev, xcb.xproto.MapNotifyEvent):
+                if ev.window in self.window_queue:
+                    self.send_icon(ev.window)
+                    self.window_queue.remove(ev.window)
+            elif isinstance(ev, xcb.xproto.PropertyNotifyEvent):
+                if ev.atom == self.atom_net_wm_icon:
+                    self.send_icon(ev.window)
+
+
+if __name__ == '__main__':
+    retriever = IconRetriever()
+    retriever.watch_and_send_icons()

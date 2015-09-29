@@ -120,4 +120,6 @@ install-common:
 	install -D appvm-scripts/etc/xdg/Trolltech.conf $(DESTDIR)/etc/xdg/Trolltech.conf
 	install -D appvm-scripts/qubes-gui-vm.gschema.override $(DESTDIR)$(DATADIR)/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
 	install -m 0644 -D appvm-scripts/etc/qubes-rpc/qubes.SetMonitorLayout $(DESTDIR)/etc/qubes-rpc/qubes.SetMonitorLayout
+	install -D window-icon-updater/icon-sender $(DESTDIR)/usr/lib/qubes/icon-sender
+	install -m 0644 -D window-icon-updater/qubes-icon-sender.desktop $(DESTDIR)/etc/xdg/autostart/qubes-icon-sender.desktop
 	install -d $(DESTDIR)/var/log/qubes
