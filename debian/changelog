@@ -1,3 +1,10 @@
+qubes-gui-agent (3.1.0) wheezy; urgency=medium
+
+  * Implement window icon updater (#967)
+  * Add python-xpyb dependency for icon-updater
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 29 Sep 2015 21:21:49 +0200
+
 qubes-gui-agent (3.0.11) wheezy; urgency=medium
 
   [ Jason Mehring ]
