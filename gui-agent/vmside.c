@@ -1845,7 +1845,8 @@ void usage()
 	fprintf(stderr, "Usage: qubes_gui [-v] [-q] [-h]\n");
 	fprintf(stderr, "       -v  increase log verbosity\n");
 	fprintf(stderr, "       -q  decrease log verbosity\n");
-	fprintf(stderr, "       -m  sync all modifiers before key event (default: only Caps Lock)\n");
+	fprintf(stderr, "       -m  sync all modifiers before key event (default)\n");
+	fprintf(stderr, "       -M  sync only Caps Lock key event\n");
 	fprintf(stderr, "       -h  print this message\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Log levels:\n");
@@ -1860,8 +1861,8 @@ void parse_args(Ghandles * g, int argc, char **argv)
 
 	// defaults
 	g->log_level = 0;
-	g->sync_all_modifiers = 0;
-	while ((opt = getopt(argc, argv, "qvhm")) != -1) {
+	g->sync_all_modifiers = 1;
+	while ((opt = getopt(argc, argv, "qvhmM")) != -1) {
 		switch (opt) {
 		case 'q':
 			g->log_level--;
@@ -1871,6 +1872,9 @@ void parse_args(Ghandles * g, int argc, char **argv)
 			break;
 		case 'm':
 			g->sync_all_modifiers = 1;
+			break;
+		case 'M':
+			g->sync_all_modifiers = 0;
 			break;
 		case 'h':
 			usage();
