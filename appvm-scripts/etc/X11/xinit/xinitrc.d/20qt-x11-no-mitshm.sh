@@ -1,1 +1,1 @@
-../../Xsession.d/20qt-x11-no-mitshm.sh
+../../Xsession.d/20qt-x11-no-mitshm
