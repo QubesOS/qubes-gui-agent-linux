@@ -1,3 +1,12 @@
+qubes-gui-agent (3.1.1) wheezy; urgency=medium
+
+  * debian: fix typo in debian/control
+  * Synchronize all key modifiers by default
+  * xsession: rename scripts to match Xsession requirements (#1172)
+  * Start X session as user login session
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 11 Oct 2015 03:08:07 +0200
+
 qubes-gui-agent (3.1.0) wheezy; urgency=medium
 
   * Implement window icon updater (#967)
