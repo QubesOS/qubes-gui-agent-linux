@@ -1,3 +1,9 @@
+qubes-gui-agent (3.0.12) wheezy; urgency=medium
+
+  * Start X session as user login session
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 11 Oct 2015 03:10:14 +0200
+
 qubes-gui-agent (3.0.11) wheezy; urgency=medium
 
   [ Jason Mehring ]
