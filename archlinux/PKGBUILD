@@ -6,7 +6,7 @@
 # Maintainer: Olivier Medoc <o_medoc@yahoo.fr>
 pkgname=qubes-vm-gui
 pkgver=`cat version`
-pkgrel=1
+pkgrel=2
 epoch=
 pkgdesc="The Qubes GUI Agent for AppVMs"
 arch=("x86_64")
@@ -43,10 +43,12 @@ sed 's:ExecStartPre=/bin/touch:#ExecStartPre=/bin/touch:' -i appvm-scripts/qubes
 # Ensure that qubes-gui-agent starts after user autologin
 sed 's/After=\(.*\)qubes-misc-post.service/After=\1qubes-misc-post.service getty.target/' -i appvm-scripts/qubes-gui-agent.service
 
-# Fix for building with python2
+# Force running all scripts with python2
 export PYTHON=python2
-sed 's:!/usr/bin/python:!/usr/bin/python2:' -i appvm-scripts/usrbin/*
-sed 's:!/usr/bin/python:!/usr/bin/python2:' -i window-icon-updater/*
+sed 's:#!/usr/bin/python:#!/usr/bin/python2:' -i appvm-scripts/usrbin/*
+sed 's:#!/usr/bin/env python:#!/usr/bin/env python2:' -i appvm-scripts/usrbin/*
+sed 's:#!/usr/bin/python:#!/usr/bin/python2:' -i window-icon-updater/*
+sed 's:#!/usr/bin/env python:#!/usr/bin/env python2:' -i window-icon-updater/*
 
 
 pa_ver=`(pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-"`
