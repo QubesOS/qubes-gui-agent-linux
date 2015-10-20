@@ -1,6 +1,3 @@
-if [ -O /tmp/qubes-session-env ]; then
-while read LINE; do
-	TMP=${LINE%%=*}
-	[ "x${TMP}" != "x" ] && export "$LINE"
-done < /tmp/qubes-session-env
+if [ -z "$QUBES_ENV_SOURCED" ]; then
+    . /tmp/qubes-session-env
 fi
