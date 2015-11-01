@@ -491,11 +491,23 @@ static void dump_window_mfns(WindowPtr pWin, int id, int fd)
 	shmcmd.num_mfn = num_mfn;
 	shmcmd.domid = 0x12345678; // just a placeholder; qubes_guid must not trust it anyway
 
-	write_exact(fd, &shmcmd, sizeof(shmcmd));
+	if (write_exact(fd, &shmcmd, sizeof(shmcmd)) == -1) {
+		char errbuf[128];
+		if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0)
+			xf86Msg(X_ERROR,
+			    "failet write to gui-agent: %s\n", errbuf);
+		return;
+	}
 	mlock(pixels, 4096 * num_mfn);
 	for (i = 0; i < num_mfn; i++) {
 		u2mfn_get_mfn_for_page ((long)(pixels + 4096 * i), &mfn);
-		write_exact(fd, &mfn, 4);
+		if (write_exact(fd, &mfn, 4) == -1) {
+			char errbuf[128];
+			if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0)
+				xf86Msg(X_ERROR,
+				    "failet write to gui-agent: %s\n", errbuf);
+			return;
+		}
 	}
 }
 
