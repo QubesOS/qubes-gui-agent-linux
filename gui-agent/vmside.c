@@ -78,6 +78,7 @@ struct _global_handles {
 	Atom wm_take_focus;	/* Atom: WM_TAKE_FOCUS */
 	Atom net_wm_name; /* Atom: _NET_WM_NAME */
 	int xserver_fd;
+	int xserver_listen_fd;
 	libvchan_t *vchan;
 	Window stub_win;    /* window for clipboard operations and to simulate LeaveNotify events */
 	unsigned char *clipboard_data;
@@ -1162,43 +1163,44 @@ void send_all_windows_info(Ghandles *g) {
 	}
 }
 
-void wait_for_unix_socket(int *fd)
+void wait_for_unix_socket(Ghandles *g)
 {
     struct sockaddr_un sockname, peer;
-    int s;
     unsigned int addrlen;
     int prev_umask;
 
-    unlink(SOCKET_ADDRESS);
-    s = socket(AF_UNIX, SOCK_STREAM, 0);
-    memset(&sockname, 0, sizeof(sockname));
-    sockname.sun_family = AF_UNIX;
-    memcpy(sockname.sun_path, SOCKET_ADDRESS, strlen(SOCKET_ADDRESS));
+	/* setup listening socket only once; in case of qubes_drv reconnections,
+	 * simply pickup next waiting connection there (using accept below) */
+	if (g->xserver_listen_fd == -1) {
+		unlink(SOCKET_ADDRESS);
+		g->xserver_listen_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+		memset(&sockname, 0, sizeof(sockname));
+		sockname.sun_family = AF_UNIX;
+		memcpy(sockname.sun_path, SOCKET_ADDRESS, strlen(SOCKET_ADDRESS));
 
-    prev_umask=umask(077);
-    if (bind(s, (struct sockaddr *) &sockname, sizeof(sockname)) == -1) {
-        printf("bind() failed\n");
-        close(s);
-        exit(1);
-    }
-    umask(prev_umask);
-    // chmod(sockname.sun_path, 0666);
-    if (listen(s, 5) == -1) {
-        perror("listen() failed\n");
-        close(s);
-        exit(1);
-    }
+		prev_umask=umask(077);
+		if (bind(g->xserver_listen_fd, (struct sockaddr *) &sockname, sizeof(sockname)) == -1) {
+			printf("bind() failed\n");
+			close(g->xserver_listen_fd);
+			exit(1);
+		}
+		umask(prev_umask);
+
+		if (listen(g->xserver_listen_fd, 5) == -1) {
+			perror("listen() failed\n");
+			close(g->xserver_listen_fd);
+			exit(1);
+		}
+	}
 
     addrlen = sizeof(peer);
     fprintf (stderr, "Waiting on %s socket...\n", SOCKET_ADDRESS);
-    *fd = accept(s, (struct sockaddr *) &peer, &addrlen);
-    if (*fd == 1) {
+    g->xserver_fd = accept(g->xserver_listen_fd, (struct sockaddr *) &peer, &addrlen);
+    if (g->xserver_fd == -1) {
         perror("unix accept");
         exit(1);
     }
     fprintf (stderr, "Ok, somebody connected.\n");
-    close(s);
-    //	sleep(2);		//give xserver time to boot up
 }
 
 void mkghandles(Ghandles * g)
@@ -1207,7 +1209,9 @@ void mkghandles(Ghandles * g)
 	Atom net_supporting_wm_check, net_supported;
 	Atom supported[6];
 
-	wait_for_unix_socket(&g->xserver_fd);	// wait for Xorg qubes_drv to connect to us
+	g->xserver_listen_fd = -1;
+	g->xserver_fd = -1;
+	wait_for_unix_socket(g);	// wait for Xorg qubes_drv to connect to us
 	do {
 		g->display = XOpenDisplay(NULL);
 		if (!g->display && errno != EAGAIN) {
@@ -1936,6 +1940,7 @@ int main(int argc, char **argv)
 	int i;
 	int xfd;
 	Ghandles g;
+	int wait_fds[2];
 
 	/* FIXME: 0 is remote domain */
 	g.vchan = libvchan_server_init(0, 6000, 4096, 4096);
@@ -1995,8 +2000,38 @@ int main(int argc, char **argv)
 				"Acquired MANAGER selection for tray\n");
 	}
 	xfd = ConnectionNumber(g.display);
+	wait_fds[0] = xfd;
+	wait_fds[1] = g.xserver_fd;
 	for (;;) {
 		int busy;
+		fd_set retset;
+
+		wait_for_vchan_or_argfd(g.vchan, 2, wait_fds, &retset);
+		/* first process possible qubes_drv reconnection, otherwise we may be
+		 * using stale g.xserver_fd */
+		if (FD_ISSET(g.xserver_fd, &retset)) {
+			char discard[64];
+			int ret;
+
+			/* unexpected data from qubes_drv, check for possible EOF */
+			ret = read(g.xserver_fd, discard, sizeof(discard));
+			if (ret > 0) {
+				fprintf(stderr,
+					"Got unexpected %d bytes from qubes_drv, something is wrong\n",
+					ret);
+				exit(1);
+			} else if (ret == 0) {
+				fprintf(stderr,
+					"qubes_drv disconnected, waiting for possible reconnection\n");
+				close(g.xserver_fd);
+				wait_for_unix_socket(&g);
+				wait_fds[1] = g.xserver_fd;
+			} else {
+				perror("reading from qubes_drv");
+				exit(1);
+			}
+		}
+
 		do {
 			busy = 0;
 			if (XPending(g.display)) {
@@ -2008,7 +2043,7 @@ int main(int argc, char **argv)
 				busy = 1;
 			}
 		} while (busy);
-		wait_for_vchan_or_argfd(g.vchan, 1, &xfd, NULL);
+
 	}
 	return 0;
 }
