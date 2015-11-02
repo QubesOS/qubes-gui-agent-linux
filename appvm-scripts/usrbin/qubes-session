@@ -25,12 +25,9 @@ loginctl activate "$XDG_SESSION_ID"
 # Set desktop background
 xsetroot -solid white
 
-# Save user environment
-umask 0077
 rm -f /tmp/qubes-session-env
 
 export QUBES_ENV_SOURCED=1
-export -p | grep -v "^declare -x \(PWD\|TERM\|SHELL\|RUNLEVEL\|PATH\|SHLVL\|LOGNAME\|USER\|MEM\|_\)=" > /tmp/qubes-session-env.tmp
 umask 0022
 
 # Process XDG Autostart files
@@ -45,7 +42,7 @@ UPDTYPE=`/usr/bin/qubesdb-read /qubes-vm-updateable`
 
 # Gnome keyring is special case, as its env needed by nm-applet
 if [ -x /usr/bin/gnome-keyring-daemon ]; then
-    eval `/usr/bin/gnome-keyring-daemon --start | tee -a /tmp/qubes-session-env.tmp`
+    eval `/usr/bin/gnome-keyring-daemon --start`
 fi
 
 # process /etc/xdg/autostart and friends (according to Desktop Application
@@ -61,6 +58,13 @@ fi
 
 # Set desktop background
 xsetroot -solid white
+
+# Save user environment
+(
+    umask 0077
+    unset PWD TERM SHELL RUNLEVEL PATH SHLVL LOGNAME USER MEM
+    export -p > /tmp/qubes-session-env.tmp
+)
 
 cd $HOME
 
