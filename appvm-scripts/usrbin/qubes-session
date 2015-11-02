@@ -28,7 +28,6 @@ xsetroot -solid white
 rm -f /tmp/qubes-session-env
 
 export QUBES_ENV_SOURCED=1
-umask 0022
 
 # Process XDG Autostart files
 shopt -s nullglob
@@ -55,9 +54,6 @@ fi
 if [ -f /etc/X11/Xsession.d/90qubes-keymap ]; then
 	. /etc/X11/Xsession.d/90qubes-keymap
 fi
-
-# Set desktop background
-xsetroot -solid white
 
 # Save user environment
 (
