@@ -84,4 +84,4 @@ wait
 # | /|\
 # | / \
 # |
-while sleep 365d; do true; done
+env sleep inf
