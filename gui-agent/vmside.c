@@ -26,6 +26,9 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <fcntl.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/stat.h>
 #include <X11/Xlib.h>
 #include <X11/Intrinsic.h>
 #include <X11/Xutil.h>
@@ -41,6 +44,8 @@
 #include "list.h"
 #include "error.h"
 #include <libvchan.h>
+
+#define SOCKET_ADDRESS  "/var/run/xf86-qubes-socket"
 
 #define QUBES_GUI_PROTOCOL_VERSION_LINUX (1 << 16 | 0)
 
@@ -1157,7 +1162,44 @@ void send_all_windows_info(Ghandles *g) {
 	}
 }
 
-extern void wait_for_unix_socket(int *fd);
+void wait_for_unix_socket(int *fd)
+{
+    struct sockaddr_un sockname, peer;
+    int s;
+    unsigned int addrlen;
+    int prev_umask;
+
+    unlink(SOCKET_ADDRESS);
+    s = socket(AF_UNIX, SOCK_STREAM, 0);
+    memset(&sockname, 0, sizeof(sockname));
+    sockname.sun_family = AF_UNIX;
+    memcpy(sockname.sun_path, SOCKET_ADDRESS, strlen(SOCKET_ADDRESS));
+
+    prev_umask=umask(077);
+    if (bind(s, (struct sockaddr *) &sockname, sizeof(sockname)) == -1) {
+        printf("bind() failed\n");
+        close(s);
+        exit(1);
+    }
+    umask(prev_umask);
+    // chmod(sockname.sun_path, 0666);
+    if (listen(s, 5) == -1) {
+        perror("listen() failed\n");
+        close(s);
+        exit(1);
+    }
+
+    addrlen = sizeof(peer);
+    fprintf (stderr, "Waiting on %s socket...\n", SOCKET_ADDRESS);
+    *fd = accept(s, (struct sockaddr *) &peer, &addrlen);
+    if (*fd == 1) {
+        perror("unix accept");
+        exit(1);
+    }
+    fprintf (stderr, "Ok, somebody connected.\n");
+    close(s);
+    //	sleep(2);		//give xserver time to boot up
+}
 
 void mkghandles(Ghandles * g)
 {
