@@ -1,3 +1,14 @@
+qubes-gui-agent (3.0.14) wheezy; urgency=medium
+
+  [ yaqu ]
+  * Make qubes-session-env consistent with qrexec-fork-server's
+    environment
+
+  [ Marek Marczykowski-Górecki ]
+  * Do not try to load /tmp/qubes-session-env when it doesn't exist
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 04 Nov 2015 01:15:33 +0100
+
 qubes-gui-agent (3.0.13) wheezy; urgency=medium
 
   * Fix handling functions and multi-line variables in environment
