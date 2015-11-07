@@ -149,8 +149,16 @@ void wait_for_possible_dispvm_resume() {
     }
     do {
         tmp = qdb_read_watch(qdb);
-        if (tmp)
+        if (tmp) {
             free(tmp);
+        } else if (errno == EPIPE) {
+            /* QubesDB connection closed (crashed?), assume DispVM was
+             * restored, as it is safer option than aborting the whole
+             * gui-agent
+             */
+            break;
+        }
+
     }
     while (!tmp); // wait for dom0 to create qubesdb entry
 out:
