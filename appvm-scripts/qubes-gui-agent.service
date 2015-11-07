@@ -1,6 +1,6 @@
 [Unit]
 Description=Qubes GUI Agent
-After=qubes-meminfo-writer.service qubes-mount-home.service
+After=qubes-meminfo-writer.service qubes-mount-dirs.service
 
 [Service]
 # pretend tha user is at local console
