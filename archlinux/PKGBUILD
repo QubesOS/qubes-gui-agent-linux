@@ -13,7 +13,7 @@ arch=("x86_64")
 url="http://qubes-os.org/"
 license=('GPL')
 groups=()
-depends=('pulseaudio>=6.0' 'pulseaudio<7.0' 'xorg-server>=1.17.0' 'xorg-server<1.18.0' 'qubes-vm-core' 'xorg-xinit' 'alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'libxcomposite' 'zenity' 'qubes-libvchan-xen')
+depends=('pulseaudio>=7.0' 'pulseaudio<8.0' 'xorg-server>=1.17.0' 'xorg-server<1.18.0' 'qubes-vm-core>=3.0.14' 'xorg-xinit' 'alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python2-xcffib')
 makedepends=(pkg-config make gcc patch git automake autoconf libtool xorg-server-devel xorg-util-macros qubes-vm-gui-common pulseaudio xf86dgaproto qubes-libvchan-xen qubes-db-vm)
 checkdepends=()
 optdepends=()
@@ -33,7 +33,7 @@ pa_ver=`(pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d
 
 build() {
 
-for source in Makefile appvm-scripts gui-common include pulse gui-agent common xf86-input-mfndev xf86-video-dummy ; do
+for source in Makefile appvm-scripts gui-common include pulse gui-agent common xf86-input-mfndev xf86-video-dummy window-icon-updater ; do
   (ln -s $srcdir/../$source $srcdir/$source)
 done
 
@@ -43,9 +43,13 @@ sed 's:ExecStartPre=/bin/touch:#ExecStartPre=/bin/touch:' -i appvm-scripts/qubes
 # Ensure that qubes-gui-agent starts after user autologin
 sed 's/After=\(.*\)qubes-misc-post.service/After=\1qubes-misc-post.service getty.target/' -i appvm-scripts/qubes-gui-agent.service
 
-# Fix for building with python2
+# Force running all scripts with python2
 export PYTHON=python2
-sed 's:!/usr/bin/python:!/usr/bin/python2:' -i appvm-scripts/usrbin/qubes-change-keyboard-layout
+sed 's:#!/usr/bin/python:#!/usr/bin/python2:' -i appvm-scripts/usrbin/*
+sed 's:#!/usr/bin/env python:#!/usr/bin/env python2:' -i appvm-scripts/usrbin/*
+sed 's:#!/usr/bin/python:#!/usr/bin/python2:' -i window-icon-updater/*
+sed 's:#!/usr/bin/env python:#!/usr/bin/env python2:' -i window-icon-updater/*
+
 
 pa_ver=`(pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-"`
 rm -f pulse/pulsecore
