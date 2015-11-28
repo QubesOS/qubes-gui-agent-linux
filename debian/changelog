@@ -1,3 +1,46 @@
+qubes-gui-agent (3.1.2) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * Fix handling functions and multi-line variables in environment
+  * code style: fix indentation, no functional change
+  * xf86-input: add error logging on failed communication with gui-agent
+  * Merge xserver-fd.c back to vmside.c
+  * Allow qubes_drv reconnection to gui-agent
+
+  [ yaqu ]
+  * Make qubes-session-env consistent with qrexec-fork-server's
+    environment
+
+  [ Marek Marczykowski-Górecki ]
+  * Do not try to load /tmp/qubes-session-env when it doesn't exist
+
+  [ yaqu ]
+  * Removing old/redundant code in qubes-session
+  * Replacing "sleep 365d" with "sleep inf"
+
+  [ Patrick Schleizer ]
+  * fix, qubes-mount-home.service -> qubes-mount-dirs.service
+
+  [ Marek Marczykowski-Górecki ]
+  * DispVM restore: do not spin forever when QubesDB connection is
+    closed
+
+  [ Olivier MEDOC ]
+  * archlinux: dump Pulseaudio config to 7.0 and fix new window-icon-
+    updater service
+  * archlinux: ensure python2 is used even when scripts are called using
+    /usr/bin/env
+  * window-icon-update: allow usage of xcffib instead of pyxcb because
+    it is not available in default archlinux packages
+
+  [ Marek Marczykowski-Górecki ]
+  * Include PulseAudio 7.1 headers
+
+  [ Patrick Schleizer ]
+  * clean up /etc/X11/Xsession.d/98qubes-session
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 28 Nov 2015 15:27:24 +0100
+
 qubes-gui-agent (3.1.1) wheezy; urgency=medium
 
   * debian: fix typo in debian/control
