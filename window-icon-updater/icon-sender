@@ -28,10 +28,11 @@
 
 try:
     import xcb
+    from xcb import xproto
 except ImportError:
     import xcffib as xcb
+    from xcffib import xproto
 
-import xcb.xproto
 import sys
 import struct
 
@@ -58,7 +59,7 @@ class IconRetriever(object):
 
     def watch_window(self, w):
         self.conn.core.ChangeWindowAttributesChecked(
-            w, xcb.xproto.CW.EventMask, [xcb.xproto.EventMask.PropertyChange])
+            w, xproto.CW.EventMask, [xproto.EventMask.PropertyChange])
 
     def get_icons(self, w):
         # check for initial icon now:
@@ -66,13 +67,13 @@ class IconRetriever(object):
             False,  # delete
             w,  # window
             self.atom_net_wm_icon,
-            xcb.xproto.Atom.CARDINAL,
+            xproto.Atom.CARDINAL,
             0,  # long_offset
             512 * 1024  # long_length
         )
         try:
             icon = prop_cookie.reply()
-        except xcb.xproto.BadWindow:
+        except xproto.BadWindow:
             # Window disappeared in the meantime
             raise NoIconError()
 
@@ -85,7 +86,7 @@ class IconRetriever(object):
                 False,  # delete
                 w,  # window
                 self.atom_net_wm_icon,
-                xcb.xproto.Atom.CARDINAL,
+                xproto.Atom.CARDINAL,
                 icon.value_len,  # long_offset
                 icon.bytes_after  # long_length
             )
@@ -128,20 +129,20 @@ class IconRetriever(object):
 
     def watch_and_send_icons(self):
         self.conn.core.ChangeWindowAttributesChecked(
-            self.root, xcb.xproto.CW.EventMask,
-            [xcb.xproto.EventMask.SubstructureNotify])
+            self.root, xproto.CW.EventMask,
+            [xproto.EventMask.SubstructureNotify])
         self.conn.flush()
         self.initial_sync()
 
         for ev in iter(self.conn.wait_for_event, None):
-            if isinstance(ev, xcb.xproto.CreateNotifyEvent):
+            if isinstance(ev, xproto.CreateNotifyEvent):
                 self.window_queue.add(ev.window)
                 self.watch_window(ev.window)
-            elif isinstance(ev, xcb.xproto.MapNotifyEvent):
+            elif isinstance(ev, xproto.MapNotifyEvent):
                 if ev.window in self.window_queue:
                     self.send_icon(ev.window)
                     self.window_queue.remove(ev.window)
-            elif isinstance(ev, xcb.xproto.PropertyNotifyEvent):
+            elif isinstance(ev, xproto.PropertyNotifyEvent):
                 if ev.atom == self.atom_net_wm_icon:
                     self.send_icon(ev.window)
 
