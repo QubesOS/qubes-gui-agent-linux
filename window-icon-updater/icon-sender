@@ -99,16 +99,19 @@ class IconRetriever(object):
         # split the array into icons
         while index < len(icon_data):
             size = (icon_data[index], icon_data[index + 1])
-            icons[size] = icon_data[index + 2:index + 2 + (size[0] * size[1])]
+            if size[0] < ICON_MAX_SIZE and size[1] < ICON_MAX_SIZE:
+                icons[size] = icon_data[index + 2:
+                                        index + 2 + (size[0] * size[1])]
             index += 2 + (size[0] * size[1])
+        if len(icons.keys()) == 0:
+            # no icon with acceptable size
+            raise NoIconError()
         return icons
 
     def send_icon(self, w):
         try:
             icons = self.get_icons(w)
-            chosen_size = sorted([k for k in icons.keys() if
-                                  k[0] < ICON_MAX_SIZE and k[
-                                      1] < ICON_MAX_SIZE])[-1]
+            chosen_size = sorted(icons.keys())[-1]
 
             sys.stdout.write("{}\n".format(w))
             sys.stdout.write("{} {}\n".format(chosen_size[0], chosen_size[1]))
