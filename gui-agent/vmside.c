@@ -29,6 +29,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/stat.h>
+#include <grp.h>
 #include <X11/Xlib.h>
 #include <X11/Intrinsic.h>
 #include <X11/Xutil.h>
@@ -1168,6 +1169,7 @@ void wait_for_unix_socket(Ghandles *g)
     struct sockaddr_un sockname, peer;
     unsigned int addrlen;
     int prev_umask;
+    struct group *qubes_group;
 
 	/* setup listening socket only once; in case of qubes_drv reconnections,
 	 * simply pickup next waiting connection there (using accept below) */
@@ -1178,13 +1180,24 @@ void wait_for_unix_socket(Ghandles *g)
 		sockname.sun_family = AF_UNIX;
 		memcpy(sockname.sun_path, SOCKET_ADDRESS, strlen(SOCKET_ADDRESS));
 
-		prev_umask=umask(077);
+		qubes_group = getgrnam("qubes");
+		if (qubes_group)
+			prev_umask=umask(0007);
+		else
+			prev_umask=umask(0000);
 		if (bind(g->xserver_listen_fd, (struct sockaddr *) &sockname, sizeof(sockname)) == -1) {
 			printf("bind() failed\n");
 			close(g->xserver_listen_fd);
 			exit(1);
 		}
 		umask(prev_umask);
+		if (qubes_group) {
+			if (chown(SOCKET_ADDRESS, -1, qubes_group->gr_gid) == -1) {
+				perror("chown");
+				if (chmod(SOCKET_ADDRESS, 0666) == -1)
+					perror("chmod"); // ignore error here
+			}
+		}
 
 		if (listen(g->xserver_listen_fd, 5) == -1) {
 			perror("listen() failed\n");
