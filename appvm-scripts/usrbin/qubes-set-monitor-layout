@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# This may be called before qubes-session is fully initialized, so do not rely
+# on having DISPLAY set from there
+export DISPLAY=:0
+
 # Wait for Xorg complete startup
 while ! xrandr -q &>/dev/null; do sleep 0.1; done
 
