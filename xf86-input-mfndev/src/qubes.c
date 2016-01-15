@@ -495,17 +495,24 @@ static void dump_window_mfns(WindowPtr pWin, int id, int fd)
 		char errbuf[128];
 		if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0)
 			xf86Msg(X_ERROR,
-			    "failet write to gui-agent: %s\n", errbuf);
+			    "failed write to gui-agent: %s\n", errbuf);
 		return;
 	}
-	mlock(pixels, 4096 * num_mfn);
+	if (mlock(pixels, 4096 * num_mfn) == -1) {
+		char errbuf[128];
+		if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0)
+			xf86Msg(X_ERROR,
+			    "failed mlock memory at %p + %#x, (%d x %d): %s\n",
+                pixels, 4096 * num_mfn, shmcmd.width, shmcmd.height,
+                errbuf);
+    }
 	for (i = 0; i < num_mfn; i++) {
 		u2mfn_get_mfn_for_page ((long)(pixels + 4096 * i), &mfn);
 		if (write_exact(fd, &mfn, 4) == -1) {
 			char errbuf[128];
 			if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0)
 				xf86Msg(X_ERROR,
-				    "failet write to gui-agent: %s\n", errbuf);
+				    "failed write to gui-agent: %s\n", errbuf);
 			return;
 		}
 	}
