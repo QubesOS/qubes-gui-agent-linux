@@ -20,7 +20,7 @@ def apply_choice(choice):
             pass
     elif choice != "":
         try:
-            file = open(vm_layout, 'w+')
+            file = open(vm_layout, 'w')
             file.write(choice)
             file.close()
             subprocess.check_call(['gsettings', 'set', 'org.gnome.libgnomekbd.keyboard', 'layouts', "['%s']" % choice])
