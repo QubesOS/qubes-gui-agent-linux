@@ -1,3 +1,22 @@
+qubes-gui-agent (3.1.5) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * xf86-input-mfndev: add error checking for mlock
+
+  [ Olivier MEDOC ]
+  * archlinux: dump to Xorg server version 1.18
+  * icon-sender: avoid using xcb.xproto namespace to make xcffib
+    compatible
+
+  [ Marek Marczykowski-Górecki ]
+  * Import PulseAudio 8.0 headers
+  * archlinux/rpm: update pulseaudio dependencies
+  * Command line option to change keyboard layout
+  * Fix saving keyboard layout
+  * Fix setting keyboard layout on Debian VM
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 11 Feb 2016 00:52:56 +0100
+
 qubes-gui-agent (3.1.4) wheezy; urgency=medium
 
   [ noname ]
