@@ -1,3 +1,14 @@
+qubes-gui-agent (3.0.16) wheezy; urgency=medium
+
+  * screen-layout: explicitly set DISPLAY variable
+  * Fix permissions on X->gui-agent socket
+  * xf86-input: add error logging on failed communication with gui-agent
+  * xf86-input-mfndev: add error checking for mlock
+  * Fix saving keyboard layout
+  * Fix setting keyboard layout on Debian VM
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 29 Feb 2016 14:38:57 +0100
+
 qubes-gui-agent (3.0.15) wheezy; urgency=medium
 
   * Merge xserver-fd.c back to vmside.c
