@@ -1,3 +1,13 @@
+qubes-gui-agent (3.2.0) wheezy; urgency=medium
+
+  [ Olivier MEDOC ]
+  * archlinux: remove bugfixes related to pulseaudio
+
+  [ Marek Marczykowski-Górecki ]
+  * Reserve extra space in monitor-layout protocol
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 04 May 2016 23:37:50 +0200
+
 qubes-gui-agent (3.1.5) wheezy; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
