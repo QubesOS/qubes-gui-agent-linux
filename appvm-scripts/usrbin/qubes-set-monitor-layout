@@ -13,7 +13,7 @@ output_max=$[ `xrandr | grep -c ^$output_base` - 1 ]
 
 xrandr_cmd=""
 
-while read w h x y; do
+while read w h x y extra; do
 	output_name=$output_base$output_no
 	mode_name="QB${w}x${h}"
 	if ! xrandr | grep -q $mode_name; then
