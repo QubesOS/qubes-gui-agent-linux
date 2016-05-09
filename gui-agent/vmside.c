@@ -48,7 +48,7 @@
 
 #define SOCKET_ADDRESS  "/var/run/xf86-qubes-socket"
 
-#define QUBES_GUI_PROTOCOL_VERSION_LINUX (1 << 16 | 0)
+#define QUBES_GUI_PROTOCOL_VERSION_LINUX (1 << 16 | 1)
 
 #ifdef __GNUC__
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
@@ -109,6 +109,7 @@ Ghandles *ghandles_for_vchan_reinitialize;
 
 void send_wmname(Ghandles * g, XID window);
 void send_wmnormalhints(Ghandles * g, XID window, int ignore_fail);
+void send_wmclass(Ghandles * g, XID window, int ignore_fail);
 void send_pixmap_mfns(Ghandles * g, XID window);
 void retrieve_wmhints(Ghandles * g, XID window, int ignore_fail);
 void retrieve_wmprotocols(Ghandles * g, XID window, int ignore_fail);
@@ -203,6 +204,7 @@ void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
 	/* handle properties set before we process XCreateNotify */
 	send_wmnormalhints(g, hdr.window, 1);
 	send_wmname(g, hdr.window);
+	send_wmclass(g, hdr.window, 1);
 	retrieve_wmprotocols(g, hdr.window, 1);
 	retrieve_wmhints(g, hdr.window, 1);
 }
@@ -504,6 +506,27 @@ void send_wmnormalhints(Ghandles * g, XID window, int ignore_fail)
 	msg.base_height = size_hints.base_height;
 	hdr.window = window;
 	hdr.type = MSG_WINDOW_HINTS;
+	write_message(g->vchan, hdr, msg);
+}
+
+void send_wmclass(Ghandles * g, XID window, int ignore_fail)
+{
+	struct msg_hdr hdr;
+	struct msg_wmclass msg;
+	XClassHint class_hint;
+
+	if (!XGetClassHint(g->display, window, &class_hint)) {
+		if (!ignore_fail)
+			fprintf(stderr, "error reading WM_CLASS\n");
+		return;
+	}
+
+	strncpy(msg.res_class, class_hint.res_class, sizeof(msg.res_class));
+	strncpy(msg.res_name, class_hint.res_name, sizeof(msg.res_name));
+	XFree(class_hint.res_class);
+	XFree(class_hint.res_name);
+	hdr.window = window;
+	hdr.type = MSG_WMCLASS;
 	write_message(g->vchan, hdr, msg);
 }
 
@@ -833,6 +856,9 @@ void process_xevent_property(Ghandles * g, XID window, XPropertyEvent * ev)
 		 XInternAtom(g->display, "WM_NORMAL_HINTS", False))
 		send_wmnormalhints(g, window, 0);
 	else if (ev->atom ==
+		 XInternAtom(g->display, "WM_CLASS", False))
+		send_wmclass(g, window, 0);
+	else if (ev->atom ==
 		 XInternAtom(g->display, "WM_HINTS", False))
 		retrieve_wmhints(g,window, 0);
 	else if (ev->atom ==
@@ -1130,6 +1156,7 @@ int send_full_window_info(Ghandles *g, XID w, struct window_data *wd)
 	write_message(g->vchan, hdr, conf);
 	send_pixmap_mfns(g, w);
 
+	send_wmclass(g, w, 1);
 	send_wmnormalhints(g, w, 1);
 
 	if (wd->is_docked) {
