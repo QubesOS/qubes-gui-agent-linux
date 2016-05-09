@@ -141,8 +141,18 @@ static int sink_process_msg(pa_msgobject * o, int code, void *data,
 		state = PA_PTR_TO_UINT(data);
 		r = pa_sink_process_msg(o, code, data, offset, chunk);
 		if (r >= 0) {
+			uint32_t cmd = 0;
 			pa_log("sink cork req state =%d, now state=%d\n", state,
 			       (int) (u->sink->state));
+			if (u->sink->state == PA_SINK_SUSPENDED && state != PA_SINK_SUSPENDED)
+				cmd = QUBES_PA_SINK_UNCORK_CMD;
+			else if (u->sink->state != PA_SINK_SUSPENDED && state == PA_SINK_SUSPENDED)
+				cmd = QUBES_PA_SINK_CORK_CMD;
+			if (cmd != 0) {
+				if (libvchan_send(u->rec_ctrl, (char*)&cmd, sizeof(cmd)) < 0) {
+					pa_log("vchan: failed to send sink cork cmd");
+				}
+			}
 		}
 		return r;
 
