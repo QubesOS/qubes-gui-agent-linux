@@ -14,7 +14,7 @@ Build-Depends:
     libx11-dev,
     quilt,
     debhelper (>= 8.0.0),
-    qubes-gui-common,
+    qubes-gui-common (>= 3.2.0),
     qubesdb-dev,
     dh-systemd (>= 1.5),
     libltdl-dev
