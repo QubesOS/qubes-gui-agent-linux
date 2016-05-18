@@ -1,3 +1,13 @@
+qubes-gui-agent (3.2.1) wheezy; urgency=medium
+
+  * vmside: update protocol version, send window class
+  * pulseaudio: cork audio stream when unused
+  * rpm: require new enough qubes-gui-common-devel for updated protocol
+  * debian: reformat dependencies for better readability
+  * debian: require new enough qubes-gui-common for updated protocol
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 18 May 2016 02:41:03 +0200
+
 qubes-gui-agent (3.2.0) wheezy; urgency=medium
 
   [ Olivier MEDOC ]
