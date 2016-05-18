@@ -2,7 +2,22 @@ Source: qubes-gui-agent
 Section: admin
 Priority: extra
 Maintainer: Davíð Steinn Geirsson <david@dsg.is>
-Build-Depends: libpulse-dev, libtool, automake, xorg-dev, xutils-dev, libxdamage-dev, libxcomposite-dev, libxt-dev, libx11-dev, quilt, debhelper (>= 8.0.0), qubes-gui-common, qubesdb-dev, dh-systemd (>= 1.5), libltdl-dev
+Build-Depends:
+    libpulse-dev,
+    libtool,
+    automake,
+    xorg-dev,
+    xutils-dev,
+    libxdamage-dev,
+    libxcomposite-dev,
+    libxt-dev,
+    libx11-dev,
+    quilt,
+    debhelper (>= 8.0.0),
+    qubes-gui-common,
+    qubesdb-dev,
+    dh-systemd (>= 1.5),
+    libltdl-dev
 Standards-Version: 3.9.3
 Homepage: http://www.qubes-os.org/
 #Vcs-Git: git://git.debian.org/collab-maint/qubes-gui-agent.git
@@ -10,7 +25,22 @@ Homepage: http://www.qubes-os.org/
 
 Package: qubes-gui-agent
 Architecture: any
-Depends: gnome-keyring, pulseaudio, xserver-xorg-core, xinit, x11-xserver-utils, xenstore-utils, qubes-core-agent (>= 3.0.14), libpulse0, libxdamage1, libxcomposite1, libxt6, libx11-6, python-xpyb, ${shlibs:Depends}, ${misc:Depends}
+Depends:
+    gnome-keyring,
+    pulseaudio,
+    xserver-xorg-core,
+    xinit,
+    x11-xserver-utils,
+    xenstore-utils,
+    qubes-core-agent (>= 3.0.14),
+    libpulse0,
+    libxdamage1,
+    libxcomposite1,
+    libxt6,
+    libx11-6,
+    python-xpyb,
+    ${shlibs:Depends},
+    ${misc:Depends}
 Recommends: qt4-qtconfig
 Provides: x-display-manager
 Description: Makes X11 windows available to qubes dom0
