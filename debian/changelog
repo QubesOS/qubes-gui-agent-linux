@@ -1,3 +1,9 @@
+qubes-gui-agent (3.1.6) wheezy; urgency=medium
+
+  * No change - only rebuild
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 22 May 2016 23:50:15 +0200
+
 qubes-gui-agent (3.1.5) wheezy; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
