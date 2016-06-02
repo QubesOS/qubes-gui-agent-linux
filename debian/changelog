@@ -1,3 +1,11 @@
+qubes-gui-agent (3.2.2) wheezy; urgency=medium
+
+  * Convert tabs to spaces
+  * travis: initial version
+  * debian: add missing libvchan-xen-dev to Build-Depends
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 02 Jun 2016 04:50:58 +0200
+
 qubes-gui-agent (3.2.1) wheezy; urgency=medium
 
   * vmside: update protocol version, send window class
