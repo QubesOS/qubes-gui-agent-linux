@@ -117,7 +117,14 @@ install-common:
 	install -D appvm-scripts/etc/tmpfiles.d/qubes-session.conf $(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-session.conf
 	install -m 0644 -D appvm-scripts/etc/securitylimits.d/90-qubes-gui.conf $(DESTDIR)/etc/security/limits.d/90-qubes-gui.conf
 	install -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop $(DESTDIR)/etc/xdg/autostart/qubes-pulseaudio.desktop
-	install -D appvm-scripts/etc/xdg/Trolltech.conf $(DESTDIR)/etc/xdg/Trolltech.conf
+ifeq ($(shell lsb_release -cs), xenial)
+	install -d $(DESTDIR)/home/user/.config
+	install -D appvm-scripts/etc/xdg/Trolltech.conf $(DESTDIR)/home/user/.config/Trolltech.conf
+	install -d $(DESTDIR)/etc/skel/.config
+	install -m 0644 appvm-scripts/etc/xdg/Trolltech.conf $(DESTDIR)/etc/skel/.config/Trolltech.conf
+else
+	install -D appvm-scripts/etc/xdg/Trolltech.conf $(DESTDIR)/etc/xdg/Trolltech.con
+endif
 	install -D appvm-scripts/qubes-gui-vm.gschema.override $(DESTDIR)$(DATADIR)/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
 	install -m 0644 -D appvm-scripts/etc/qubes-rpc/qubes.SetMonitorLayout $(DESTDIR)/etc/qubes-rpc/qubes.SetMonitorLayout
 	install -D window-icon-updater/icon-sender $(DESTDIR)/usr/lib/qubes/icon-sender
