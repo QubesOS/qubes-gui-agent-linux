@@ -1,3 +1,11 @@
+qubes-gui-agent (3.1.7) wheezy; urgency=medium
+
+  * Reserve extra space in monitor-layout protocol
+  * debian: reformat dependencies for better readability
+  * debian: add missing libvchan-xen-dev to Build-Depends
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 25 Jun 2016 15:51:52 +0200
+
 qubes-gui-agent (3.1.6) wheezy; urgency=medium
 
   * No change - only rebuild
