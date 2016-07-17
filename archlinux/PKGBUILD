@@ -13,7 +13,11 @@ arch=("x86_64")
 url="http://qubes-os.org/"
 license=('GPL')
 groups=()
-depends=('pulseaudio>=8.0' 'pulseaudio<10.0' 'xorg-server>=1.18.0' 'xorg-server<1.19.0' 'qubes-vm-core>=3.0.14' 'xorg-xinit' 'alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python2-xcffib')
+depends=('xorg-xinit' 'alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python2-xcffib'
+		'pulseaudio>=8.0' 'pulseaudio<10.0'
+		'xorg-server>=1.18.0' 'xorg-server<1.19.0'
+		'qubes-vm-core>=3.0.14'
+		)
 makedepends=(pkg-config make gcc patch git automake autoconf libtool xorg-server-devel xorg-util-macros qubes-vm-gui-common pulseaudio xf86dgaproto qubes-libvchan-xen qubes-db-vm)
 checkdepends=()
 optdepends=()
