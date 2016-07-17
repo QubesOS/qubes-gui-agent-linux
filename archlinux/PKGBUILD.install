@@ -22,6 +22,10 @@ post_install() {
 
   echo "Configuring pulseaudio"
   configure_pulseaudio
+  
+  echo "Updating proxy configuration"
+  /usr/lib/qubes/update-proxy-configs
+
 }
 
 post_upgrade() {
