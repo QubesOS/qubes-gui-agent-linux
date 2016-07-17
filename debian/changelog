@@ -1,3 +1,15 @@
+qubes-gui-agent (3.2.3) wheezy; urgency=medium
+
+  [ Jacob Jenner Rasmussen ]
+  * Added pulseaudio 9.0 support
+  * archlinux: bumped supported pulseaudio version
+  * Pulseaudio headers is now actually from 9.0
+
+  [ Olivier MEDOC ]
+  * archlinux: remove unnecessary glib-compile-scheme
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 17 Jul 2016 05:20:13 +0200
+
 qubes-gui-agent (3.2.2) wheezy; urgency=medium
 
   * Convert tabs to spaces
