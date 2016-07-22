@@ -94,6 +94,10 @@ static Bool	dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
  */
 static int pix24bpp = 0;
 
+Atom width_mm_atom = 0;
+#define WIDTH_MM_NAME  "WIDTH_MM"
+Atom height_mm_atom = 0;
+#define HEIGHT_MM_NAME "HEIGHT_MM"
 
 /*
  * This contains the functions needed by the server after loading the driver
@@ -293,9 +297,61 @@ dummy_output_get_modes (xf86OutputPtr output)
     return pModes;
 }
 
+void dummy_output_register_prop(xf86OutputPtr output, Atom prop, uint64_t value)
+{
+    INT32 dims_range[2] = { 0, 65535 };
+    int err;
+
+    err = RRConfigureOutputProperty(output->randr_output, prop, FALSE,
+            TRUE, FALSE, 2, dims_range);
+    if (err != 0)
+        xf86DrvMsg(output->scrn->scrnIndex, X_ERROR,
+                                       "RRConfigureOutputProperty error, %d\n", err);
+
+    err = RRChangeOutputProperty(output->randr_output, prop, XA_INTEGER,
+            32, PropModeReplace, 1, &value, FALSE, FALSE);
+    if (err != 0)
+        xf86DrvMsg(output->scrn->scrnIndex, X_ERROR,
+                "RRChangeOutputProperty error, %d\n", err);
+}
+
+void dummy_output_create_resources(xf86OutputPtr output)
+{
+    if (!ValidAtom(width_mm_atom))
+        width_mm_atom = MakeAtom(WIDTH_MM_NAME, strlen(WIDTH_MM_NAME), 1);
+    if (!ValidAtom(height_mm_atom))
+        height_mm_atom = MakeAtom(HEIGHT_MM_NAME, strlen(HEIGHT_MM_NAME), 1);
+
+    dummy_output_register_prop(output, width_mm_atom, 0);
+    dummy_output_register_prop(output, height_mm_atom, 0);
+}
+
+static Bool dummy_output_set_property(xf86OutputPtr output, Atom property,
+        RRPropertyValuePtr value)
+{
+
+    if (property == width_mm_atom || property == height_mm_atom) {
+        INT32 val;
+
+        if (value->type != XA_INTEGER || value->format != 32 ||
+                value->size != 1)
+        {
+            return FALSE;
+        }
+
+        val = *(INT32 *)value->data;
+        if (property == width_mm_atom)
+            output->mm_width = val;
+        else if (property == height_mm_atom)
+            output->mm_height = val;
+        return TRUE;
+    }
+    return TRUE;
+}
+
 
 static const xf86OutputFuncsRec DUMMYOutputFuncs = {
-    .create_resources = dummy_output_stub,
+    .create_resources = dummy_output_create_resources,
     .dpms = dummy_output_dpms,
     .save = NULL, /* These two are never called by the server. */
     .restore = NULL,
@@ -307,7 +363,7 @@ static const xf86OutputFuncsRec DUMMYOutputFuncs = {
     .detect = dummy_output_detect,
     .get_modes = dummy_output_get_modes,
 #ifdef RANDR_12_INTERFACE
-    .set_property = NULL,
+    .set_property = dummy_output_set_property,
 #endif
     .destroy = dummy_output_stub
 };
