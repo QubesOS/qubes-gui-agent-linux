@@ -156,6 +156,7 @@ rm -f %{name}-%{version}
 /lib/systemd/system/qubes-gui-agent.service
 /usr/lib/tmpfiles.d/qubes-pulseaudio.conf
 /usr/lib/tmpfiles.d/qubes-session.conf
+/usr/lib/sysctl.d/30-qubes-gui-agent.conf
 %{_datadir}/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
 /usr/lib/qubes/icon-sender
 /etc/xdg/autostart/qubes-icon-sender.desktop
