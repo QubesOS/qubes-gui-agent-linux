@@ -122,4 +122,6 @@ install-common:
 	install -m 0644 -D appvm-scripts/etc/qubes-rpc/qubes.SetMonitorLayout $(DESTDIR)/etc/qubes-rpc/qubes.SetMonitorLayout
 	install -D window-icon-updater/icon-sender $(DESTDIR)/usr/lib/qubes/icon-sender
 	install -m 0644 -D window-icon-updater/qubes-icon-sender.desktop $(DESTDIR)/etc/xdg/autostart/qubes-icon-sender.desktop
+	install -D -m 0644 appvm-scripts/usr/lib/sysctl.d/30-qubes-gui-agent.conf \
+		$(DESTDIR)/usr/lib/sysctl.d/30-qubes-gui-agent.conf
 	install -d $(DESTDIR)/var/log/qubes
