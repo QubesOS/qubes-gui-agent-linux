@@ -186,6 +186,10 @@ void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
     wd->mfndump_pending = False;
     list_insert(windows_list, ev->window, wd);
 
+    if (attr.border_width > 0) {
+        XSetWindowBorderWidth(g->display, ev->window, 0);
+    }
+
     if (attr.class != InputOnly)
         XDamageCreate(g->display, ev->window,
                 XDamageReportRawRectangles);
@@ -475,6 +479,7 @@ void send_wmnormalhints(Ghandles * g, XID window, int ignore_fail)
             fprintf(stderr, "error reading WM_NORMAL_HINTS\n");
         return;
     }
+
     /* Nasty workaround for KDE bug affecting gnome-terminal (shrinks to minimal size) */
     /* https://bugzilla.redhat.com/show_bug.cgi?id=707664 */
     if ((size_hints.flags & (PBaseSize|PMinSize|PResizeInc)) ==
@@ -688,6 +693,11 @@ void process_xevent_configure(Ghandles * g, XID window,
         }
         return;
     }
+
+    if (ev->border_width > 0) {
+        XSetWindowBorderWidth(g->display, window, 0);
+    }
+
     hdr.type = MSG_CONFIGURE;
     hdr.window = window;
     conf.x = ev->x;
