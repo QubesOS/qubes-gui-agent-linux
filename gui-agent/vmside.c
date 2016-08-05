@@ -185,6 +185,10 @@ void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
 	wd->mfndump_pending = False;
 	list_insert(windows_list, ev->window, wd);
 
+    if (attr.border_width > 0) {
+        XSetWindowBorderWidth(g->display, ev->window, 0);
+    }
+
 	if (attr.class != InputOnly)
 		XDamageCreate(g->display, ev->window,
 			      XDamageReportRawRectangles);
@@ -665,6 +669,11 @@ void process_xevent_configure(Ghandles * g, XID window,
 		}
 		return;
 	}
+
+    if (ev->border_width > 0) {
+        XSetWindowBorderWidth(g->display, window, 0);
+    }
+
 	hdr.type = MSG_CONFIGURE;
 	hdr.window = window;
 	conf.x = ev->x;
