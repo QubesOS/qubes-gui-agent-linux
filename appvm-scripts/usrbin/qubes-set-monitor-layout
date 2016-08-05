@@ -14,21 +14,21 @@ output_max=$[ `xrandr | grep -c ^$output_base` - 1 ]
 xrandr_cmd=""
 
 while read w h x y extra; do
-	output_name=$output_base$output_no
-	mode_name="QB${w}x${h}"
-	if ! xrandr | grep -q $mode_name; then
-		cvt=`cvt $w $h | tail -n 1 | cut -d ' ' -f 3-`
-		xrandr --newmode $mode_name $cvt
-	fi
-	xrandr --addmode $output_name $mode_name
-	# Do not set it at once b/c xserver resets position after output gets
-	# "connected" - the case for first mode set
-	xrandr_cmd="$xrandr_cmd --output $output_name --mode $mode_name --pos ${x}x${y}"
-	output_no=$[ $output_no + 1]
+    output_name=$output_base$output_no
+    mode_name="QB${w}x${h}"
+    if ! xrandr | grep -q $mode_name; then
+        cvt=`cvt $w $h | tail -n 1 | cut -d ' ' -f 3-`
+        xrandr --newmode $mode_name $cvt
+    fi
+    xrandr --addmode $output_name $mode_name
+    # Do not set it at once b/c xserver resets position after output gets
+    # "connected" - the case for first mode set
+    xrandr_cmd="$xrandr_cmd --output $output_name --mode $mode_name --pos ${x}x${y}"
+    output_no=$[ $output_no + 1]
 done
 
 for i in `seq $output_no $output_max`; do
-	xrandr_cmd="$xrandr_cmd --output $output_base$i --off"
+    xrandr_cmd="$xrandr_cmd --output $output_base$i --off"
 done
 
 xrandr $xrandr_cmd
