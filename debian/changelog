@@ -1,3 +1,15 @@
+qubes-gui-agent (3.2.5) wheezy; urgency=medium
+
+  [ HW42 ]
+  * vmside: force WindowBorderWidth to zero
+
+  [ Marek Marczykowski-Górecki ]
+  * xf86-video-dummy: changeable physical output size
+  * Convert tabs to spaces in qubes-set-monitor-layout
+  * Extendt qubes.SetMonitorLayout to support also physical dimensions
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 07 Aug 2016 17:10:22 +0200
+
 qubes-gui-agent (3.2.4) wheezy; urgency=medium
 
   * Prevent window composition buffers from being moved in RAM
