@@ -13,7 +13,7 @@
 
 #include "compat-api.h"
 
-#define DUMMY_MAX_SCREENS 4
+#define DUMMY_MAX_SCREENS 16
 
 /* Supported chipsets */
 typedef enum {
