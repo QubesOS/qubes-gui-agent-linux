@@ -1,3 +1,9 @@
+qubes-gui-agent (3.2.6) wheezy; urgency=medium
+
+  * Increase maximum number of video outputs to 16
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 03 Oct 2016 11:29:07 +0200
+
 qubes-gui-agent (3.2.5) wheezy; urgency=medium
 
   [ HW42 ]
