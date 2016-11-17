@@ -1,3 +1,13 @@
+qubes-gui-agent (3.2.7) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * debian: prevent xserver-xorg-legacy installation
+
+  [ unman ]
+  * Exclude Trolltech.conf in Xenial build
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 17 Nov 2016 09:51:34 +0100
+
 qubes-gui-agent (3.2.6) wheezy; urgency=medium
 
   * Increase maximum number of video outputs to 16
