@@ -1,3 +1,9 @@
+qubes-gui-agent (3.2.8) wheezy; urgency=medium
+
+  * Do not unconditionally load gnome-keyring environment
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 18 Nov 2016 02:19:52 +0100
+
 qubes-gui-agent (3.2.7) wheezy; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
