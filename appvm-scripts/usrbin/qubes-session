@@ -39,11 +39,6 @@ VMTYPE=`/usr/bin/qubesdb-read /qubes-vm-type`
 UPDTYPE=`/usr/bin/qubesdb-read /qubes-vm-updateable`
 [[ $UPDTYPE == 'True' ]] && UPDTYPE="UpdateableVM" || UPDTYPE="NonUpdateableVM"
 
-# Gnome keyring is special case, as its env needed by nm-applet
-if [ -x /usr/bin/gnome-keyring-daemon ]; then
-    eval `/usr/bin/gnome-keyring-daemon --start`
-fi
-
 # process /etc/xdg/autostart and friends (according to Desktop Application
 # Autostart Specification)
 /usr/bin/qubes-session-autostart QUBES X-QUBES "X-$VMTYPE" "X-$UPDTYPE"
