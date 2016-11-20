@@ -1,3 +1,21 @@
+qubes-gui-agent (3.1.8) wheezy; urgency=medium
+
+  [ Jacob Jenner Rasmussen ]
+  * Added pulseaudio 9.0 support
+  * archlinux: bumped supported pulseaudio version
+  * Pulseaudio headers is now actually from 9.0
+
+  [ Olivier MEDOC ]
+  * archlinux: remove unnecessary glib-compile-scheme
+
+  [ Marek Marczykowski-Górecki ]
+  * Prevent window composition buffers from being moved in RAM
+
+  [ HW42 ]
+  * vmside: force WindowBorderWidth to zero
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 20 Nov 2016 17:06:59 +0100
+
 qubes-gui-agent (3.1.7) wheezy; urgency=medium
 
   * Reserve extra space in monitor-layout protocol
