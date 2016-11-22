@@ -1,3 +1,9 @@
+qubes-gui-agent (3.1.9) wheezy; urgency=medium
+
+  * Convert tabs to spaces
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 22 Nov 2016 03:09:53 +0100
+
 qubes-gui-agent (3.1.8) wheezy; urgency=medium
 
   [ Jacob Jenner Rasmussen ]
