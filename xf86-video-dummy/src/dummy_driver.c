@@ -1114,8 +1114,14 @@ DUMMYCreateWindow(WindowPtr pWin)
         if (! ValidAtom(VFB_PROP))
             VFB_PROP = MakeAtom(VFB_PROP_NAME, strlen(VFB_PROP_NAME), 1);
 
+#if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) < 21
         ret = ChangeWindowProperty(pWinRoot, VFB_PROP, XA_STRING, 
 		8, PropModeReplace, (int)4, (pointer)"TRUE", FALSE);
+#else
+        ret = dixChangeWindowProperty(serverClient, pWinRoot,
+                VFB_PROP, XA_STRING,
+                8, PropModeReplace, (int)4, (pointer)"TRUE", FALSE);
+#endif
 	if( ret != Success)
 		ErrorF("Could not set VFB root window property");
         dPtr->prop = TRUE;
