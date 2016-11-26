@@ -1,3 +1,11 @@
+qubes-gui-agent (3.2.9) wheezy; urgency=medium
+
+  * rpm: fix pulseaudio version
+  * xf86-video-dummy: adjust for xorg-server-1.19.0
+  * travis: add fc25 target
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 26 Nov 2016 03:09:26 +0100
+
 qubes-gui-agent (3.2.8) wheezy; urgency=medium
 
   * Do not unconditionally load gnome-keyring environment
