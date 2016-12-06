@@ -1,3 +1,11 @@
+qubes-gui-agent (3.2.10-1) unstable; urgency=medium
+
+  [ unman ]
+  * Provide XDG_DATA_DIRS in Xenial. Also update deb package to 3.0
+    quilt)
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 06 Dec 2016 23:14:54 +0100
+
 qubes-gui-agent (3.2.9) wheezy; urgency=medium
 
   * rpm: fix pulseaudio version
