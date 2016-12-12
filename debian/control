@@ -12,6 +12,7 @@ Build-Depends:
     libx11-dev,
     libxcomposite-dev,
     libxdamage-dev,
+    x11proto-xf86dga-dev,
     libxt-dev,
     quilt,
     debhelper (>= 8.0.0),
