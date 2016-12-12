@@ -86,7 +86,7 @@ install-rh: appvm install-common
 		$(DESTDIR)/etc/init.d/qubes-gui-agent
 	install -m 0644 -D appvm-scripts/qubes-gui-agent.service \
 		$(DESTDIR)/$(SYSLIBDIR)/systemd/system/qubes-gui-agent.service
-	install -D appvm-scripts/etc/sysconfig/desktop \
+	install -m 0644 -D appvm-scripts/etc/sysconfig/desktop \
 		$(DESTDIR)/etc/sysconfig/desktop
 	install -D appvm-scripts/etc/sysconfig/modules/qubes-u2mfn.modules \
 		$(DESTDIR)/etc/sysconfig/modules/qubes-u2mfn.modules
@@ -121,7 +121,7 @@ install-common:
 		$(DESTDIR)/usr/bin/qubes-set-monitor-layout
 	install -D pulse/start-pulseaudio-with-vchan \
 		$(DESTDIR)/usr/bin/start-pulseaudio-with-vchan
-	install -D pulse/qubes-default.pa \
+	install -m 0644 -D pulse/qubes-default.pa \
 		$(DESTDIR)/etc/pulse/qubes-default.pa
 	install -D pulse/module-vchan-sink.so \
 		$(DESTDIR)$(LIBDIR)/pulse-$(PA_VER)/modules/module-vchan-sink.so
@@ -129,27 +129,27 @@ install-common:
 		$(DESTDIR)$(LIBDIR)/xorg/modules/drivers/qubes_drv.so
 	install -D xf86-video-dummy/src/.libs/dummyqbs_drv.so \
 		$(DESTDIR)$(LIBDIR)/xorg/modules/drivers/dummyqbs_drv.so
-	install -D appvm-scripts/etc/X11/xorg-qubes.conf.template \
+	install -m 0644 -D appvm-scripts/etc/X11/xorg-qubes.conf.template \
 		$(DESTDIR)/etc/X11/xorg-qubes.conf.template
-	install -D appvm-scripts/etc/profile.d/qubes-gui.sh \
+	install -m 0644 -D appvm-scripts/etc/profile.d/qubes-gui.sh \
 		$(DESTDIR)/etc/profile.d/qubes-gui.sh
-	install -D appvm-scripts/etc/profile.d/qubes-gui.csh \
+	install -m 0644 -D appvm-scripts/etc/profile.d/qubes-gui.csh \
 		$(DESTDIR)/etc/profile.d/qubes-gui.csh
-	install -D appvm-scripts/etc/profile.d/qubes-session.sh \
+	install -m 0644 -D appvm-scripts/etc/profile.d/qubes-session.sh \
 		$(DESTDIR)/etc/profile.d/qubes-session.sh
-	install -D appvm-scripts/etc/tmpfiles.d/qubes-pulseaudio.conf \
+	install -m 0644 -D appvm-scripts/etc/tmpfiles.d/qubes-pulseaudio.conf \
 		$(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-pulseaudio.conf
-	install -D appvm-scripts/etc/tmpfiles.d/qubes-session.conf \
+	install -m 0644 -D appvm-scripts/etc/tmpfiles.d/qubes-session.conf \
 		$(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-session.conf
 	install -m 0644 -D appvm-scripts/etc/securitylimits.d/90-qubes-gui.conf \
 		$(DESTDIR)/etc/security/limits.d/90-qubes-gui.conf
-	install -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop \
+	install -m 0644 -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop \
 		$(DESTDIR)/etc/xdg/autostart/qubes-pulseaudio.desktop
 ifneq ($(shell lsb_release -cs), xenial)
-	install -D appvm-scripts/etc/xdg/Trolltech.conf \
+	install -m 0644 -D appvm-scripts/etc/xdg/Trolltech.conf \
 		$(DESTDIR)/etc/xdg/Trolltech.conf
 endif
-	install -D appvm-scripts/qubes-gui-vm.gschema.override \
+	install -m 0644 -D appvm-scripts/qubes-gui-vm.gschema.override \
 		$(DESTDIR)$(DATADIR)/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
 	install -m 0644 -D appvm-scripts/etc/qubes-rpc/qubes.SetMonitorLayout \
 		$(DESTDIR)/etc/qubes-rpc/qubes.SetMonitorLayout
