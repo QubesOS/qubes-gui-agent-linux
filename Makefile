@@ -75,55 +75,88 @@ clean:
 	(cd gui-agent && $(MAKE) clean)
 	(cd gui-common && $(MAKE) clean)
 	$(MAKE) -C pulse clean
-	(cd xf86-input-mfndev; if [ -e Makefile ] ; then $(MAKE) distclean; fi; ./bootstrap --clean || echo )
+	(cd xf86-input-mfndev; if [ -e Makefile ] ; then \
+		$(MAKE) distclean; fi; ./bootstrap --clean || echo )
 
 
 install: install-rh
 
 install-rh: appvm install-common
-	install -D appvm-scripts/etc/init.d/qubes-gui-agent $(DESTDIR)/etc/init.d/qubes-gui-agent
-	install -m 0644 -D appvm-scripts/qubes-gui-agent.service $(DESTDIR)/$(SYSLIBDIR)/systemd/system/qubes-gui-agent.service
-	install -D appvm-scripts/etc/sysconfig/desktop $(DESTDIR)/etc/sysconfig/desktop
-	install -D appvm-scripts/etc/sysconfig/modules/qubes-u2mfn.modules $(DESTDIR)/etc/sysconfig/modules/qubes-u2mfn.modules
-	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh $(DESTDIR)/etc/X11/xinit/xinitrc.d/qubes-keymap.sh
-	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh $(DESTDIR)/etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh
-	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/20qt-gnome-desktop-session-id.sh $(DESTDIR)/etc/X11/xinit/xinitrc.d/20qt-gnome-desktop-session-id.sh
-	install -m 0644 -D appvm-scripts/etc/X11/Xwrapper.config $(DESTDIR)/etc/X11/Xwrapper.config
+	install -D appvm-scripts/etc/init.d/qubes-gui-agent \
+		$(DESTDIR)/etc/init.d/qubes-gui-agent
+	install -m 0644 -D appvm-scripts/qubes-gui-agent.service \
+		$(DESTDIR)/$(SYSLIBDIR)/systemd/system/qubes-gui-agent.service
+	install -D appvm-scripts/etc/sysconfig/desktop \
+		$(DESTDIR)/etc/sysconfig/desktop
+	install -D appvm-scripts/etc/sysconfig/modules/qubes-u2mfn.modules \
+		$(DESTDIR)/etc/sysconfig/modules/qubes-u2mfn.modules
+	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh \
+		$(DESTDIR)/etc/X11/xinit/xinitrc.d/qubes-keymap.sh
+	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh \
+		$(DESTDIR)/etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh
+	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/20qt-gnome-desktop-session-id.sh \
+		$(DESTDIR)/etc/X11/xinit/xinitrc.d/20qt-gnome-desktop-session-id.sh
+	install -m 0644 -D appvm-scripts/etc/X11/Xwrapper.config \
+		$(DESTDIR)/etc/X11/Xwrapper.config
 
 install-debian: appvm install-common
-	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh $(DESTDIR)/etc/X11/Xsession.d/90qubes-keymap
+	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh \
+		$(DESTDIR)/etc/X11/Xsession.d/90qubes-keymap
 	install -d $(DESTDIR)/etc/X11/Xsession.d
 	install appvm-scripts/etc/X11/Xsession.d/* $(DESTDIR)/etc/X11/Xsession.d/
 	install -d $(DESTDIR)/etc/xdg
 	install -m 0644 appvm-scripts/etc/xdg-debian/* $(DESTDIR)/etc/xdg
-	install -m 0644 -D appvm-scripts/qubes-gui-agent.service $(DESTDIR)/$(SYSLIBDIR)/systemd/system/qubes-gui-agent.service
+	install -m 0644 -D appvm-scripts/qubes-gui-agent.service \
+		$(DESTDIR)/$(SYSLIBDIR)/systemd/system/qubes-gui-agent.service
 
 install-common:
 	install -D gui-agent/qubes-gui $(DESTDIR)/usr/bin/qubes-gui
-	install -D appvm-scripts/usrbin/qubes-session $(DESTDIR)/usr/bin/qubes-session
-	install -D appvm-scripts/usrbin/qubes-run-xorg.sh $(DESTDIR)/usr/bin/qubes-run-xorg.sh
-	install -D appvm-scripts/usrbin/qubes-change-keyboard-layout $(DESTDIR)/usr/bin/qubes-change-keyboard-layout
-	install -D appvm-scripts/usrbin/qubes-set-monitor-layout $(DESTDIR)/usr/bin/qubes-set-monitor-layout
-	install -D pulse/start-pulseaudio-with-vchan $(DESTDIR)/usr/bin/start-pulseaudio-with-vchan
-	install -D pulse/qubes-default.pa $(DESTDIR)/etc/pulse/qubes-default.pa
-	install -D pulse/module-vchan-sink.so $(DESTDIR)$(LIBDIR)/pulse-$(PA_VER)/modules/module-vchan-sink.so
-	install -D xf86-input-mfndev/src/.libs/qubes_drv.so $(DESTDIR)$(LIBDIR)/xorg/modules/drivers/qubes_drv.so
-	install -D xf86-video-dummy/src/.libs/dummyqbs_drv.so $(DESTDIR)$(LIBDIR)/xorg/modules/drivers/dummyqbs_drv.so
-	install -D appvm-scripts/etc/X11/xorg-qubes.conf.template $(DESTDIR)/etc/X11/xorg-qubes.conf.template
-	install -D appvm-scripts/etc/profile.d/qubes-gui.sh $(DESTDIR)/etc/profile.d/qubes-gui.sh
-	install -D appvm-scripts/etc/profile.d/qubes-gui.csh $(DESTDIR)/etc/profile.d/qubes-gui.csh
-	install -D appvm-scripts/etc/profile.d/qubes-session.sh $(DESTDIR)/etc/profile.d/qubes-session.sh
-	install -D appvm-scripts/etc/tmpfiles.d/qubes-pulseaudio.conf $(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-pulseaudio.conf
-	install -D appvm-scripts/etc/tmpfiles.d/qubes-session.conf $(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-session.conf
-	install -m 0644 -D appvm-scripts/etc/securitylimits.d/90-qubes-gui.conf $(DESTDIR)/etc/security/limits.d/90-qubes-gui.conf
-	install -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop $(DESTDIR)/etc/xdg/autostart/qubes-pulseaudio.desktop
+	install -D appvm-scripts/usrbin/qubes-session \
+		$(DESTDIR)/usr/bin/qubes-session
+	install -D appvm-scripts/usrbin/qubes-run-xorg.sh \
+		$(DESTDIR)/usr/bin/qubes-run-xorg.sh
+	install -D appvm-scripts/usrbin/qubes-change-keyboard-layout \
+		$(DESTDIR)/usr/bin/qubes-change-keyboard-layout
+	install -D appvm-scripts/usrbin/qubes-set-monitor-layout \
+		$(DESTDIR)/usr/bin/qubes-set-monitor-layout
+	install -D pulse/start-pulseaudio-with-vchan \
+		$(DESTDIR)/usr/bin/start-pulseaudio-with-vchan
+	install -D pulse/qubes-default.pa \
+		$(DESTDIR)/etc/pulse/qubes-default.pa
+	install -D pulse/module-vchan-sink.so \
+		$(DESTDIR)$(LIBDIR)/pulse-$(PA_VER)/modules/module-vchan-sink.so
+	install -D xf86-input-mfndev/src/.libs/qubes_drv.so \
+		$(DESTDIR)$(LIBDIR)/xorg/modules/drivers/qubes_drv.so
+	install -D xf86-video-dummy/src/.libs/dummyqbs_drv.so \
+		$(DESTDIR)$(LIBDIR)/xorg/modules/drivers/dummyqbs_drv.so
+	install -D appvm-scripts/etc/X11/xorg-qubes.conf.template \
+		$(DESTDIR)/etc/X11/xorg-qubes.conf.template
+	install -D appvm-scripts/etc/profile.d/qubes-gui.sh \
+		$(DESTDIR)/etc/profile.d/qubes-gui.sh
+	install -D appvm-scripts/etc/profile.d/qubes-gui.csh \
+		$(DESTDIR)/etc/profile.d/qubes-gui.csh
+	install -D appvm-scripts/etc/profile.d/qubes-session.sh \
+		$(DESTDIR)/etc/profile.d/qubes-session.sh
+	install -D appvm-scripts/etc/tmpfiles.d/qubes-pulseaudio.conf \
+		$(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-pulseaudio.conf
+	install -D appvm-scripts/etc/tmpfiles.d/qubes-session.conf \
+		$(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-session.conf
+	install -m 0644 -D appvm-scripts/etc/securitylimits.d/90-qubes-gui.conf \
+		$(DESTDIR)/etc/security/limits.d/90-qubes-gui.conf
+	install -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop \
+		$(DESTDIR)/etc/xdg/autostart/qubes-pulseaudio.desktop
 ifneq ($(shell lsb_release -cs), xenial)
-	install -D appvm-scripts/etc/xdg/Trolltech.conf $(DESTDIR)/etc/xdg/Trolltech.conf
+	install -D appvm-scripts/etc/xdg/Trolltech.conf \
+		$(DESTDIR)/etc/xdg/Trolltech.conf
 endif
-	install -D appvm-scripts/qubes-gui-vm.gschema.override $(DESTDIR)$(DATADIR)/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
-	install -m 0644 -D appvm-scripts/etc/qubes-rpc/qubes.SetMonitorLayout $(DESTDIR)/etc/qubes-rpc/qubes.SetMonitorLayout
-	install -D window-icon-updater/icon-sender $(DESTDIR)/usr/lib/qubes/icon-sender
-	install -m 0644 -D window-icon-updater/qubes-icon-sender.desktop $(DESTDIR)/etc/xdg/autostart/qubes-icon-sender.desktop
+	install -D appvm-scripts/qubes-gui-vm.gschema.override \
+		$(DESTDIR)$(DATADIR)/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
+	install -m 0644 -D appvm-scripts/etc/qubes-rpc/qubes.SetMonitorLayout \
+		$(DESTDIR)/etc/qubes-rpc/qubes.SetMonitorLayout
+	install -D window-icon-updater/icon-sender \
+		$(DESTDIR)/usr/lib/qubes/icon-sender
+	install -m 0644 -D window-icon-updater/qubes-icon-sender.desktop \
+		$(DESTDIR)/etc/xdg/autostart/qubes-icon-sender.desktop
 	install -D -m 0644 appvm-scripts/usr/lib/sysctl.d/30-qubes-gui-agent.conf \
 		$(DESTDIR)/usr/lib/sysctl.d/30-qubes-gui-agent.conf
 	install -d $(DESTDIR)/var/log/qubes
