@@ -5,11 +5,11 @@
 #export DH_VERBOSE=1
 
 include /usr/share/dpkg/default.mk
-export DESTDIR=$(shell pwd)/debian/qubes-gui-agent
+export DESTDIR=$(shell pwd)/debian/tmp
 export LIBDIR=/usr/lib
 
 %:
-	dh $@ --with systemd
+	dh $@ --with systemd,xsf
 
 override_dh_auto_build:
 	make appvm
