@@ -31,7 +31,7 @@ set -e
 
 if [ "$1" = "remove" ] ; then
     systemctl disable qubes-gui-agent.service
-    /usr/bin/glib-compile-schemas /usr/share/glib-2.0/schemas &> /dev/null || true
+    glib-compile-schemas /usr/share/glib-2.0/schemas &> /dev/null || true
 fi
 
 # dh_installdeb will replace this with shell code automatically
