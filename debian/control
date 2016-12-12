@@ -34,6 +34,7 @@ Depends:
     x11-xserver-utils,
     xenstore-utils,
     qubes-core-agent (>= 3.0.14),
+    qubesdb-vm,
     libpulse0,
     libxdamage1,
     libxcomposite1,
