@@ -6,7 +6,7 @@ Build-Depends:
     libpulse-dev,
     libtool,
     automake,
-    xorg-dev,
+    xserver-xorg-dev,
     xutils-dev,
     libvchan-xen-dev,
     libx11-dev,
@@ -40,6 +40,8 @@ Depends:
     libxt6,
     libx11-6,
     python-xpyb,
+    xserver-xorg-video-dummyqbs (= ${binary:Version}),
+    xserver-xorg-input-qubes (= ${binary:Version}),
     ${shlibs:Depends},
     ${misc:Depends}
 Recommends: qt4-qtconfig
@@ -47,3 +49,30 @@ Provides: x-display-manager
 Description: Makes X11 windows available to qubes dom0
  The Qubes GUI agent allows the forwarding of running app windows to the
  qubes dom0. It also includes various extras such as copy/paste support.
+
+Package: xserver-xorg-video-dummyqbs
+Architecture: any
+Depends:
+ ${xviddriver:Depends},
+ ${shlibs:Depends},
+ ${misc:Depends}
+Provides:
+ ${xviddriver:Provides}
+Replaces: qubes-gui-agent (<< 3.1.10)
+Breaks: qubes-gui-agent (<< 3.1.10)
+Description: Dummy X video driver for qubes-gui-agent
+ Dummy X video driver for Qubes VM, with XRandr support.
+
+Package: xserver-xorg-input-qubes
+Architecture: any
+Depends:
+ ${xinpdriver:Depends},
+ ${shlibs:Depends},
+ ${misc:Depends}
+Provides:
+ ${xinpdriver:Provides}
+Replaces: qubes-gui-agent (<< 3.1.10)
+Breaks: qubes-gui-agent (<< 3.1.10)
+Description: X input driver for injecting events from qubes-gui-agent
+ This driver inject input events delivered through qubes-gui-agent.
+ Additionally it helps retrieving composition buffers of windows.

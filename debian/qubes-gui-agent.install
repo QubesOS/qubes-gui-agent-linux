@@ -1,0 +1,9 @@
+usr/bin/*
+usr/share/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
+usr/lib/qubes/icon-sender
+usr/lib/pulse-*/modules/module-vchan-sink.so
+usr/lib/sysctl.d/30-qubes-gui-agent.conf
+usr/lib/tmpfiles.d/*
+lib/systemd/system/qubes-gui-agent.service
+etc/*
+var/log/qubes
