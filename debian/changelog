@@ -1,3 +1,16 @@
+qubes-gui-agent (3.2.11-1) unstable; urgency=medium
+
+  * travis: drop debootstrap workaround
+  * debian: fail the build if any file in not packaged
+  * debian: split xorg drivers into separate packages
+  * makefile: wrap long lines
+  * makefile: don't install non-executables as executables
+  * debian: add missing qubesdb-vm dependency
+  * debian: add missing python dependency
+  * debian: do not use absolute paths in maintainer scripts
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 12 Dec 2016 05:34:57 +0100
+
 qubes-gui-agent (3.2.10-1) unstable; urgency=medium
 
   [ unman ]
