@@ -1,3 +1,13 @@
+qubes-gui-agent (3.1.10) unstable; urgency=medium
+
+  * rpm: fix pulseaudio version
+  * xf86-video-dummy: adjust for xorg-server-1.19.0
+  * debian: fail the build if any file in not packaged
+  * debian: split xorg drivers into separate packages
+  * debian: add missing Build-Depends: x11proto-xf86dga-dev
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 15 Dec 2016 14:55:17 +0100
+
 qubes-gui-agent (3.1.9) wheezy; urgency=medium
 
   * Convert tabs to spaces
