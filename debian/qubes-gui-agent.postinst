@@ -21,8 +21,6 @@ set -e
 
 case "${1}" in
     configure)
-        systemctl enable qubes-gui-agent.service 2> /dev/null
-
         sed -i '/^autospawn/d' /etc/pulse/client.conf
         echo autospawn=no >> /etc/pulse/client.conf
 
