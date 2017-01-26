@@ -1,3 +1,19 @@
+qubes-gui-agent (3.2.12-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * debian: add missing Build-Depends: x11proto-xf86dga-dev
+  * debian: remove manual systemctl call
+
+  [ Olivier MEDOC ]
+  * fix indentation error triggering gcc -Werror=misleading-indentation
+  * archlinux: split dependencies in multiple lines to ease git updates
+  * archlinux: bump version of xorg-server to 1.19.0
+  * archlinux: ensure proxy configuration is applied after update
+  * Added pulseaudio 10.0 headers
+  * archlinux: bumped pulseaudio version to 10.0
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 26 Jan 2017 04:26:08 +0100
+
 qubes-gui-agent (3.2.11-1) unstable; urgency=medium
 
   * travis: drop debootstrap workaround
