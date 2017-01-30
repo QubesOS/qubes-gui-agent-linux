@@ -145,7 +145,7 @@ install-common:
 		$(DESTDIR)/etc/security/limits.d/90-qubes-gui.conf
 	install -m 0644 -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop \
 		$(DESTDIR)/etc/xdg/autostart/qubes-pulseaudio.desktop
-ifneq ($(shell lsb_release -cs), xenial)
+ifneq ($(shell lsb_release -is), Ubuntu)
 	install -m 0644 -D appvm-scripts/etc/xdg/Trolltech.conf \
 		$(DESTDIR)/etc/xdg/Trolltech.conf
 endif
