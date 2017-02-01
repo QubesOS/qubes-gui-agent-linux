@@ -2,10 +2,11 @@ Index: gui-agent-linux/appvm-scripts/etc/X11/Xsession.d/25xdg-qubes-settings
 ===================================================================
 --- gui-agent-linux.orig/appvm-scripts/etc/X11/Xsession.d/25xdg-qubes-settings
 +++ gui-agent-linux/appvm-scripts/etc/X11/Xsession.d/25xdg-qubes-settings
-@@ -17,3 +17,7 @@ if [ -x /usr/bin/xsettingsd ]; then
+@@ -16,3 +16,8 @@ if [ -x /usr/bin/xsettingsd ]; then
+     installConfigurationFile "Xresources"
      /usr/bin/xsettingsd &
  fi
- 
++
 +if [ "$XDG_DATA_DIRS" = "" ]; then
 +    XDG_DATA_DIRS='/usr/share/ubuntu/:/usr/share/gnome/:/usr/local/share/:/usr/share/'
 +    export XDG_DATA_DIRS
