@@ -97,16 +97,16 @@
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
 static int QubesPreInit(InputDriverPtr drv, InputInfoPtr pInfo,
-				  int flags);
+                        int flags);
 #else
 static InputInfoPtr QubesPreInit(InputDriverPtr drv, IDevPtr dev,
-				  int flags);
+                                 int flags);
 #endif
 
 static void QubesUnInit(InputDriverPtr drv, InputInfoPtr pInfo,
-			 int flags);
+                        int flags);
 static pointer QubesPlug(pointer module, pointer options, int *errmaj,
-			  int *errmin);
+                         int *errmin);
 static void QubesUnplug(pointer p);
 static void QubesReadInput(InputInfoPtr pInfo);
 static int QubesControl(DeviceIntPtr device, int what);
@@ -116,33 +116,33 @@ static int _qubes_init_axes(DeviceIntPtr device);
 
 
 _X_EXPORT InputDriverRec QUBES = {
-	1,
-	"qubes",
-	NULL,
-	QubesPreInit,
-	QubesUnInit,
-	NULL,
-	0
+    1,
+    "qubes",
+    NULL,
+    QubesPreInit,
+    QubesUnInit,
+    NULL,
+    0
 };
 
 static XF86ModuleVersionInfo QubesVersionRec = {
-	"qubes",
-	MODULEVENDORSTRING,
-	MODINFOSTRING1,
-	MODINFOSTRING2,
-	XORG_VERSION_CURRENT,
-	PACKAGE_VERSION_MAJOR, PACKAGE_VERSION_MINOR,
-	PACKAGE_VERSION_PATCHLEVEL,
-	ABI_CLASS_XINPUT,
-	ABI_XINPUT_VERSION,
-	MOD_CLASS_XINPUT,
-	{0, 0, 0, 0}
+    "qubes",
+    MODULEVENDORSTRING,
+    MODINFOSTRING1,
+    MODINFOSTRING2,
+    XORG_VERSION_CURRENT,
+    PACKAGE_VERSION_MAJOR, PACKAGE_VERSION_MINOR,
+    PACKAGE_VERSION_PATCHLEVEL,
+    ABI_CLASS_XINPUT,
+    ABI_XINPUT_VERSION,
+    MOD_CLASS_XINPUT,
+    {0, 0, 0, 0}
 };
 
 _X_EXPORT XF86ModuleData qubesModuleData = {
-	&QubesVersionRec,
-	&QubesPlug,
-	&QubesUnplug
+    &QubesVersionRec,
+    &QubesPlug,
+    &QubesUnplug
 };
 
 static void QubesUnplug(pointer p)
@@ -152,290 +152,290 @@ static void QubesUnplug(pointer p)
 static pointer
 QubesPlug(pointer module, pointer options, int *errmaj, int *errmin)
 {
-	xf86AddInputDriver(&QUBES, module, 0);
-	return module;
+    xf86AddInputDriver(&QUBES, module, 0);
+    return module;
 };
 
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
 static int QubesPreInit(InputDriverPtr drv,
-				  InputInfoPtr pInfo, int flags)
+                        InputInfoPtr pInfo, int flags)
 #else
 static InputInfoPtr QubesPreInit(InputDriverPtr drv,
-				  IDevPtr dev, int flags)
+                                 IDevPtr dev, int flags)
 #endif
 {
-	QubesDevicePtr pQubes;
+    QubesDevicePtr pQubes;
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
-	InputInfoPtr pInfo;
+    InputInfoPtr pInfo;
 
-	if (!(pInfo = xf86AllocateInput(drv, 0)))
-		return NULL;
+    if (!(pInfo = xf86AllocateInput(drv, 0)))
+        return NULL;
 #endif
 
-	pQubes = calloc(1, sizeof(QubesDeviceRec));
-	if (!pQubes) {
-		pInfo->private = NULL;
-		xf86DeleteInput(pInfo, 0);
+    pQubes = calloc(1, sizeof(QubesDeviceRec));
+    if (!pQubes) {
+        pInfo->private = NULL;
+        xf86DeleteInput(pInfo, 0);
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
-		return BadAlloc;
+        return BadAlloc;
 #else
-		return NULL;
+        return NULL;
 #endif
-	}
+    }
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
-	pInfo->name = xstrdup(dev->identifier);
-	pInfo->flags = 0;
-	pInfo->conf_idev = dev;
+    pInfo->name = xstrdup(dev->identifier);
+    pInfo->flags = 0;
+    pInfo->conf_idev = dev;
 #endif
 
-	pInfo->private = pQubes;
-	pInfo->type_name = XI_MOUSE;	/* see XI.h */
-	pInfo->read_input = QubesReadInput;	/* new data avl */
-	pInfo->switch_mode = NULL;	/* toggle absolute/relative mode */
-	pInfo->device_control = QubesControl;	/* enable/disable dev */
-	/* process driver specific options */
-	pQubes->device = xf86SetStrOption(
+    pInfo->private = pQubes;
+    pInfo->type_name = XI_MOUSE;    /* see XI.h */
+    pInfo->read_input = QubesReadInput;    /* new data avl */
+    pInfo->switch_mode = NULL;    /* toggle absolute/relative mode */
+    pInfo->device_control = QubesControl;    /* enable/disable dev */
+    /* process driver specific options */
+    pQubes->device = xf86SetStrOption(
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
-			pInfo->options,
+            pInfo->options,
 #else
-			dev->commonOptions,
+            dev->commonOptions,
 #endif
-			"Device", "/var/run/xf86-qubes-socket");
+            "Device", "/var/run/xf86-qubes-socket");
 
-	xf86Msg(X_INFO, "%s: Using device %s.\n", pInfo->name,
-		pQubes->device);
-//	xf86Msg(X_INFO, "%s: dixLookupWindow=%p.\n", pInfo->name,
-//		dixLookupWindow);
-//	xf86Msg(X_INFO, "%s: dixLookupResourceByClass=%p.\n", pInfo->name,
-//		dixLookupResourceByClass);
+    xf86Msg(X_INFO, "%s: Using device %s.\n", pInfo->name,
+            pQubes->device);
+//    xf86Msg(X_INFO, "%s: dixLookupWindow=%p.\n", pInfo->name,
+//        dixLookupWindow);
+//    xf86Msg(X_INFO, "%s: dixLookupResourceByClass=%p.\n", pInfo->name,
+//        dixLookupResourceByClass);
 
-	/* process generic options */
+    /* process generic options */
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
-	xf86CollectInputOptions(pInfo, NULL);
+    xf86CollectInputOptions(pInfo, NULL);
 #else
-	xf86CollectInputOptions(pInfo, NULL, NULL);
+    xf86CollectInputOptions(pInfo, NULL, NULL);
 #endif
-	xf86ProcessCommonOptions(pInfo, pInfo->options);
-	/* Open sockets, init device files, etc. */
+    xf86ProcessCommonOptions(pInfo, pInfo->options);
+    /* Open sockets, init device files, etc. */
 #if 0
-	SYSCALL(pInfo->fd = open(pQubes->device, O_RDWR | O_NONBLOCK));
-	if (pInfo->fd == -1) {
-		xf86Msg(X_ERROR, "%s: failed to open %s.",
-			pInfo->name, pQubes->device);
-		pInfo->private = NULL;
-		free(pQubes);
-		xf86DeleteInput(pInfo, 0);
-		return NULL;
-	}
-	/* do more funky stuff */
-	close(pInfo->fd);
+    SYSCALL(pInfo->fd = open(pQubes->device, O_RDWR | O_NONBLOCK));
+    if (pInfo->fd == -1) {
+        xf86Msg(X_ERROR, "%s: failed to open %s.",
+            pInfo->name, pQubes->device);
+        pInfo->private = NULL;
+        free(pQubes);
+        xf86DeleteInput(pInfo, 0);
+        return NULL;
+    }
+    /* do more funky stuff */
+    close(pInfo->fd);
 #endif
-	pInfo->fd = -1;
+    pInfo->fd = -1;
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
-	return Success;
+    return Success;
 #else
-	pInfo->flags |= XI86_OPEN_ON_INIT;
-	pInfo->flags |= XI86_CONFIGURED;
-	return pInfo;
+    pInfo->flags |= XI86_OPEN_ON_INIT;
+    pInfo->flags |= XI86_CONFIGURED;
+    return pInfo;
 #endif
 }
 
 static void QubesUnInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
 {
-	QubesDevicePtr pQubes = pInfo->private;
-	if (pQubes->device) {
-		free(pQubes->device);
-		pQubes->device = NULL;
-		/* Common error - pInfo->private must be NULL or valid memoy before
-		 * passing into xf86DeleteInput */
-		pInfo->private = NULL;
-	}
-	xf86DeleteInput(pInfo, 0);
+    QubesDevicePtr pQubes = pInfo->private;
+    if (pQubes->device) {
+        free(pQubes->device);
+        pQubes->device = NULL;
+        /* Common error - pInfo->private must be NULL or valid memoy before
+         * passing into xf86DeleteInput */
+        pInfo->private = NULL;
+    }
+    xf86DeleteInput(pInfo, 0);
 }
 
 static int _qubes_init_kbd(DeviceIntPtr device)
 {
-         InitKeyboardDeviceStruct(device, NULL, NULL, NULL);
-	 return Success;
+    InitKeyboardDeviceStruct(device, NULL, NULL, NULL);
+    return Success;
 }
-                                    
+
 static int _qubes_init_buttons(DeviceIntPtr device)
 {
-	InputInfoPtr pInfo = device->public.devicePrivate;
-	QubesDevicePtr pQubes = pInfo->private;
-	CARD8 *map;
-	int i;
-	int ret = Success;
-	const int num_buttons = 7;
+    InputInfoPtr pInfo = device->public.devicePrivate;
+    QubesDevicePtr pQubes = pInfo->private;
+    CARD8 *map;
+    int i;
+    int ret = Success;
+    const int num_buttons = 7;
 
-	map = calloc(num_buttons+1, sizeof(CARD8));
+    map = calloc(num_buttons+1, sizeof(CARD8));
 
-	xf86Msg(X_INFO, "%s: num_buttons=%d\n", pInfo->name, num_buttons);
-	
-	for (i = 1; i <= num_buttons; i++)
-		map[i] = i;
+    xf86Msg(X_INFO, "%s: num_buttons=%d\n", pInfo->name, num_buttons);
 
-	pQubes->labels = calloc(num_buttons, sizeof(Atom));
+    for (i = 1; i <= num_buttons; i++)
+        map[i] = i;
 
-	if (!InitButtonClassDeviceStruct
-	    (device, num_buttons, pQubes->labels, map)) {
-		xf86Msg(X_ERROR, "%s: Failed to register buttons.\n",
-			pInfo->name);
-		ret = BadAlloc;
-	}
+    pQubes->labels = calloc(num_buttons, sizeof(Atom));
 
-	free(map);
-	return ret;
+    if (!InitButtonClassDeviceStruct(device, num_buttons,
+                                     pQubes->labels, map)) {
+        xf86Msg(X_ERROR, "%s: Failed to register buttons.\n",
+                pInfo->name);
+        ret = BadAlloc;
+    }
+
+    free(map);
+    return ret;
 }
 
 static void QubesInitAxesLabels(QubesDevicePtr pQubes, int natoms,
-				 Atom * atoms)
+                                Atom * atoms)
 {
 #ifdef HAVE_LABELS
-	Atom atom;
-	int axis;
-	char **labels;
-	int labels_len = 0;
-	char *misc_label;
+    Atom atom;
+    int axis;
+    char **labels;
+    int labels_len = 0;
+    char *misc_label;
 
-	labels = rel_labels;
-	labels_len = ArrayLength(rel_labels);
-	misc_label = AXIS_LABEL_PROP_REL_MISC;
+    labels = rel_labels;
+    labels_len = ArrayLength(rel_labels);
+    misc_label = AXIS_LABEL_PROP_REL_MISC;
 
-	memset(atoms, 0, natoms * sizeof(Atom));
+    memset(atoms, 0, natoms * sizeof(Atom));
 
-	/* Now fill the ones we know */
-	for (axis = 0; axis < labels_len; axis++) {
-		if (pQubes->axis_map[axis] == -1)
-			continue;
+    /* Now fill the ones we know */
+    for (axis = 0; axis < labels_len; axis++) {
+        if (pQubes->axis_map[axis] == -1)
+            continue;
 
-		atom = XIGetKnownProperty(labels[axis]);
-		if (!atom)	/* Should not happen */
-			continue;
+        atom = XIGetKnownProperty(labels[axis]);
+        if (!atom)    /* Should not happen */
+            continue;
 
-		atoms[pQubes->axis_map[axis]] = atom;
-	}
+        atoms[pQubes->axis_map[axis]] = atom;
+    }
 #endif
 }
 
 
 static int _qubes_init_axes(DeviceIntPtr device)
 {
-	InputInfoPtr pInfo = device->public.devicePrivate;
-	QubesDevicePtr pQubes = pInfo->private;
-	int i;
-	const int num_axes = 2;
-	Atom *atoms;
+    InputInfoPtr pInfo = device->public.devicePrivate;
+    QubesDevicePtr pQubes = pInfo->private;
+    int i;
+    const int num_axes = 2;
+    Atom *atoms;
 
-	pQubes->num_vals = num_axes;
-	atoms = malloc(pQubes->num_vals * sizeof(Atom));
+    pQubes->num_vals = num_axes;
+    atoms = malloc(pQubes->num_vals * sizeof(Atom));
 
-	QubesInitAxesLabels(pQubes, pQubes->num_vals, atoms);
-	if (!InitValuatorClassDeviceStruct(device, num_axes,
+    QubesInitAxesLabels(pQubes, pQubes->num_vals, atoms);
+    if (!InitValuatorClassDeviceStruct(device, num_axes,
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
-					   atoms,
+                                       atoms,
 #endif
-					   GetMotionHistorySize(), 0))
-		return BadAlloc;
+                                       GetMotionHistorySize(), 0))
+        return BadAlloc;
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
-	pInfo->dev->valuator->mode = Relative;
+    pInfo->dev->valuator->mode = Relative;
 #endif
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 13
-	if (!InitAbsoluteClassDeviceStruct(device))
-		return BadAlloc;
+    if (!InitAbsoluteClassDeviceStruct(device))
+        return BadAlloc;
 #endif
 
-	for (i = 0; i < pQubes->axes; i++) {
-		xf86InitValuatorAxisStruct(device, i, *pQubes->labels, -1,
-					   -1, 1, 1, 1
+    for (i = 0; i < pQubes->axes; i++) {
+        xf86InitValuatorAxisStruct(device, i, *pQubes->labels, -1,
+                -1, 1, 1, 1
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
-					   , Relative
+                , Relative
 #endif
-					   );
-		xf86InitValuatorDefaults(device, i);
-	}
-	free(atoms);
-	return Success;
+                );
+        xf86InitValuatorDefaults(device, i);
+    }
+    free(atoms);
+    return Success;
 }
 int connect_unix_socket(QubesDevicePtr pQubes);
 int connect_unix_socket(QubesDevicePtr pQubes)
 {
-	int s, len;
-	struct sockaddr_un remote;
+    int s, len;
+    struct sockaddr_un remote;
 
-	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-		perror("socket");
-		return -1;
-	}
+    if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+        perror("socket");
+        return -1;
+    }
 
 
-	remote.sun_family = AF_UNIX;
-	strncpy(remote.sun_path, pQubes->device, sizeof(remote.sun_path));
-	len = strlen(remote.sun_path) + sizeof(remote.sun_family);
-	if (connect(s, (struct sockaddr *) &remote, len) == -1) {
-		perror("connect");
-		close(s);
-		return -1;
-	}
-	return s;
+    remote.sun_family = AF_UNIX;
+    strncpy(remote.sun_path, pQubes->device, sizeof(remote.sun_path));
+    len = strlen(remote.sun_path) + sizeof(remote.sun_family);
+    if (connect(s, (struct sockaddr *) &remote, len) == -1) {
+        perror("connect");
+        close(s);
+        return -1;
+    }
+    return s;
 }
 
 static void
 QubesPtrCtrlProc (DeviceIntPtr device, PtrCtrl *ctrl)
 {
-	    /* This function intentionally left blank */
+    /* This function intentionally left blank */
 }
 
 static int QubesControl(DeviceIntPtr device, int what)
 {
-	InputInfoPtr pInfo = device->public.devicePrivate;
-	QubesDevicePtr pQubes = pInfo->private;
+    InputInfoPtr pInfo = device->public.devicePrivate;
+    QubesDevicePtr pQubes = pInfo->private;
 
-	switch (what) {
-	case DEVICE_INIT:
-		device->public.on = FALSE;
-		_qubes_init_buttons(device);
-		_qubes_init_axes(device);
-		_qubes_init_kbd(device);
-		InitPtrFeedbackClassDeviceStruct(device, QubesPtrCtrlProc);
-		break;
+    switch (what) {
+    case DEVICE_INIT:
+        device->public.on = FALSE;
+        _qubes_init_buttons(device);
+        _qubes_init_axes(device);
+        _qubes_init_kbd(device);
+        InitPtrFeedbackClassDeviceStruct(device, QubesPtrCtrlProc);
+        break;
 
-		/* Switch device on.  Establish socket, start event delivery.  */
-	case DEVICE_ON:
-		xf86Msg(X_INFO, "%s: On.\n", pInfo->name);
-		if (device->public.on)
-			break;
-		do {
-			pInfo->fd = connect_unix_socket(pQubes);
-			if (pInfo->fd < 0) {
-				xf86Msg(X_ERROR,
-					"%s: cannot open device; sleeping...\n",
-					pInfo->name);
-				sleep(1);
-			}
-		} while (pInfo->fd < 0);
+        /* Switch device on.  Establish socket, start event delivery.  */
+    case DEVICE_ON:
+        xf86Msg(X_INFO, "%s: On.\n", pInfo->name);
+        if (device->public.on)
+            break;
+        do {
+            pInfo->fd = connect_unix_socket(pQubes);
+            if (pInfo->fd < 0) {
+                xf86Msg(X_ERROR,
+                        "%s: cannot open device; sleeping...\n",
+                        pInfo->name);
+                sleep(1);
+            }
+        } while (pInfo->fd < 0);
 
-		xf86FlushInput(pInfo->fd);
-		xf86AddEnabledDevice(pInfo);
-		device->public.on = TRUE;
-		break;
-	case DEVICE_OFF:
-		xf86Msg(X_INFO, "%s: Off.\n", pInfo->name);
-		if (!device->public.on)
-			break;
-		xf86RemoveEnabledDevice(pInfo);
-		close(pInfo->fd);
-		pInfo->fd = -1;
-		device->public.on = FALSE;
-		break;
-	case DEVICE_CLOSE:
-		/* free what we have to free */
-		break;
-	}
-	return Success;
+        xf86FlushInput(pInfo->fd);
+        xf86AddEnabledDevice(pInfo);
+        device->public.on = TRUE;
+        break;
+    case DEVICE_OFF:
+        xf86Msg(X_INFO, "%s: Off.\n", pInfo->name);
+        if (!device->public.on)
+            break;
+        xf86RemoveEnabledDevice(pInfo);
+        close(pInfo->fd);
+        pInfo->fd = -1;
+        device->public.on = FALSE;
+        break;
+    case DEVICE_CLOSE:
+        /* free what we have to free */
+        break;
+    }
+    return Success;
 }
 
 /* The following helper is copied from Xen sources */
@@ -463,133 +463,133 @@ static void dump_window_mfns(WindowPtr pWin, int id, int fd);
 
 static void dump_window_mfns(WindowPtr pWin, int id, int fd)
 {
-	ScreenPtr screen;
-	PixmapPtr pixmap;
-	int i, off, num_mfn, mfn;
-	struct shm_cmd shmcmd;
-	char *pixels, *pixels_end;
-	if (!pWin)
-		return;
+    ScreenPtr screen;
+    PixmapPtr pixmap;
+    int i, off, num_mfn, mfn;
+    struct shm_cmd shmcmd;
+    char *pixels, *pixels_end;
+    if (!pWin)
+        return;
 
-	screen = pWin->drawable.pScreen;
-	pixmap = (*screen->GetWindowPixmap) (pWin);
+    screen = pWin->drawable.pScreen;
+    pixmap = (*screen->GetWindowPixmap) (pWin);
 
-	pixels = pixmap->devPrivate.ptr;
-	pixels_end =
-	    pixels +
-	    pixmap->drawable.width * pixmap->drawable.height *
-	    pixmap->drawable.bitsPerPixel / 8;
-	off = ((long) pixels) & (4096 - 1);
-	pixels -= off;
-	num_mfn = ((long) pixels_end - (long) pixels + 4095) >> 12;
-	shmcmd.width = pixmap->drawable.width;
-	shmcmd.height = pixmap->drawable.height;
-	shmcmd.bpp = pixmap->drawable.bitsPerPixel;
-	shmcmd.off = off;
-	if (!pixmap->devPrivate.ptr)
-		num_mfn = 0;
-	shmcmd.num_mfn = num_mfn;
-	shmcmd.domid = 0x12345678; // just a placeholder; qubes_guid must not trust it anyway
+    pixels = pixmap->devPrivate.ptr;
+    pixels_end =
+        pixels +
+        pixmap->drawable.width * pixmap->drawable.height *
+        pixmap->drawable.bitsPerPixel / 8;
+    off = ((long) pixels) & (4096 - 1);
+    pixels -= off;
+    num_mfn = ((long) pixels_end - (long) pixels + 4095) >> 12;
+    shmcmd.width = pixmap->drawable.width;
+    shmcmd.height = pixmap->drawable.height;
+    shmcmd.bpp = pixmap->drawable.bitsPerPixel;
+    shmcmd.off = off;
+    if (!pixmap->devPrivate.ptr)
+        num_mfn = 0;
+    shmcmd.num_mfn = num_mfn;
+    shmcmd.domid = 0x12345678; // just a placeholder; qubes_guid must not trust it anyway
 
-	if (write_exact(fd, &shmcmd, sizeof(shmcmd)) == -1) {
-		char errbuf[128];
-		if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0)
-			xf86Msg(X_ERROR,
-			    "failed write to gui-agent: %s\n", errbuf);
-		return;
-	}
-	if (mlock(pixels, 4096 * num_mfn) == -1) {
-		char errbuf[128];
-		if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0)
-			xf86Msg(X_ERROR,
-			    "failed mlock memory at %p + %#x, (%d x %d): %s\n",
-                pixels, 4096 * num_mfn, shmcmd.width, shmcmd.height,
-                errbuf);
+    if (write_exact(fd, &shmcmd, sizeof(shmcmd)) == -1) {
+        char errbuf[128];
+        if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0)
+            xf86Msg(X_ERROR,
+                    "failed write to gui-agent: %s\n", errbuf);
+        return;
     }
-	for (i = 0; i < num_mfn; i++) {
-		u2mfn_get_mfn_for_page ((long)(pixels + 4096 * i), &mfn);
-		if (write_exact(fd, &mfn, 4) == -1) {
-			char errbuf[128];
-			if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0)
-				xf86Msg(X_ERROR,
-				    "failed write to gui-agent: %s\n", errbuf);
-			return;
-		}
-	}
+    if (mlock(pixels, 4096 * num_mfn) == -1) {
+        char errbuf[128];
+        if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0)
+            xf86Msg(X_ERROR,
+                    "failed mlock memory at %p + %#x, (%d x %d): %s\n",
+                    pixels, 4096 * num_mfn, shmcmd.width, shmcmd.height,
+                    errbuf);
+    }
+    for (i = 0; i < num_mfn; i++) {
+        u2mfn_get_mfn_for_page ((long)(pixels + 4096 * i), &mfn);
+        if (write_exact(fd, &mfn, 4) == -1) {
+            char errbuf[128];
+            if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0)
+                xf86Msg(X_ERROR,
+                        "failed write to gui-agent: %s\n", errbuf);
+            return;
+        }
+    }
 }
 
 
 static WindowPtr id2winptr(unsigned int xid)
 {
-	int ret;
-	WindowPtr result = NULL;
-	ret = dixLookupResourceByClass((void**)&result, xid, RC_DRAWABLE, 0, 0);
-	if (ret == Success)
-		return result;
-	else
-		return NULL;
+    int ret;
+    WindowPtr result = NULL;
+    ret = dixLookupResourceByClass((void**)&result, xid, RC_DRAWABLE, 0, 0);
+    if (ret == Success)
+        return result;
+    else
+        return NULL;
 }
 
 static void process_request(int fd, InputInfoPtr pInfo)
 {
-	WindowPtr w1;
-	int ret;
-	struct xdriver_cmd cmd;
+    WindowPtr w1;
+    int ret;
+    struct xdriver_cmd cmd;
 
 
-	ret = read(fd, &cmd, sizeof(cmd));
-	if (ret == 0) {
-		xf86Msg(X_INFO, "randdev: unix closed\n");
-		close(fd);
-		return;
-	}
-	if (ret == -1) {
-		xf86Msg(X_INFO, "randdev: unix error\n");
-		close(fd);
-		return;
-	}
+    ret = read(fd, &cmd, sizeof(cmd));
+    if (ret == 0) {
+        xf86Msg(X_INFO, "randdev: unix closed\n");
+        close(fd);
+        return;
+    }
+    if (ret == -1) {
+        xf86Msg(X_INFO, "randdev: unix error\n");
+        close(fd);
+        return;
+    }
 
-	// xf86Msg(X_INFO, "randdev: received %c 0x%x 0x%x\n", cmd.type, cmd.arg1, cmd.arg2);
+    // xf86Msg(X_INFO, "randdev: received %c 0x%x 0x%x\n", cmd.type, cmd.arg1, cmd.arg2);
 
-	write_exact(fd, "0", 1); // acknowledge the request has been received
+    write_exact(fd, "0", 1); // acknowledge the request has been received
 
-	switch (cmd.type) {
-	case 'W':
-            w1 = id2winptr(cmd.arg1);
-            if (!w1) {
-                    // This error condition (window not found) can happen when
-                    // the window is destroyed before the driver sees the req
-                    struct shm_cmd shmcmd;
-                    // xf86Msg(X_INFO, "randdev: w1=%p, xid1: 0x%x\n", w1, cmd.arg1);
-                    shmcmd.num_mfn = 0;
-                    write_exact(fd, &shmcmd, sizeof(shmcmd));
-                    return;
-            }
-            dump_window_mfns(w1, cmd.arg1, fd);
-            break;
-	case 'B':
-	    xf86PostButtonEvent(pInfo->dev, 0, cmd.arg1, cmd.arg2, 0,0);
-	    break;
-        case 'M':
-            xf86PostMotionEvent(pInfo->dev, 1, 0, 2, cmd.arg1, cmd.arg2);
-            break;
-        case 'K':
-            xf86PostKeyboardEvent(pInfo->dev, cmd.arg1, cmd.arg2);
-            break;
-        default:
-            xf86Msg(X_INFO, "randdev: unknown command %u\n", cmd.type);
+    switch (cmd.type) {
+    case 'W':
+        w1 = id2winptr(cmd.arg1);
+        if (!w1) {
+            // This error condition (window not found) can happen when
+            // the window is destroyed before the driver sees the req
+            struct shm_cmd shmcmd;
+            // xf86Msg(X_INFO, "randdev: w1=%p, xid1: 0x%x\n", w1, cmd.arg1);
+            shmcmd.num_mfn = 0;
+            write_exact(fd, &shmcmd, sizeof(shmcmd));
+            return;
         }
+        dump_window_mfns(w1, cmd.arg1, fd);
+        break;
+    case 'B':
+        xf86PostButtonEvent(pInfo->dev, 0, cmd.arg1, cmd.arg2, 0,0);
+        break;
+    case 'M':
+        xf86PostMotionEvent(pInfo->dev, 1, 0, 2, cmd.arg1, cmd.arg2);
+        break;
+    case 'K':
+        xf86PostKeyboardEvent(pInfo->dev, cmd.arg1, cmd.arg2);
+        break;
+    default:
+        xf86Msg(X_INFO, "randdev: unknown command %u\n", cmd.type);
+    }
 }
 
 static void QubesReadInput(InputInfoPtr pInfo)
 {
-	while (xf86WaitForInput(pInfo->fd, 0) > 0) {
-		process_request(pInfo->fd, pInfo);
+    while (xf86WaitForInput(pInfo->fd, 0) > 0) {
+        process_request(pInfo->fd, pInfo);
 #if 0
-		xf86PostMotionEvent(pInfo->dev, 0,	/* is_absolute */
-				    0,	/* first_valuator */
-				    1,	/* num_valuators */
-				    data);
+        xf86PostMotionEvent(pInfo->dev, 0,    /* is_absolute */
+                    0,    /* first_valuator */
+                    1,    /* num_valuators */
+                    data);
 #endif
-	}
+    }
 }
