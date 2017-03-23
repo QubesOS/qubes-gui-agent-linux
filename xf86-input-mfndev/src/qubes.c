@@ -513,9 +513,28 @@ static WindowPtr id2winptr(unsigned int xid)
         return NULL;
 }
 
+static Bool send_mfns(ClientPtr dummy, void *arg) {
+    InputInfoPtr pInfo = arg;
+    QubesDevicePtr pQubes = pInfo->private;
+    WindowPtr w1;
+
+    w1 = id2winptr(pQubes->window_id);
+    if (w1) {
+        dump_window_mfns(w1, pQubes->window_id, pInfo->fd);
+    } else {
+        // This error condition (window not found) can happen when
+        // the window is destroyed before the driver sees the req
+        struct shm_cmd shmcmd;
+        shmcmd.num_mfn = 0;
+        write_exact(pInfo->fd, &shmcmd, sizeof(shmcmd));
+    }
+
+    return 1; // don't call us again
+}
+
 static void process_request(int fd, InputInfoPtr pInfo)
 {
-    WindowPtr w1;
+    QubesDevicePtr pQubes = pInfo->private;
     int ret;
     struct xdriver_cmd cmd;
 
@@ -536,16 +555,13 @@ static void process_request(int fd, InputInfoPtr pInfo)
 
     switch (cmd.type) {
     case 'W':
-        w1 = id2winptr(cmd.arg1);
-        if (!w1) {
-            // This error condition (window not found) can happen when
-            // the window is destroyed before the driver sees the req
-            struct shm_cmd shmcmd;
-            shmcmd.num_mfn = 0;
-            write_exact(fd, &shmcmd, sizeof(shmcmd));
-            return;
-        }
-        dump_window_mfns(w1, cmd.arg1, fd);
+        // We need to handle the window in the main thread.
+        pQubes->window_id = cmd.arg1;
+        QueueWorkProc(send_mfns, NullClient, (void *) pInfo);
+
+        // qubes-gui will wait for our answer, therefore there's no risk
+        // that we will get other events from it before we have send the
+        // answer in the main thread.
         break;
     case 'B':
         xf86PostButtonEvent(pInfo->dev, 0, cmd.arg1, cmd.arg2, 0,0);

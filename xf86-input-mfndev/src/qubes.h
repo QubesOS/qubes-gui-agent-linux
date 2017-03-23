@@ -31,6 +31,7 @@ typedef struct _QubesDeviceRec
     Atom* labels;
     int num_vals;
     int axes;
+    unsigned int window_id; /* X Window ID for send_mfns callback */
 } QubesDeviceRec, *QubesDevicePtr ;
 
 #include <u2mfnlib.h>
