@@ -206,10 +206,6 @@ static InputInfoPtr QubesPreInit(InputDriverPtr drv,
 
     xf86Msg(X_INFO, "%s: Using device %s.\n", pInfo->name,
             pQubes->device);
-//    xf86Msg(X_INFO, "%s: dixLookupWindow=%p.\n", pInfo->name,
-//        dixLookupWindow);
-//    xf86Msg(X_INFO, "%s: dixLookupResourceByClass=%p.\n", pInfo->name,
-//        dixLookupResourceByClass);
 
     /* process generic options */
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
@@ -219,19 +215,6 @@ static InputInfoPtr QubesPreInit(InputDriverPtr drv,
 #endif
     xf86ProcessCommonOptions(pInfo, pInfo->options);
     /* Open sockets, init device files, etc. */
-#if 0
-    SYSCALL(pInfo->fd = open(pQubes->device, O_RDWR | O_NONBLOCK));
-    if (pInfo->fd == -1) {
-        xf86Msg(X_ERROR, "%s: failed to open %s.",
-            pInfo->name, pQubes->device);
-        pInfo->private = NULL;
-        free(pQubes);
-        xf86DeleteInput(pInfo, 0);
-        return NULL;
-    }
-    /* do more funky stuff */
-    close(pInfo->fd);
-#endif
     pInfo->fd = -1;
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
     return Success;
@@ -549,8 +532,6 @@ static void process_request(int fd, InputInfoPtr pInfo)
         return;
     }
 
-    // xf86Msg(X_INFO, "randdev: received %c 0x%x 0x%x\n", cmd.type, cmd.arg1, cmd.arg2);
-
     write_exact(fd, "0", 1); // acknowledge the request has been received
 
     switch (cmd.type) {
@@ -560,7 +541,6 @@ static void process_request(int fd, InputInfoPtr pInfo)
             // This error condition (window not found) can happen when
             // the window is destroyed before the driver sees the req
             struct shm_cmd shmcmd;
-            // xf86Msg(X_INFO, "randdev: w1=%p, xid1: 0x%x\n", w1, cmd.arg1);
             shmcmd.num_mfn = 0;
             write_exact(fd, &shmcmd, sizeof(shmcmd));
             return;
@@ -585,11 +565,5 @@ static void QubesReadInput(InputInfoPtr pInfo)
 {
     while (xf86WaitForInput(pInfo->fd, 0) > 0) {
         process_request(pInfo->fd, pInfo);
-#if 0
-        xf86PostMotionEvent(pInfo->dev, 0,    /* is_absolute */
-                    0,    /* first_valuator */
-                    1,    /* num_valuators */
-                    data);
-#endif
     }
 }
