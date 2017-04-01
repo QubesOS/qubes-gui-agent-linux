@@ -1,3 +1,10 @@
+qubes-gui-agent (3.2.16-1) unstable; urgency=medium
+
+  [ HW42 ]
+  * xf86-input-mfndev: don't use QueueWorkProc() in input thread
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 01 Apr 2017 11:53:48 +0200
+
 qubes-gui-agent (3.2.15-1) unstable; urgency=medium
 
   [ unman ]
