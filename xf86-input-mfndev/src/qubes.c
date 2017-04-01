@@ -74,6 +74,12 @@
 
 #endif
 
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 23
+#define HAVE_THREADED_INPUT 1
+#else
+#undef HAVE_THREADED_INPUT
+#endif
+
 
 #include <stdio.h>
 #include <sys/stat.h>
@@ -112,6 +118,8 @@ static void QubesReadInput(InputInfoPtr pInfo);
 static int QubesControl(DeviceIntPtr device, int what);
 static int _qubes_init_buttons(DeviceIntPtr device);
 static int _qubes_init_axes(DeviceIntPtr device);
+static void QubesBlockHandler(void *arg, void *timeout);
+static void QubesWakeupHandler(void *arg, int result);
 
 
 
@@ -216,6 +224,20 @@ static InputInfoPtr QubesPreInit(InputDriverPtr drv,
     xf86ProcessCommonOptions(pInfo, pInfo->options);
     /* Open sockets, init device files, etc. */
     pInfo->fd = -1;
+
+    if (!RegisterBlockAndWakeupHandlers(QubesBlockHandler,
+                                        QubesWakeupHandler,
+                                        (void *) pInfo)) {
+        xf86Msg(X_ERROR, "%s: Failed to register block/wakeup handler\n",
+                pInfo->name);
+        QubesUnInit(drv, pInfo, flags);
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
+        return BadAlloc;
+#else
+        return NULL;
+#endif
+    }
+
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
     return Success;
 #else
@@ -228,6 +250,11 @@ static InputInfoPtr QubesPreInit(InputDriverPtr drv,
 static void QubesUnInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
 {
     QubesDevicePtr pQubes = pInfo->private;
+
+    RemoveBlockAndWakeupHandlers(QubesBlockHandler,
+                                 QubesWakeupHandler,
+                                 (void *) pInfo);
+
     if (pQubes->device) {
         free(pQubes->device);
         pQubes->device = NULL;
@@ -513,23 +540,41 @@ static WindowPtr id2winptr(unsigned int xid)
         return NULL;
 }
 
-static Bool send_mfns(ClientPtr dummy, void *arg) {
+static void QubesBlockHandler(void *arg, void *timeout) {
     InputInfoPtr pInfo = arg;
     QubesDevicePtr pQubes = pInfo->private;
     WindowPtr w1;
 
-    w1 = id2winptr(pQubes->window_id);
-    if (w1) {
-        dump_window_mfns(w1, pQubes->window_id, pInfo->fd);
-    } else {
-        // This error condition (window not found) can happen when
-        // the window is destroyed before the driver sees the req
-        struct shm_cmd shmcmd;
-        shmcmd.num_mfn = 0;
-        write_exact(pInfo->fd, &shmcmd, sizeof(shmcmd));
+#if HAVE_THREADED_INPUT
+    input_lock();
+#else
+    int sigstate = xf86BlockSIGIO();
+#endif
+
+    if (pQubes->window_id != 0) {
+        w1 = id2winptr(pQubes->window_id);
+        if (w1) {
+            dump_window_mfns(w1, pQubes->window_id, pInfo->fd);
+        } else {
+            // This error condition (window not found) can happen when
+            // the window is destroyed before the driver sees the req
+            struct shm_cmd shmcmd;
+            shmcmd.num_mfn = 0;
+            write_exact(pInfo->fd, &shmcmd, sizeof(shmcmd));
+        }
+
+        pQubes->window_id = 0;
     }
 
-    return 1; // don't call us again
+#if HAVE_THREADED_INPUT
+    input_unlock();
+#else
+    xf86UnblockSIGIO(sigstate);
+#endif
+}
+
+static void QubesWakeupHandler(void *arg, int result) {
+    // Nothing to do.
 }
 
 static void process_request(int fd, InputInfoPtr pInfo)
@@ -556,8 +601,9 @@ static void process_request(int fd, InputInfoPtr pInfo)
     switch (cmd.type) {
     case 'W':
         // We need to handle the window in the main thread.
+        // The mutex is already locked when QubesReadInput is called.
+        // The input thread loop will also wake up the main thread for us.
         pQubes->window_id = cmd.arg1;
-        QueueWorkProc(send_mfns, NullClient, (void *) pInfo);
 
         // qubes-gui will wait for our answer, therefore there's no risk
         // that we will get other events from it before we have send the
