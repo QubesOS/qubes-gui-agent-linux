@@ -395,6 +395,14 @@ int connect_unix_socket(QubesDevicePtr pQubes)
     return s;
 }
 
+static void close_device_fd(InputInfoPtr pInfo) {
+    if (pInfo->fd >= 0) {
+        xf86RemoveEnabledDevice(pInfo);
+        close(pInfo->fd);
+        pInfo->fd = -1;
+    }
+}
+
 static void
 QubesPtrCtrlProc (DeviceIntPtr device, PtrCtrl *ctrl)
 {
@@ -438,9 +446,7 @@ static int QubesControl(DeviceIntPtr device, int what)
         xf86Msg(X_INFO, "%s: Off.\n", pInfo->name);
         if (!device->public.on)
             break;
-        xf86RemoveEnabledDevice(pInfo);
-        close(pInfo->fd);
-        pInfo->fd = -1;
+        close_device_fd(pInfo);
         device->public.on = FALSE;
         break;
     case DEVICE_CLOSE:
@@ -586,12 +592,12 @@ static void process_request(int fd, InputInfoPtr pInfo)
     ret = read(fd, &cmd, sizeof(cmd));
     if (ret == 0) {
         xf86Msg(X_INFO, "randdev: unix closed\n");
-        close(fd);
+        close_device_fd(pInfo);
         return;
     }
     if (ret == -1) {
         xf86Msg(X_INFO, "randdev: unix error\n");
-        close(fd);
+        close_device_fd(pInfo);
         return;
     }
 
