@@ -1,3 +1,15 @@
+qubes-gui-agent (3.2.17-1) unstable; urgency=medium
+
+  [ HW42 ]
+  * xf86-input-mfndev: send mfns response directly in unthreaded Xserver
+  * xf86-input-mfndev: properly close the socket fd after EOF or IO
+    errors
+
+  [ Marek Marczykowski-Górecki ]
+  * debian: remove non-deterministic orig tarball
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 25 Apr 2017 13:21:38 +0200
+
 qubes-gui-agent (3.2.16-1) unstable; urgency=medium
 
   [ HW42 ]
