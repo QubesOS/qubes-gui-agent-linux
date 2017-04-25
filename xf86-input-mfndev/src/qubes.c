@@ -118,8 +118,10 @@ static void QubesReadInput(InputInfoPtr pInfo);
 static int QubesControl(DeviceIntPtr device, int what);
 static int _qubes_init_buttons(DeviceIntPtr device);
 static int _qubes_init_axes(DeviceIntPtr device);
+#if HAVE_THREADED_INPUT
 static void QubesBlockHandler(void *arg, void *timeout);
 static void QubesWakeupHandler(void *arg, int result);
+#endif
 
 
 
@@ -225,18 +227,16 @@ static InputInfoPtr QubesPreInit(InputDriverPtr drv,
     /* Open sockets, init device files, etc. */
     pInfo->fd = -1;
 
+#if HAVE_THREADED_INPUT
     if (!RegisterBlockAndWakeupHandlers(QubesBlockHandler,
                                         QubesWakeupHandler,
                                         (void *) pInfo)) {
         xf86Msg(X_ERROR, "%s: Failed to register block/wakeup handler\n",
                 pInfo->name);
         QubesUnInit(drv, pInfo, flags);
-#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
         return BadAlloc;
-#else
-        return NULL;
-#endif
     }
+#endif
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
     return Success;
@@ -251,9 +251,11 @@ static void QubesUnInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
 {
     QubesDevicePtr pQubes = pInfo->private;
 
+#if HAVE_THREADED_INPUT
     RemoveBlockAndWakeupHandlers(QubesBlockHandler,
                                  QubesWakeupHandler,
                                  (void *) pInfo);
+#endif
 
     if (pQubes->device) {
         free(pQubes->device);
@@ -540,16 +542,9 @@ static WindowPtr id2winptr(unsigned int xid)
         return NULL;
 }
 
-static void QubesBlockHandler(void *arg, void *timeout) {
-    InputInfoPtr pInfo = arg;
+static void process_window_mfns_request(InputInfoPtr pInfo) {
     QubesDevicePtr pQubes = pInfo->private;
     WindowPtr w1;
-
-#if HAVE_THREADED_INPUT
-    input_lock();
-#else
-    int sigstate = xf86BlockSIGIO();
-#endif
 
     if (pQubes->window_id != 0) {
         w1 = id2winptr(pQubes->window_id);
@@ -565,17 +560,21 @@ static void QubesBlockHandler(void *arg, void *timeout) {
 
         pQubes->window_id = 0;
     }
+}
 
 #if HAVE_THREADED_INPUT
+static void QubesBlockHandler(void *arg, void *timeout) {
+    InputInfoPtr pInfo = arg;
+
+    input_lock();
+    process_window_mfns_request(pInfo);
     input_unlock();
-#else
-    xf86UnblockSIGIO(sigstate);
-#endif
 }
 
 static void QubesWakeupHandler(void *arg, int result) {
     // Nothing to do.
 }
+#endif
 
 static void process_request(int fd, InputInfoPtr pInfo)
 {
@@ -600,14 +599,18 @@ static void process_request(int fd, InputInfoPtr pInfo)
 
     switch (cmd.type) {
     case 'W':
-        // We need to handle the window in the main thread.
-        // The mutex is already locked when QubesReadInput is called.
-        // The input thread loop will also wake up the main thread for us.
         pQubes->window_id = cmd.arg1;
-
-        // qubes-gui will wait for our answer, therefore there's no risk
-        // that we will get other events from it before we have send the
+#if HAVE_THREADED_INPUT
+        // We need to handle the window in the main thread, see
+        // QubesBlockHandler(). The mutex is already locked when QubesReadInput
+        // is called. The input thread loop will also wake up the main thread
+        // for us. qubes-gui will wait for our answer, therefore there's no
+        // risk that we will get other events from it before we have send the
         // answer in the main thread.
+#else
+        // In the classical case we can process the window directly.
+        process_window_mfns_request(pInfo);
+#endif
         break;
     case 'B':
         xf86PostButtonEvent(pInfo->dev, 0, cmd.arg1, cmd.arg2, 0,0);
