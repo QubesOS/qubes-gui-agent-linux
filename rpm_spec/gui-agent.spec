@@ -27,7 +27,7 @@
 # default value in case of no qubes-builder's one
 %{!?backend_vmm: %define backend_vmm xen}
 
-Name:		qubes-gui-vm	
+Name:		qubes-gui-agent
 Version:	%{version}
 Release:	1%{dist}
 Summary:	The Qubes GUI Agent for AppVMs
@@ -60,6 +60,8 @@ Requires:	xorg-x11-drv-dummy
 Requires:	xorg-x11-xinit
 Requires:	qubes-libvchan-%{backend_vmm}
 Requires:	python-xpyb
+Provides:   qubes-gui-vm
+Obsoletes:  qubes-gui-vm < 4.0.0
 
 # The vchan sink needs .h files from pulseaudio sources
 # that are not exported by any *-devel packages; thus they are internal and
