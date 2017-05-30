@@ -59,17 +59,25 @@ Requires:	python-xpyb
 Provides:   qubes-gui-vm
 Obsoletes:  qubes-gui-vm < 4.0.0
 
+
+%package -n pulseaudio-qubes
+Summary: Audio support for Qubes VM
 # The vchan sink needs .h files from pulseaudio sources
 # that are not exported by any *-devel packages; thus they are internal and
 # possible to change across version. They are copied to gui git. 
 # It is possible that our code will work fine with any later pulseaudio
 # version; but this needs to be verified for each pulseaudio version.
 Requires:	pulseaudio = %{pa_ver}
+Conflicts:  qubes-gui-vm < 4.0.0
+
+%description -n pulseaudio-qubes
+ Pulseaudio module to enable sound support in Qubes VM
 
 %define _builddir %(pwd)
 
 %description
-The Qubes GUI agent that needs to be installed in VM in order to provide the Qubes fancy GUI.
+The Qubes GUI agent that needs to be installed in VM in order to provide the
+Qubes fancy GUI.
 
 %prep
 # we operate on the current directory, so no need to unpack anything
@@ -131,8 +139,6 @@ rm -f %{name}-%{version}
 /usr/bin/qubes-run-xorg.sh
 /usr/bin/qubes-change-keyboard-layout
 /usr/bin/qubes-set-monitor-layout
-/usr/bin/start-pulseaudio-with-vchan
-%{_libdir}/pulse-%{pa_ver}/modules/module-vchan-sink.so
 %{_libdir}/xorg/modules/drivers/qubes_drv.so
 %{_libdir}/xorg/modules/drivers/dummyqbs_drv.so
 %attr(0644,root,root) /etc/X11/xorg-qubes.conf.template
@@ -141,8 +147,6 @@ rm -f %{name}-%{version}
 /etc/profile.d/qubes-gui.csh
 /etc/profile.d/qubes-session.sh
 %config /etc/security/limits.d/90-qubes-gui.conf
-/etc/pulse/qubes-default.pa
-/etc/xdg/autostart/qubes-pulseaudio.desktop
 %config /etc/xdg/Trolltech.conf
 /etc/X11/xinit/xinitrc.d/qubes-keymap.sh
 /etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh
@@ -152,10 +156,16 @@ rm -f %{name}-%{version}
 %config /etc/sysconfig/desktop
 /etc/sysconfig/modules/qubes-u2mfn.modules
 /lib/systemd/system/qubes-gui-agent.service
-/usr/lib/tmpfiles.d/qubes-pulseaudio.conf
 /usr/lib/tmpfiles.d/qubes-session.conf
 /usr/lib/sysctl.d/30-qubes-gui-agent.conf
 %{_datadir}/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
 /usr/lib/qubes/icon-sender
 /etc/xdg/autostart/qubes-icon-sender.desktop
 %dir /var/log/qubes
+
+%files -n pulseaudio-qubes
+/usr/lib/tmpfiles.d/qubes-pulseaudio.conf
+/etc/pulse/qubes-default.pa
+/usr/bin/start-pulseaudio-with-vchan
+%{_libdir}/pulse-%{pa_ver}/modules/module-vchan-sink.so
+/etc/xdg/autostart/qubes-pulseaudio.desktop

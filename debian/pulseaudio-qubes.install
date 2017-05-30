@@ -1,0 +1,4 @@
+etc/pulse/qubes-default.pa
+etc/xdg/autostart/qubes-pulseaudio.desktop
+usr/bin/start-pulseaudio-with-vchan
+usr/lib/pulse-*/modules/module-vchan-sink.so
