@@ -47,16 +47,12 @@ BuildRequires:	libXcomposite-devel
 BuildRequires:	libXdamage-devel
 BuildRequires:	libXt-devel
 BuildRequires:	libtool-ltdl-devel
-BuildRequires:	libtool-ltdl-devel
 BuildRequires:	pulseaudio-libs-devel >= 0.9.21, pulseaudio-libs-devel <= 10.0
-BuildRequires:	xen-devel
 BuildRequires:	xorg-x11-server-devel
 BuildRequires:	qubes-libvchan-%{backend_vmm}-devel
 BuildRequires:	qubes-gui-common-devel >= 3.2.0
 BuildRequires:	qubes-db-devel
 Requires:	qubes-core-vm >= 3.0.14
-Requires:	xen-qubes-vm-essentials
-Requires:	xorg-x11-drv-dummy
 Requires:	xorg-x11-xinit
 Requires:	qubes-libvchan-%{backend_vmm}
 Requires:	python-xpyb

@@ -33,7 +33,6 @@ Depends:
     xserver-xorg-core,
     xinit,
     x11-xserver-utils,
-    xenstore-utils,
     qubes-core-agent (>= 3.0.14),
     qubesdb-vm,
     libpulse0,

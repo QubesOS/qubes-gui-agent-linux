@@ -25,11 +25,6 @@ OBJS=vmside.o \
 	../gui-common/txrx-vchan.o ../gui-common/error.o ../common/list.o 
 LIBS=-lX11 -lXdamage -lXcomposite `pkg-config --libs vchan-$(BACKEND_VMM)` -lqubesdb
 
-_XENSTORE_H=$(wildcard /usr/include/xenstore.h)
-ifneq "$(_XENSTORE_H)" ""
-        CFLAGS+= -DUSE_XENSTORE_H
-endif
-
 
 all: qubes-gui
 qubes-gui: $(OBJS)
