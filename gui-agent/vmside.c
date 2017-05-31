@@ -1924,11 +1924,16 @@ void handle_guid_disconnect()
     Ghandles *g = ghandles_for_vchan_reinitialize;
     struct msg_xconf xconf;
 
+    if (!ghandles_for_vchan_reinitialize) {
+        fprintf(stderr, "gui-daemon disconnected before fully initialized, "
+                "cannot reconnect, exiting!\n");
+        exit(1);
+    }
     libvchan_close(g->vchan);
     wait_for_possible_dispvm_resume();
     g->vchan = libvchan_server_init(0, 6000, 4096, 4096);
     /* wait for gui daemon */
-    while (!libvchan_is_open(g->vchan))
+    while (libvchan_is_open(g->vchan) == VCHAN_WAITING)
         libvchan_wait(g->vchan);
     send_protocol_version(g->vchan);
     /* discard */
@@ -1999,7 +2004,7 @@ int main(int argc, char **argv)
         exit(1);
     }
     /* wait for gui daemon */
-    while (!libvchan_is_open(g.vchan))
+    while (libvchan_is_open(g.vchan) == VCHAN_WAITING)
         libvchan_wait(g.vchan);
     saved_argv = argv;
     vchan_register_at_eof(handle_guid_disconnect);
