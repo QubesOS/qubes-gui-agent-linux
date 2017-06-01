@@ -109,6 +109,8 @@ else
     chkconfig qubes-gui-agent on
 fi
 
+%post -n pulseaudio-qubes
+
 sed -i '/^autospawn/d' /etc/pulse/client.conf
 echo autospawn=no >> /etc/pulse/client.conf
 
@@ -122,7 +124,7 @@ fi
 %posttrans
     /usr/bin/glib-compile-schemas %{_datadir}/glib-2.0/schemas &> /dev/null || :
 
-%triggerin -- pulseaudio-libs
+%triggerin -n pulseaudio-qubes -- pulseaudio-libs
 
 sed -i '/^autospawn/d' /etc/pulse/client.conf
 echo autospawn=no >> /etc/pulse/client.conf
