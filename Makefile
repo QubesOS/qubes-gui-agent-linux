@@ -159,4 +159,6 @@ endif
 		$(DESTDIR)/etc/xdg/autostart/qubes-icon-sender.desktop
 	install -D -m 0644 appvm-scripts/usr/lib/sysctl.d/30-qubes-gui-agent.conf \
 		$(DESTDIR)/usr/lib/sysctl.d/30-qubes-gui-agent.conf
+	install -D -m 0644 appvm-scripts/usr/lib/modules-load.d/qubes-gui.conf \
+		$(DESTDIR)/usr/lib/modules-load.d/qubes-gui.conf
 	install -d $(DESTDIR)/var/log/qubes

@@ -159,6 +159,7 @@ rm -f %{name}-%{version}
 %config /etc/sysconfig/desktop
 /etc/sysconfig/modules/qubes-u2mfn.modules
 /lib/systemd/system/qubes-gui-agent.service
+/usr/lib/modules-load.d/qubes-gui.conf
 /usr/lib/tmpfiles.d/qubes-session.conf
 /usr/lib/sysctl.d/30-qubes-gui-agent.conf
 %{_datadir}/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
