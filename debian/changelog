@@ -1,3 +1,17 @@
+qubes-gui-agent (4.0.1-1) unstable; urgency=medium
+
+  * vmside: fix waiting for gui-daemon
+  * xside: remove vim modeline
+  * rpm: fix dependencies for handling package rename
+  * rpm: move pulseaudio-related install scripts to pulseaudio-qubes pkg
+  * rpm: add dependency on X server itself
+  * Load u2mfn kernel module
+  * rpm: drop very old upgrade handling
+  * Set XDG_SESSION_CLASS=user
+  * travis: switch to Qubes 4.0
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 10 Jun 2017 00:14:54 +0200
+
 qubes-gui-agent (4.0.0-1) unstable; urgency=medium
 
   * rpm: rename package to qubes-gui-agent
