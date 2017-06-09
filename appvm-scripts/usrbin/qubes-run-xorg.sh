@@ -64,6 +64,6 @@ fi
 chown root:user /var/run/xf86-qubes-socket
 chmod 770 /var/run/xf86-qubes-socket
 
-export XDG_SEAT=seat0 XDG_VTNR=7
+export XDG_SEAT=seat0 XDG_VTNR=7 XDG_SESSION_CLASS=user
 
 exec su -l user -c "/usr/bin/xinit $XSESSION -- $XORG :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1"
