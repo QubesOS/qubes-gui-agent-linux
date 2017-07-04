@@ -95,12 +95,14 @@ PA_MODULE_USAGE("sink_name=<name for the sink> "
 
 #define DEFAULT_SINK_NAME "vchan_output"
 #define DEFAULT_SOURCE_NAME "vchan_input"
+#define DEFAULT_PROFILE_NAME "qubes-vchan-profile"
 
 #define VCHAN_BUF 8192
 
 struct userdata {
 	pa_core *core;
 	pa_module *module;
+	pa_card *card;
 	pa_sink *sink;
 	pa_source *source;
 
@@ -116,6 +118,9 @@ struct userdata {
 
 	pa_rtpoll_item *play_rtpoll_item;
 	pa_rtpoll_item *rec_rtpoll_item;
+
+	char *input_port_name;
+	char *output_port_name;
 };
 
 static const char *const valid_modargs[] = {
@@ -442,6 +447,113 @@ static int do_conn(struct userdata *u)
 	return 0;
 }
 
+static void create_card_ports(struct userdata *u, pa_hashmap *card_ports)
+{
+	pa_device_port *port;
+	pa_device_port_new_data port_data;
+	const char *name_prefix, *input_description, *output_description;
+
+	pa_assert(u);
+	pa_assert(card_ports);
+
+	name_prefix = "qubes-vchan-io";
+	input_description = "Qubes vchan Input";
+	output_description = "Qubes vchan Output";
+
+	u->output_port_name = pa_sprintf_malloc("%s-output", name_prefix);
+	pa_device_port_new_data_init(&port_data);
+	pa_device_port_new_data_set_name(&port_data, u->output_port_name);
+	pa_device_port_new_data_set_description(&port_data, output_description);
+	pa_device_port_new_data_set_direction(&port_data, PA_DIRECTION_OUTPUT);
+	pa_device_port_new_data_set_available(&port_data, PA_AVAILABLE_YES);
+	pa_assert_se(port = pa_device_port_new(u->core, &port_data, 0));
+	pa_assert_se(pa_hashmap_put(card_ports, port->name, port) >= 0);
+	pa_device_port_new_data_done(&port_data);
+
+	u->input_port_name = pa_sprintf_malloc("%s-input", name_prefix);
+	pa_device_port_new_data_init(&port_data);
+	pa_device_port_new_data_set_name(&port_data, u->input_port_name);
+	pa_device_port_new_data_set_description(&port_data, input_description);
+	pa_device_port_new_data_set_direction(&port_data, PA_DIRECTION_INPUT);
+	pa_device_port_new_data_set_available(&port_data, PA_AVAILABLE_YES);
+	pa_assert_se(port = pa_device_port_new(u->core, &port_data, 0));
+	pa_assert_se(pa_hashmap_put(card_ports, port->name, port) >= 0);
+	pa_device_port_new_data_done(&port_data);
+}
+
+static pa_card_profile *create_card_profile(struct userdata *u, pa_hashmap * ports)
+{
+	pa_device_port *input_port, *output_port;
+	pa_card_profile *cp = NULL;
+
+	pa_assert(u->input_port_name);
+	pa_assert(u->output_port_name);
+	pa_assert_se(input_port  = pa_hashmap_get(ports, u->input_port_name));
+	pa_assert_se(output_port = pa_hashmap_get(ports, u->output_port_name));
+
+	cp = pa_card_profile_new(DEFAULT_PROFILE_NAME, "Default Qubes vchan Profile", 0);
+	cp->priority = 20;
+	cp->n_sinks = 1;
+	cp->n_sources = 1;
+	cp->max_sink_channels = 1;
+	cp->max_source_channels = 1;
+
+	pa_hashmap_put(input_port->profiles,  cp->name, cp);
+	pa_hashmap_put(output_port->profiles, cp->name, cp);
+
+	cp->available = PA_AVAILABLE_YES;
+
+	return cp;
+}
+
+static int create_card(pa_module *m, struct userdata *u)
+{
+	pa_card_new_data data;
+	pa_card_profile *cp;
+
+	pa_card_new_data_init(&data);
+	data.driver = __FILE__;
+	data.module = m;
+
+	pa_proplist_sets(data.proplist, PA_PROP_DEVICE_DESCRIPTION, "Qubes vchan");
+	pa_proplist_sets(data.proplist, PA_PROP_DEVICE_STRING, "Qubes vchan");
+	pa_proplist_sets(data.proplist, PA_PROP_DEVICE_CLASS, "sound");
+
+	pa_card_new_data_set_name(&data, "Qubes vchan");
+
+	create_card_ports(u, data.ports);
+        cp = create_card_profile(u, data.ports);
+        pa_hashmap_put(data.profiles, cp->name, cp);
+
+	u->card = pa_card_new(u->core, &data);
+	pa_card_new_data_done(&data);
+
+	if (!u->card) {
+		pa_log("Failed to allocate card.");
+		return -1;
+	}
+
+	return 0;
+}
+
+/* Copied from module-bluez5-device.c in Pulseaudio 7.1's source tree. */
+static void connect_ports(struct userdata *u, void *new_data, pa_direction_t direction) {
+    pa_device_port *port;
+
+    if (direction == PA_DIRECTION_OUTPUT) {
+        pa_sink_new_data *sink_new_data = new_data;
+
+        pa_assert_se(port = pa_hashmap_get(u->card->ports, u->output_port_name));
+        pa_assert_se(pa_hashmap_put(sink_new_data->ports, port->name, port) >= 0);
+        pa_device_port_ref(port);
+    } else {
+        pa_source_new_data *source_new_data = new_data;
+
+        pa_assert_se(port = pa_hashmap_get(u->card->ports, u->input_port_name));
+        pa_assert_se(pa_hashmap_put(source_new_data->ports, port->name, port) >= 0);
+        pa_device_port_ref(port);
+    }
+}
 
 int pa__init(pa_module * m)
 {
@@ -485,6 +597,10 @@ int pa__init(pa_module * m)
 		       pa_cstrerror(errno));
 		goto fail;
 	}
+
+	if (create_card(m, u) < 0)
+		goto fail;
+
 	/* SINK preparation */
 	pa_sink_new_data_init(&data_sink);
 	data_sink.driver = __FILE__;
@@ -507,6 +623,8 @@ int pa__init(pa_module * m)
 		pa_sink_new_data_done(&data_sink);
 		goto fail;
 	}
+
+	connect_ports(u, &data_sink, PA_DIRECTION_OUTPUT);
 
 	u->sink = pa_sink_new(m->core, &data_sink, PA_SINK_LATENCY);
 	pa_sink_new_data_done(&data_sink);
@@ -548,6 +666,8 @@ int pa__init(pa_module * m)
 		pa_source_new_data_done(&data_source);
 		goto fail;
 	}
+
+	connect_ports(u, &data_source, PA_DIRECTION_INPUT);
 
 	u->source = pa_source_new(m->core, &data_source, PA_SOURCE_LATENCY);
 	pa_source_new_data_done(&data_source);
@@ -654,6 +774,12 @@ void pa__done(pa_module * m)
 
 	if (u->rec_ctrl)
 		libvchan_close(u->rec_ctrl);
+
+	if (u->card)
+		pa_card_free(u->card);
+
+	pa_xfree(u->output_port_name);
+	pa_xfree(u->input_port_name);
 
 	pa_xfree(u);
 }
