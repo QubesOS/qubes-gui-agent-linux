@@ -55,7 +55,7 @@ BuildRequires:	qubes-db-devel
 Requires:	qubes-core-vm >= 3.0.14
 Requires:	xorg-x11-xinit
 Requires:	qubes-libvchan-%{backend_vmm}
-Requires:	python-xpyb
+Requires:	python-xcffib
 Requires:   xorg-x11-server-Xorg
 Provides:   qubes-gui-vm = %{version}-%{release}
 Obsoletes:  qubes-gui-vm < 4.0.0
