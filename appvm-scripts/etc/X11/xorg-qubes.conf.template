@@ -1,3 +1,7 @@
+Section "Module"
+        Load "libfb.so"
+EndSection
+
 Section "ServerLayout"   
         Identifier     "Default Layout"
         Screen      0  "Screen0" 0 0  
