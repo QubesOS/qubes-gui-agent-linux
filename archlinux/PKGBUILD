@@ -14,7 +14,7 @@ url="http://qubes-os.org/"
 license=('GPL')
 groups=()
 depends=('xorg-xinit' 'alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python2-xcffib'
-		'pulseaudio>=10.0' 'pulseaudio<11.0'
+		'pulseaudio>=11.0' 'pulseaudio<12.0'
 		'xorg-server>=1.19.0' 'xorg-server<1.20.0'
 		'qubes-vm-core>=3.0.14'
 		)
