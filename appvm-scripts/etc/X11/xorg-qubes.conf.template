@@ -1,5 +1,5 @@
 Section "Module"
-        Load "libfb.so"
+        Load "fb"
 EndSection
 
 Section "ServerLayout"   
