@@ -1,3 +1,13 @@
+qubes-gui-agent (4.0.4-1) unstable; urgency=medium
+
+  [ Olivier MEDOC ]
+  * xorg: ensure libfb.so is loaded before dummyqbs_drv.so (Issue #3093)
+
+  [ Marek Marczykowski-Górecki ]
+  * Use X module name, not filename
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 26 Sep 2017 23:19:14 +0200
+
 qubes-gui-agent (4.0.3-1) unstable; urgency=medium
 
   [ M. Vefa Bicakci ]
