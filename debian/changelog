@@ -1,3 +1,9 @@
+qubes-gui-agent (4.0.5-1) unstable; urgency=medium
+
+  * Add pulseaudio-11.1 headers symlink
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 28 Sep 2017 04:14:56 +0200
+
 qubes-gui-agent (4.0.4-1) unstable; urgency=medium
 
   [ Olivier MEDOC ]
