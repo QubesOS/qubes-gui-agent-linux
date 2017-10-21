@@ -6,7 +6,7 @@
 # Maintainer: Olivier Medoc <o_medoc@yahoo.fr>
 pkgname=qubes-vm-gui
 pkgver=`cat version`
-pkgrel=7
+pkgrel=8
 epoch=
 pkgdesc="The Qubes GUI Agent for AppVMs"
 arch=("x86_64")
@@ -14,7 +14,7 @@ url="http://qubes-os.org/"
 license=('GPL')
 groups=()
 depends=('xorg-xinit' 'alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python2-xcffib'
-		'pulseaudio>=11.0' 'pulseaudio<12.0'
+		'pulseaudio>=11.1' 'pulseaudio<11.2'
 		'xorg-server>=1.19.0' 'xorg-server<1.20.0'
 		'qubes-vm-core>=3.0.14'
 		)
