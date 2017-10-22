@@ -54,9 +54,12 @@ if [ -f /etc/X11/Xsession ]; then
 	# Debian installs Xorg without setuid root bit, with a setuid wrapper.
 	# The wrapper is not useful for qubes, but it does not matter since
 	# we can Xorg with qubes drivers without root. But we need to call
-	# Xorg directly, not X (which is the wrapper). Also need to set
-	# the logfile to a user-writeable location.
-	XORG="/usr/bin/Xorg -logfile /tmp/Xorg.0.log"
+	# Xorg directly, not X (which is the wrapper).
+    if [ -x /usr/lib/xorg/Xorg ]; then
+        XORG="/usr/lib/xorg/Xorg"
+    else
+        XORG="/usr/bin/Xorg"
+    fi
 fi
 
 # Make qubes input socket readable by user in case Xorg is not running as
