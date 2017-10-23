@@ -79,9 +79,9 @@ clean:
 		$(MAKE) distclean; fi; ./bootstrap --clean || echo )
 
 
-install: install-rh
+install: install-rh-agent install-pulseaudio
 
-install-rh: appvm install-common
+install-rh-agent: appvm install-common
 	install -D appvm-scripts/etc/init.d/qubes-gui-agent \
 		$(DESTDIR)/etc/init.d/qubes-gui-agent
 	install -m 0644 -D appvm-scripts/qubes-gui-agent.service \
@@ -99,7 +99,7 @@ install-rh: appvm install-common
 	install -m 0644 -D appvm-scripts/etc/X11/Xwrapper.config \
 		$(DESTDIR)/etc/X11/Xwrapper.config
 
-install-debian: appvm install-common
+install-debian: appvm install-common install-pulseaudio
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh \
 		$(DESTDIR)/etc/X11/Xsession.d/90qubes-keymap
 	install -d $(DESTDIR)/etc/X11/Xsession.d
@@ -108,6 +108,18 @@ install-debian: appvm install-common
 	install -m 0644 appvm-scripts/etc/xdg-debian/* $(DESTDIR)/etc/xdg
 	install -m 0644 -D appvm-scripts/qubes-gui-agent.service \
 		$(DESTDIR)/$(SYSLIBDIR)/systemd/system/qubes-gui-agent.service
+
+install-pulseaudio:
+	install -D pulse/start-pulseaudio-with-vchan \
+		$(DESTDIR)/usr/bin/start-pulseaudio-with-vchan
+	install -m 0644 -D pulse/qubes-default.pa \
+		$(DESTDIR)/etc/pulse/qubes-default.pa
+	install -D pulse/module-vchan-sink.so \
+		$(DESTDIR)$(LIBDIR)/pulse-$(PA_VER)/modules/module-vchan-sink.so
+	install -m 0644 -D appvm-scripts/etc/tmpfiles.d/qubes-pulseaudio.conf \
+		$(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-pulseaudio.conf
+	install -m 0644 -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop \
+		$(DESTDIR)/etc/xdg/autostart/qubes-pulseaudio.desktop
 
 install-common:
 	install -D gui-agent/qubes-gui $(DESTDIR)/usr/bin/qubes-gui
@@ -119,12 +131,6 @@ install-common:
 		$(DESTDIR)/usr/bin/qubes-change-keyboard-layout
 	install -D appvm-scripts/usrbin/qubes-set-monitor-layout \
 		$(DESTDIR)/usr/bin/qubes-set-monitor-layout
-	install -D pulse/start-pulseaudio-with-vchan \
-		$(DESTDIR)/usr/bin/start-pulseaudio-with-vchan
-	install -m 0644 -D pulse/qubes-default.pa \
-		$(DESTDIR)/etc/pulse/qubes-default.pa
-	install -D pulse/module-vchan-sink.so \
-		$(DESTDIR)$(LIBDIR)/pulse-$(PA_VER)/modules/module-vchan-sink.so
 	install -D xf86-input-mfndev/src/.libs/qubes_drv.so \
 		$(DESTDIR)$(LIBDIR)/xorg/modules/drivers/qubes_drv.so
 	install -D xf86-video-dummy/src/.libs/dummyqbs_drv.so \
@@ -137,14 +143,10 @@ install-common:
 		$(DESTDIR)/etc/profile.d/qubes-gui.csh
 	install -m 0644 -D appvm-scripts/etc/profile.d/qubes-session.sh \
 		$(DESTDIR)/etc/profile.d/qubes-session.sh
-	install -m 0644 -D appvm-scripts/etc/tmpfiles.d/qubes-pulseaudio.conf \
-		$(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-pulseaudio.conf
 	install -m 0644 -D appvm-scripts/etc/tmpfiles.d/qubes-session.conf \
 		$(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-session.conf
 	install -m 0644 -D appvm-scripts/etc/securitylimits.d/90-qubes-gui.conf \
 		$(DESTDIR)/etc/security/limits.d/90-qubes-gui.conf
-	install -m 0644 -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop \
-		$(DESTDIR)/etc/xdg/autostart/qubes-pulseaudio.desktop
 ifneq ($(shell lsb_release -is), Ubuntu)
 	install -m 0644 -D appvm-scripts/etc/xdg/Trolltech.conf \
 		$(DESTDIR)/etc/xdg/Trolltech.conf
