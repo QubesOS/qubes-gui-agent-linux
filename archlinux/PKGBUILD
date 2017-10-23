@@ -21,7 +21,6 @@ conflicts=()
 replaces=()
 backup=()
 options=()
-install=PKGBUILD.install
 changelog=
 
 source=(PKGBUILD-z-qubes-session.sh)
@@ -35,6 +34,11 @@ build() {
 for source in Makefile appvm-scripts gui-common include pulse gui-agent common xf86-input-mfndev xf86-video-dummy window-icon-updater ; do
   (ln -s $srcdir/../$source $srcdir/$source)
 done
+
+pa_ver=`(pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-"`
+
+rm -f pulse/pulsecore
+ln -s pulsecore-$pa_ver pulse/pulsecore
 
 # Bug fixes : /var/run/console depends on pam_console, which is fedora specific
 # As a consequece, /var/run/console does not exists and qubes-gui-agent will always fail
@@ -59,6 +63,7 @@ depends=('xorg-xinit' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python2-xcf
 		'xorg-server>=1.19.0' 'xorg-server<1.20.0'
 		'qubes-vm-core>=3.0.14'
 		)
+install=PKGBUILD.install
 
 make install-rh-agent DESTDIR=$pkgdir LIBDIR=/usr/lib USRLIBDIR=/usr/lib SYSLIBDIR=/usr/lib
 
@@ -76,10 +81,8 @@ pkgdesc="Pulseaudio support for Qubes VM"
 depends=( 'alsa-lib' 'alsa-utils' 'pulseaudio-alsa'
 		'pulseaudio>=11.1' 'pulseaudio<11.2'
 )
+install=PKGBUILD-pulseaudio.install
 pa_ver=`(pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-"`
-
-rm -f pulse/pulsecore
-ln -s pulsecore-$pa_ver pulse/pulsecore
 
 make install-pulseaudio DESTDIR=$pkgdir PA_VER=$pa_ver LIBDIR=/usr/lib USRLIBDIR=/usr/lib SYSLIBDIR=/usr/lib
 
