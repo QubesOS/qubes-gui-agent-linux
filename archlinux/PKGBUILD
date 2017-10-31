@@ -6,7 +6,7 @@
 # Maintainer: Olivier Medoc <o_medoc@yahoo.fr>
 pkgname=(qubes-vm-gui qubes-vm-pulseaudio)
 pkgver=`cat version`
-pkgrel=7
+pkgrel=8
 epoch=
 pkgdesc="The Qubes GUI Agent for AppVMs"
 arch=("x86_64")
