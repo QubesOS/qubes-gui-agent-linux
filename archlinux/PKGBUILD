@@ -13,7 +13,11 @@ arch=("x86_64")
 url="http://qubes-os.org/"
 license=('GPL')
 groups=()
-makedepends=(pkg-config make gcc patch git automake autoconf libtool xorg-server-devel xorg-util-macros qubes-vm-gui-common pulseaudio xf86dgaproto qubes-libvchan-xen qubes-db-vm)
+makedepends=(pkg-config make gcc patch git automake autoconf libtool
+			pulseaudio
+			xorg-server-devel xorg-util-macros xf86dgaproto libxcomposite
+			qubes-vm-gui-common qubes-libvchan-xen qubes-db-vm
+			)
 checkdepends=()
 optdepends=()
 provides=()
