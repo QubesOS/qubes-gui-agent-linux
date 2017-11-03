@@ -1,3 +1,16 @@
+qubes-gui-agent (4.0.6-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * debian: adjust Xorg path for Debian stretch
+
+  [ Antoine Martin ]
+  * Honor DacSpeed setting in xorg.conf
+
+  [ Marek Marczykowski-Górecki ]
+  * Convert tabs to spaces in qubes-run-xorg.sh
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 03 Nov 2017 03:23:10 +0100
+
 qubes-gui-agent (4.0.5-1) unstable; urgency=medium
 
   * Add pulseaudio-11.1 headers symlink
