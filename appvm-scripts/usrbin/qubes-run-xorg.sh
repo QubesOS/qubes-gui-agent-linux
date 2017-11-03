@@ -37,24 +37,24 @@ VREFR_START=$(($CLOCK*1000000/$HTOTAL/$VTOTAL))
 VREFR_END=$((VREFR_START+1))
 
 sed -e  s/%MEM%/$MEM/ \
-	    -e  s/%DEPTH%/$DEPTH/ \
-	    -e  s/%MODELINE%/"$MODELINE"/ \
-	    -e  s/%HSYNC_START%/"$HSYNC_START"/ \
-	    -e  s/%HSYNC_END%/"$HSYNC_END"/ \
-	    -e  s/%VREFR_START%/"$VREFR_START"/ \
-	    -e  s/%VREFR_END%/"$VREFR_END"/ \
-	    -e  s/%RES%/QB$RES/ < /etc/X11/xorg-qubes.conf.template \
-	    > /etc/X11/xorg-qubes.conf
+        -e  s/%DEPTH%/$DEPTH/ \
+        -e  s/%MODELINE%/"$MODELINE"/ \
+        -e  s/%HSYNC_START%/"$HSYNC_START"/ \
+        -e  s/%HSYNC_END%/"$HSYNC_END"/ \
+        -e  s/%VREFR_START%/"$VREFR_START"/ \
+        -e  s/%VREFR_END%/"$VREFR_END"/ \
+        -e  s/%RES%/QB$RES/ < /etc/X11/xorg-qubes.conf.template \
+        > /etc/X11/xorg-qubes.conf
 
 XSESSION="/etc/X11/xinit/xinitrc"
 XORG="/usr/bin/X"
 if [ -f /etc/X11/Xsession ]; then
-	# Debian-based distro, set Xsession appropriately
-	XSESSION="/etc/X11/Xsession qubes-session"
-	# Debian installs Xorg without setuid root bit, with a setuid wrapper.
-	# The wrapper is not useful for qubes, but it does not matter since
-	# we can Xorg with qubes drivers without root. But we need to call
-	# Xorg directly, not X (which is the wrapper).
+    # Debian-based distro, set Xsession appropriately
+    XSESSION="/etc/X11/Xsession qubes-session"
+    # Debian installs Xorg without setuid root bit, with a setuid wrapper.
+    # The wrapper is not useful for qubes, but it does not matter since
+    # we can Xorg with qubes drivers without root. But we need to call
+    # Xorg directly, not X (which is the wrapper).
     if [ -x /usr/lib/xorg/Xorg ]; then
         XORG="/usr/lib/xorg/Xorg"
     else
