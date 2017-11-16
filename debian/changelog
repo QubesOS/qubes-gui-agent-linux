@@ -1,3 +1,13 @@
+qubes-gui-agent (3.2.19-1) wheezy; urgency=medium
+
+  [ Olivier MEDOC ]
+  * archlinux: bump pulseaudio version to 11.1
+
+  [ Frédéric Pierret ]
+  * Update pulseaudio version to 11.1 (Fedora 27)
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 16 Nov 2017 23:51:10 +0100
+
 qubes-gui-agent (3.2.18-1) unstable; urgency=medium
 
   [ Frederic Pierret (Epitre) ]
