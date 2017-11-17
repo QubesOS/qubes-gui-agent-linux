@@ -65,14 +65,22 @@ Obsoletes:  qubes-gui-vm < 4.0.0
 Summary: Audio support for Qubes VM
 # The vchan sink needs .h files from pulseaudio sources
 # that are not exported by any *-devel packages; thus they are internal and
-# possible to change across version. They are copied to gui git. 
+# possible to change across version. They are copied to gui git.
 # It is possible that our code will work fine with any later pulseaudio
 # version; but this needs to be verified for each pulseaudio version.
 Requires:	pulseaudio = %{pa_ver}
 Conflicts:  qubes-gui-vm < 4.0.0
 
 %description -n pulseaudio-qubes
- Pulseaudio module to enable sound support in Qubes VM
+Pulseaudio module to enable sound support in Qubes VM
+
+%package xfce
+Summary: XFCE desktop support for Qubes VM
+
+%description xfce
+XFCE desktop support for Qubes VM
+
+%description
 
 %define _builddir %(pwd)
 
@@ -171,3 +179,6 @@ rm -f %{name}-%{version}
 /usr/bin/start-pulseaudio-with-vchan
 %{_libdir}/pulse-%{pa_ver}/modules/module-vchan-sink.so
 /etc/xdg/autostart/qubes-pulseaudio.desktop
+
+%files xfce
+/etc/X11/xinit/xinitrc.d/50-xfce-desktop.sh
