@@ -1,14 +1,16 @@
 ifeq ($(PACKAGE_SET),vm)
-RPM_SPEC_FILES := rpm_spec/gui-agent.spec
-ARCH_BUILD_DIRS := archlinux
-DEBIAN_BUILD_DIRS := debian
+  RPM_SPEC_FILES := rpm_spec/gui-agent.spec
+  ARCH_BUILD_DIRS := archlinux
+  DEBIAN_BUILD_DIRS := debian
 
-ifneq (,$(findstring $(DIST),xenial))
-SOURCE_COPY_IN := source-debian-quilt-copy-in
+  ifneq (,$(findstring $(DISTRIBUTION),qubuntu))
+    SOURCE_COPY_IN := source-debian-quilt-copy-in
+  endif
+endif
+
+
 source-debian-quilt-copy-in:
+	sed -i /Trolltech.conf/d $(CHROOT_DIR)/$(DIST_SRC)/debian/qubes-gui-agent.install
 	-$(shell $(ORIG_SRC)/debian-quilt $(ORIG_SRC)/series-debian-vm.conf $(CHROOT_DIR)/$(DIST_SRC)/debian/patches)
-endif
-ifneq (,$(findstring $(DIST),xenial))
-	sed -i /Trolltech/d $(CHROOT_DIR)/$(DIST_SRC)/debian/qubes-gui-agent.install;
-endif
-endif
+
+# vim: filetype=make
