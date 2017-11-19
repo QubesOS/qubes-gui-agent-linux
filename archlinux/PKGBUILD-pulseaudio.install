@@ -10,11 +10,6 @@ post_upgrade() {
   post_install
 }
 
-## arg 1:  the old package version
-pre_remove() {
-  systemctl disable qubes-gui-agent.service
-}
-
 post_remove() {
   ldconfig
 }
