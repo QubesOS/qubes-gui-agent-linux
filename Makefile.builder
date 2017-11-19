@@ -8,4 +8,7 @@ SOURCE_COPY_IN := source-debian-quilt-copy-in
 source-debian-quilt-copy-in:
 	-$(shell $(ORIG_SRC)/debian-quilt $(ORIG_SRC)/series-debian-vm.conf $(CHROOT_DIR)/$(DIST_SRC)/debian/patches)
 endif
+ifneq (,$(findstring $(DIST),xenial))
+	sed -i /Trolltech/d $(CHROOT_DIR)/$(DIST_SRC)/debian/qubes-gui-agent.install;
+endif
 endif
