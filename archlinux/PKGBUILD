@@ -4,21 +4,20 @@
 # then please put 'unknown'.
 
 # Maintainer: Olivier Medoc <o_medoc@yahoo.fr>
-pkgname=qubes-vm-gui
+pkgname=(qubes-vm-gui qubes-vm-pulseaudio)
 pkgver=`cat version`
-pkgrel=7
+pkgrel=8
 epoch=
 pkgdesc="The Qubes GUI Agent for AppVMs"
 arch=("x86_64")
 url="http://qubes-os.org/"
 license=('GPL')
 groups=()
-depends=('xorg-xinit' 'alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python2-xcffib'
-		'pulseaudio>=11.0' 'pulseaudio<12.0'
-		'xorg-server>=1.19.0' 'xorg-server<1.20.0'
-		'qubes-vm-core>=3.0.14'
-		)
-makedepends=(pkg-config make gcc patch git automake autoconf libtool xorg-server-devel xorg-util-macros qubes-vm-gui-common pulseaudio xf86dgaproto qubes-libvchan-xen qubes-db-vm)
+makedepends=(pkg-config make gcc patch git automake autoconf libtool
+			pulseaudio
+			xorg-server-devel xorg-util-macros xf86dgaproto libxcomposite
+			qubes-vm-gui-common qubes-libvchan-xen qubes-db-vm
+			)
 checkdepends=()
 optdepends=()
 provides=()
@@ -26,7 +25,6 @@ conflicts=()
 replaces=()
 backup=()
 options=()
-install=PKGBUILD.install
 changelog=
 
 source=(PKGBUILD-z-qubes-session.sh)
@@ -41,6 +39,11 @@ for source in Makefile appvm-scripts gui-common include pulse gui-agent common x
   (ln -s $srcdir/../$source $srcdir/$source)
 done
 
+pa_ver=`(pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-"`
+
+rm -f pulse/pulsecore
+ln -s pulsecore-$pa_ver pulse/pulsecore
+
 # Bug fixes : /var/run/console depends on pam_console, which is fedora specific
 # As a consequece, /var/run/console does not exists and qubes-gui-agent will always fail
 sed 's:ExecStartPre=/bin/touch:#ExecStartPre=/bin/touch:' -i appvm-scripts/qubes-gui-agent.service
@@ -54,18 +57,19 @@ sed 's:#!/usr/bin/env python:#!/usr/bin/env python2:' -i appvm-scripts/usrbin/*
 sed 's:#!/usr/bin/python:#!/usr/bin/python2:' -i window-icon-updater/*
 sed 's:#!/usr/bin/env python:#!/usr/bin/env python2:' -i window-icon-updater/*
 
-
-pa_ver=`(pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-"`
-rm -f pulse/pulsecore
-ln -s pulsecore-$pa_ver pulse/pulsecore
-
 make appvm
 
 }
 
-package() {
+package_qubes-vm-gui() {
 
-make install DESTDIR=$pkgdir PA_VER=$pa_ver LIBDIR=/usr/lib USRLIBDIR=/usr/lib SYSLIBDIR=/usr/lib
+depends=('xorg-xinit' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python2-xcffib'
+		'xorg-server>=1.19.0' 'xorg-server<1.20.0'
+		'qubes-vm-core>=3.0.14'
+		)
+install=PKGBUILD.install
+
+make install-rh-agent DESTDIR=$pkgdir LIBDIR=/usr/lib USRLIBDIR=/usr/lib SYSLIBDIR=/usr/lib
 
 # Specific to archlinux: qubes session needs to be the last started script when Xorg starts.
 # For Fedora Qubes devs team choosed to populate it in /etc/sysconfig/desktop, but this is not supported by Archlinux
@@ -75,6 +79,18 @@ install -D $srcdir/PKGBUILD-z-qubes-session.sh $pkgdir/etc/X11/xinit/xinitrc.d/z
 
 }
 
+package_qubes-vm-pulseaudio() {
+
+pkgdesc="Pulseaudio support for Qubes VM"
+depends=( 'alsa-lib' 'alsa-utils' 'pulseaudio-alsa'
+		'pulseaudio>=11.1' 'pulseaudio<11.2'
+)
+install=PKGBUILD-pulseaudio.install
+pa_ver=`(pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-"`
+
+make install-pulseaudio DESTDIR=$pkgdir PA_VER=$pa_ver LIBDIR=/usr/lib USRLIBDIR=/usr/lib SYSLIBDIR=/usr/lib
+
+}
 
 # vim:set ts=2 sw=2 et:
 
