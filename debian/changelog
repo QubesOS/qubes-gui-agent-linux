@@ -1,3 +1,34 @@
+qubes-gui-agent (4.0.7-1) unstable; urgency=medium
+
+  [ Frédéric Pierret ]
+  * Update pulseaudio version to 11.1 (Fedora 27)
+
+  [ Olivier MEDOC ]
+  * archlinux: bump pulseaudio version to 11.1
+  * Makefile: split install target between pulseaudio and other gui
+    agent files
+  * archlinux: split pulseaudio support into qubes-vm-pulseaudio
+    subpackage
+  * archlinux: create pulseaudio specific install script
+  * archlinux: add libxcomposite as a make dependency
+  * archlinux: remove code in pulseaudio install script belonging to gui-
+    agent install script
+
+  [ unman ]
+  * Allow build for Xenial in 4.0
+
+  [ Paul Holcomb ]
+  * Fix Ubuntu template builds; apply XDG changes for all Ubuntu
+    templates.
+
+  [ Marek Marczykowski-Górecki ]
+  * travis: add fc26 and buster
+
+  [ Frédéric Pierret ]
+  * Add support for XFCE desktop in appvm
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 21 Nov 2017 05:06:34 +0100
+
 qubes-gui-agent (4.0.6-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
