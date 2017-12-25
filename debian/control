@@ -48,7 +48,7 @@ Depends:
     ${shlibs:Depends},
     ${misc:Depends}
 Recommends: qt4-qtconfig
-Provides: x-display-manager, xserver-xorg-legacy
+Provides: x-display-manager
 Description: Makes X11 windows available to qubes dom0
  The Qubes GUI agent allows the forwarding of running app windows to the
  qubes dom0. It also includes various extras such as copy/paste support.
