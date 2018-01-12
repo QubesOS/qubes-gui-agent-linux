@@ -1,3 +1,13 @@
+qubes-gui-agent (4.0.8-1) unstable; urgency=medium
+
+  [ TomZ ]
+  * Make compile on archlinux
+
+  [ Marek Marczykowski-Górecki ]
+  * icon-sender: prefer xcffib module over xpyb
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 12 Jan 2018 06:19:56 +0100
+
 qubes-gui-agent (4.0.7-1) unstable; urgency=medium
 
   [ Frédéric Pierret ]
