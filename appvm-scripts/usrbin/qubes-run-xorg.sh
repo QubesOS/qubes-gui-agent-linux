@@ -70,9 +70,8 @@ chmod 770 /var/run/xf86-qubes-socket
 export XDG_SEAT=seat0 XDG_VTNR=7 XDG_SESSION_CLASS=user
 
 # Defaults value in case default-user value is not available
-if [ ! -z "$(qubesdb-read /default-user)" ];then
-    DEFAULT_USER=$(qubesdb-read /default-user)
-else
+DEFAULT_USER="$(qubesdb-read /default-user 2>/dev/null)"
+if [ -z "$DEFAULT_USER" ];then
     DEFAULT_USER="user"
 fi
 
