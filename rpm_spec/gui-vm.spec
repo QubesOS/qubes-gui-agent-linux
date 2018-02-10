@@ -63,7 +63,7 @@ Requires:	python-xcffib
 
 # The vchan sink needs .h files from pulseaudio sources
 # that are not exported by any *-devel packages; thus they are internal and
-# possible to change across version. They are copied to gui git. 
+# possible to change across version. They are copied to gui git.
 # It is possible that our code will work fine with any later pulseaudio
 # version; but this needs to be verified for each pulseaudio version.
 Requires:	pulseaudio = %{pa_ver}
@@ -72,6 +72,12 @@ Requires:	pulseaudio = %{pa_ver}
 
 %description
 The Qubes GUI agent that needs to be installed in VM in order to provide the Qubes fancy GUI.
+
+%package xfce
+Summary: XFCE desktop support for Qubes VM
+
+%description xfce
+XFCE desktop support for Qubes VM
 
 %prep
 # we operate on the current directory, so no need to unpack anything
@@ -161,3 +167,6 @@ rm -f %{name}-%{version}
 /usr/lib/qubes/icon-sender
 /etc/xdg/autostart/qubes-icon-sender.desktop
 %dir /var/log/qubes
+
+%files xfce
+/etc/X11/xinit/xinitrc.d/50-xfce-desktop.sh
