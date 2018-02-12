@@ -1,3 +1,44 @@
+qubes-gui-agent (3.2.20-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * rpm: fix pulseaudio-libs-devel version declaration
+
+  [ unman ]
+  *  debian: adjust Xorg path for Debian stretch
+  * Fixed bad paste in debian/control
+
+  [ Marek Marczykowski-Górecki ]
+  * vmside: fix waiting for gui-daemon
+  * xside: remove vim modeline
+  * Set XDG_SESSION_CLASS=user
+
+  [ Olivier MEDOC ]
+  * Makefile: split install target between pulseaudio and other gui
+    agent files
+  * archlinux: split pulseaudio support into qubes-vm-pulseaudio
+    subpackage
+  * archlinux: create pulseaudio specific install script
+  * archlinux: add libxcomposite as a make dependency
+  * archlinux: bump release version
+
+  [ Antoine Martin ]
+  * Honor DacSpeed setting in xorg.conf
+
+  [ Marek Marczykowski-Górecki ]
+  * Convert tabs to spaces in qubes-run-xorg.sh
+  * travis: add fc26 and buster
+
+  [ TomZ ]
+  * Make compile on archlinux
+
+  [ Marek Marczykowski-Górecki ]
+  * icon-sender: prefer xcffib module over xpyb
+
+  [ Frédéric Pierret ]
+  * Add support for XFCE desktop in appvm
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 12 Feb 2018 17:34:59 +0100
+
 qubes-gui-agent (3.2.19-1) wheezy; urgency=medium
 
   [ Olivier MEDOC ]
