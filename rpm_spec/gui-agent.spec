@@ -104,7 +104,7 @@ make appvm
 
 %install
 rm -rf $RPM_BUILD_ROOT
-make install DESTDIR=$RPM_BUILD_ROOT \
+make install install-xfce DESTDIR=$RPM_BUILD_ROOT \
                      LIBDIR=%{_libdir} \
                      DATADIR=%{_datadir} \
                      PA_VER=%{pa_ver}
