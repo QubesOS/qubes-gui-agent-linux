@@ -73,10 +73,10 @@ Requires:	pulseaudio = %{pa_ver}
 %description
 The Qubes GUI agent that needs to be installed in VM in order to provide the Qubes fancy GUI.
 
-%package xfce
+%package -n qubes-gui-agent-xfce
 Summary: XFCE desktop support for Qubes VM
 
-%description xfce
+%description -n qubes-gui-agent-xfce
 XFCE desktop support for Qubes VM
 
 %prep
@@ -168,5 +168,5 @@ rm -f %{name}-%{version}
 /etc/xdg/autostart/qubes-icon-sender.desktop
 %dir /var/log/qubes
 
-%files xfce
+%files -n qubes-gui-agent-xfce
 /etc/X11/xinit/xinitrc.d/50-xfce-desktop.sh
