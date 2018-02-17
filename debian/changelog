@@ -1,3 +1,9 @@
+qubes-gui-agent (3.2.21-1) unstable; urgency=medium
+
+  * Rename qubes-gui-vm-xfce to qubes-gui-agent-xfce
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 17 Feb 2018 17:49:35 +0100
+
 qubes-gui-agent (3.2.20-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
