@@ -1,3 +1,11 @@
+qubes-gui-agent (4.0.9-1) unstable; urgency=medium
+
+  [ Frédéric Pierret ]
+  * desktop flavor: specific XFCE make target
+  * XFCE: export QT_QPA_PLATFORMTHEME=qt5ct to init qt5ct properly
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 21 Mar 2018 02:39:38 +0100
+
 qubes-gui-agent (4.0.8-1) unstable; urgency=medium
 
   [ TomZ ]
