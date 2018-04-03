@@ -172,3 +172,6 @@ rm -f %{name}-%{version}
 
 %files xfce
 /etc/X11/xinit/xinitrc.d/50-xfce-desktop.sh
+
+%changelog
+@CHANGELOG@
