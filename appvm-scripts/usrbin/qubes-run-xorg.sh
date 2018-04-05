@@ -36,6 +36,10 @@ HSYNC_END=$((HSYNC_START+1))
 VREFR_START=$(($CLOCK*1000000/$HTOTAL/$VTOTAL))
 VREFR_END=$((VREFR_START+1))
 
+# Add extra memory to allow dynamic connection of extra monitor. Have space for
+# one FHD monitor, or multiple smaller.
+MEM=$(($MEM + 1920 * 1080 * 4 / 1024))
+
 sed -e  s/%MEM%/$MEM/ \
         -e  s/%DEPTH%/$DEPTH/ \
         -e  s/%MODELINE%/"$MODELINE"/ \
