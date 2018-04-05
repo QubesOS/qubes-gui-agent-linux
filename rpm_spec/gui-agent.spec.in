@@ -23,12 +23,10 @@
 #
 
 
-%{!?version: %define version %(cat version)}
 # default value in case of no qubes-builder's one
-%{!?backend_vmm: %define backend_vmm xen}
 
 Name:		qubes-gui-agent
-Version:	%{version}
+Version:	@VERSION@
 Release:	1%{dist}
 Summary:	The Qubes GUI Agent for AppVMs
 
@@ -37,7 +35,6 @@ Vendor:		Invisible Things Lab
 License:	GPL
 URL:		http://www.qubes-os.org
 
-Source:		.
 
 %define pa_ver %((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -d "-" -f 1)
 
@@ -49,17 +46,18 @@ BuildRequires:	libXt-devel
 BuildRequires:	libtool-ltdl-devel
 BuildRequires:	pulseaudio-libs-devel >= 0.9.21, pulseaudio-libs-devel <= 11.1
 BuildRequires:	xorg-x11-server-devel
-BuildRequires:	qubes-libvchan-%{backend_vmm}-devel
+BuildRequires:	qubes-libvchan-@BACKEND_VMM@-devel
 BuildRequires:	qubes-gui-common-devel >= 3.2.0
 BuildRequires:	qubes-db-devel
 Requires:	qubes-core-vm >= 3.0.14
 Requires:	xorg-x11-xinit
-Requires:	qubes-libvchan-%{backend_vmm}
+Requires:	qubes-libvchan-@BACKEND_VMM@
 Requires:	python-xcffib
 Requires:   xorg-x11-server-Xorg
 Provides:   qubes-gui-vm = %{version}-%{release}
 Obsoletes:  qubes-gui-vm < 4.0.0
 
+Source0: %{name}-%{version}.tar.gz
 
 %package -n pulseaudio-qubes
 Summary: Audio support for Qubes VM
@@ -81,19 +79,11 @@ Summary: XFCE desktop support for Qubes VM
 XFCE desktop support for Qubes VM
 
 %description
-
-%define _builddir %(pwd)
-
-%description
 The Qubes GUI agent that needs to be installed in VM in order to provide the
 Qubes fancy GUI.
 
 %prep
-# we operate on the current directory, so no need to unpack anything
-# symlink is to generate useful debuginfo packages
-rm -f %{name}-%{version}
-ln -sf . %{name}-%{version}
-%setup -T -D
+%setup -q
 
 rm -f pulse/pulsecore
 ln -s pulsecore-%{pa_ver} pulse/pulsecore
@@ -182,3 +172,6 @@ rm -f %{name}-%{version}
 
 %files xfce
 /etc/X11/xinit/xinitrc.d/50-xfce-desktop.sh
+
+%changelog
+@CHANGELOG@
