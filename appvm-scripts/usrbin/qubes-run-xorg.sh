@@ -69,4 +69,10 @@ chmod 770 /var/run/xf86-qubes-socket
 
 export XDG_SEAT=seat0 XDG_VTNR=7 XDG_SESSION_CLASS=user
 
-exec su -l user -c "/usr/bin/xinit $XSESSION -- $XORG :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1"
+# Defaults value in case default-user value is not available
+DEFAULT_USER="$(qubesdb-read /default-user 2>/dev/null)"
+if [ -z "$DEFAULT_USER" ];then
+    DEFAULT_USER="user"
+fi
+
+exec su -l "$DEFAULT_USER" -c "/usr/bin/xinit $XSESSION -- $XORG :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1"
