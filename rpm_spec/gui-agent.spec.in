@@ -52,7 +52,11 @@ BuildRequires:	qubes-db-devel
 Requires:	qubes-core-vm >= 3.0.14
 Requires:	xorg-x11-xinit
 Requires:	qubes-libvchan-@BACKEND_VMM@
+%if 0%{?fedora} >= 28
+Requires:	python2-xcffib
+%else
 Requires:	python-xcffib
+%endif
 Requires:   xorg-x11-server-Xorg
 Provides:   qubes-gui-vm = %{version}-%{release}
 Obsoletes:  qubes-gui-vm < 4.0.0
