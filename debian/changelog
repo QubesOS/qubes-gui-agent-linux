@@ -1,3 +1,31 @@
+qubes-gui-agent (4.0.10-1) unstable; urgency=medium
+
+  [ Yassine Ilmi ]
+  * Using the default_user available in qubesdb to start X
+  * Handle unavailable default-user value by defaulting to "user"
+  * Revert "Using the default_user available in qubesdb to start X"
+  * Handling case where default-user is not available in qubesdb
+  * Calling qubes-db once with a simpler statement
+
+  [ Marek Marczykowski-Górecki ]
+  * Revert "Use fixed amount of memory"
+  * Add extra video RAM for dynamic display attach
+
+  [ Frédéric Pierret ]
+  * Create .spec.in and Source0
+  * Fix link to be properly handle in the archive
+  * spec.in: add changelog placeholder
+
+  [ Marek Marczykowski-Górecki ]
+  * travis: update fedora versions
+  * rpm: set BACKEND_VMM
+  * travis: add centos7
+
+  [ Frédéric Pierret ]
+  * spec.in: python-xcffib -> python2-xcffib for Fedora >=28
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 02 May 2018 19:00:18 +0200
+
 qubes-gui-agent (4.0.9-1) unstable; urgency=medium
 
   [ Frédéric Pierret ]
