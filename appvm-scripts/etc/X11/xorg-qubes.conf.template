@@ -12,6 +12,7 @@ Section "Device"
         Identifier  "Videocard0"
         Driver      "dummyqbs"
         VideoRam %MEM%
+        Option "GUIDomID" "%GUI_DOMID%"
 EndSection
 
 Section "Monitor"

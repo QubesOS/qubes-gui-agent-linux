@@ -47,7 +47,8 @@ sed -e  s/%MEM%/$MEM/ \
         -e  s/%HSYNC_END%/"$HSYNC_END"/ \
         -e  s/%VREFR_START%/"$VREFR_START"/ \
         -e  s/%VREFR_END%/"$VREFR_END"/ \
-        -e  s/%RES%/QB$RES/ < /etc/X11/xorg-qubes.conf.template \
+        -e  s/%RES%/QB$RES/ \
+        -e  s/%GUI_DOMID%/"$GUI_DOMID"/ < /etc/X11/xorg-qubes.conf.template \
         > /etc/X11/xorg-qubes.conf
 
 XSESSION="/etc/X11/xinit/xinitrc"

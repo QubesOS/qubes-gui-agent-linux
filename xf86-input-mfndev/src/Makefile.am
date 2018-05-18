@@ -28,6 +28,7 @@ AM_CFLAGS = $(XORG_CFLAGS)
 
 @DRIVER_NAME@_drv_la_LTLIBRARIES = @DRIVER_NAME@_drv.la
 @DRIVER_NAME@_drv_la_LDFLAGS = -module -avoid-version
+@DRIVER_NAME@_drv_la_LIBADD = -L../../xf86-qubes-common -lxf86-qubes-common
 @DRIVER_NAME@_drv_ladir = @inputdir@
 
 INCLUDES=-I$(top_srcdir)/../include/
