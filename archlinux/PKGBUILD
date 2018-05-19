@@ -10,8 +10,8 @@ license=('GPL')
 groups=()
 makedepends=(pkg-config make gcc patch git automake autoconf libtool
 			pulseaudio
-			xorg-server-devel xorg-util-macros xf86dgaproto libxcomposite
-			qubes-vm-gui-common qubes-libvchan-xen qubes-db-vm libxt
+			xorg-server-devel xorg-util-macros xf86dgaproto libxcomposite libxt pixman
+			qubes-vm-gui-common qubes-libvchan-xen qubes-db-vm
 			)
 checkdepends=()
 optdepends=()
@@ -59,7 +59,7 @@ make appvm
 package_qubes-vm-gui() {
 
 depends=('xorg-xinit' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python2-xcffib'
-		'xorg-server>=1.19.0' 'xorg-server<1.20.0'
+		'xorg-server>=1.20.0' 'xorg-server<1.20.1'
 		'qubes-vm-core>=3.0.14'
 		)
 install=PKGBUILD.install
