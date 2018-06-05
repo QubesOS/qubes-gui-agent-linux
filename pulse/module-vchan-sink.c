@@ -249,12 +249,14 @@ static int write_to_vchan(libvchan_t *ctrl, char *buf, int size)
 		errno = EAGAIN;
 		full++;
 	}
+	
+	return l;
 }
 
 static int process_sink_render(struct userdata *u)
 {
 	pa_assert(u);
-
+	
 	if (u->memchunk_sink.length <= 0)
 		pa_sink_render(u->sink, libvchan_buffer_space(u->play_ctrl), &u->memchunk_sink);
 
