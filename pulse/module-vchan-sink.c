@@ -254,11 +254,7 @@ static int write_to_vchan(libvchan_t *ctrl, char *buf, int size)
 		errno = EAGAIN;
 		full++;
 	}
-	if ((all % 8000) == 0) {
-		pa_log
-		    ("write_to_vchan: all=%d waited=%d nonwaited=%d full=%d\n",
-		     all, waited, nonwaited, full);
-	}
+
 	return l;
 }
 
