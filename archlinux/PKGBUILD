@@ -1,7 +1,7 @@
 # Maintainer: Olivier Medoc <o_medoc@yahoo.fr>
 pkgname=(qubes-vm-gui qubes-vm-pulseaudio)
 pkgver=`cat version`
-pkgrel=8
+pkgrel=9
 epoch=
 pkgdesc="The Qubes GUI Agent for AppVMs"
 arch=("x86_64")
@@ -78,7 +78,7 @@ package_qubes-vm-pulseaudio() {
 
 pkgdesc="Pulseaudio support for Qubes VM"
 depends=( 'alsa-lib' 'alsa-utils' 'pulseaudio-alsa'
-		'pulseaudio>=11.1' 'pulseaudio<11.2'
+		'pulseaudio>=11.1'
 )
 install=PKGBUILD-pulseaudio.install
 pa_ver=`(pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-"`
