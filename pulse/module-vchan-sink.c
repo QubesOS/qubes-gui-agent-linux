@@ -220,14 +220,12 @@ static int source_process_msg(pa_msgobject * o, int code, void *data,
 
 static int write_to_vchan(libvchan_t *ctrl, char *buf, int size)
 {
-	static int all = 0, waited = 0, nonwaited = 0, full = 0;
 	ssize_t l;
 	fd_set rfds;
 	struct timeval tv = { 0, 0 };
 	int ret, fd = libvchan_fd_for_select(ctrl);
 	FD_ZERO(&rfds);
 	FD_SET(fd, &rfds);
-	all++;
 	ret = select(fd + 1, &rfds, NULL, NULL, &tv);
 	if (ret == -1) {
 		pa_log("Failed to select() in vchan: %s",
@@ -239,15 +237,12 @@ static int write_to_vchan(libvchan_t *ctrl, char *buf, int size)
 			pa_log("Failed libvchan_wait");
 			return -1;
 		}
-		waited++;
-	} else
-		nonwaited++;
+	}
 	if (libvchan_buffer_space(ctrl)) {
 		l = libvchan_write(ctrl, buf, size);
 	} else {
 		l = -1;
 		errno = EAGAIN;
-		full++;
 	}
 	
 	return l;
