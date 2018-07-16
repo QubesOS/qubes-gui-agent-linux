@@ -1,3 +1,16 @@
+qubes-gui-agent (3.2.23-1) unstable; urgency=medium
+
+  [ sstt011 ]
+  * Remove unnessecary pulseaudio message
+  * Readd line that shouldn't have been taken out
+
+  [ Marek Marczykowski-Górecki ]
+  * pulseaudio: remove now unused variables
+  * Add pulseaudio 12.0 headers
+  * rpm, archlinux: adjust pulseaudio version
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 16 Jul 2018 04:08:58 +0200
+
 qubes-gui-agent (3.2.22-1) unstable; urgency=medium
 
   [ Frédéric Pierret ]
