@@ -28,7 +28,6 @@ Homepage: http://www.qubes-os.org/
 Package: qubes-gui-agent
 Architecture: any
 Depends:
-    gnome-keyring,
     xserver-xorg-core,
     xinit,
     x11-xserver-utils,
