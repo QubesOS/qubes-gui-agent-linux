@@ -1,3 +1,14 @@
+qubes-gui-agent (4.0.12-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * pulseaudio: remove now unused variables
+  * debian: remove gnome-keyring dependency
+
+  [ Duncan X. Simpson ]
+  * Add symlink from pulsecore-12.0 to pulsecore-12.2
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 26 Jul 2018 02:21:40 +0200
+
 qubes-gui-agent (4.0.11-1) unstable; urgency=medium
 
   [ Olivier MEDOC ]
