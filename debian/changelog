@@ -1,3 +1,10 @@
+qubes-gui-agent (4.0.14-1) unstable; urgency=medium
+
+  * rpm: fix max pulseaudio version
+  * travis: add fc28
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 27 Jul 2018 01:33:47 +0200
+
 qubes-gui-agent (4.0.13-1) unstable; urgency=medium
 
   [ Jean-Philippe Ouellet ]
