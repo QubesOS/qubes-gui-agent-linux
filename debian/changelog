@@ -1,3 +1,10 @@
+qubes-gui-agent (4.0.13-1) unstable; urgency=medium
+
+  [ Jean-Philippe Ouellet ]
+  * chmod -x files which have no reason to be +x
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 27 Jul 2018 00:19:22 +0200
+
 qubes-gui-agent (4.0.12-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
