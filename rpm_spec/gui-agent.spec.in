@@ -93,6 +93,7 @@ rm -f pulse/pulsecore
 ln -s pulsecore-%{pa_ver} pulse/pulsecore
 
 %build
+%{?set_build_flags}
 #make clean
 make BACKEND_VMM=@BACKEND_VMM@ appvm
 
