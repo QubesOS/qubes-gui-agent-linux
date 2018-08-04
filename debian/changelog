@@ -1,3 +1,9 @@
+qubes-gui-agent (3.2.28-1) unstable; urgency=medium
+
+  * archlinux: bump pulseaudio version
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 04 Aug 2018 02:05:25 +0200
+
 qubes-gui-agent (3.2.27-1) unstable; urgency=medium
 
   [ Duncan X. Simpson ]
