@@ -1,7 +1,7 @@
 # Maintainer: Olivier Medoc <o_medoc@yahoo.fr>
 pkgname=(qubes-vm-gui qubes-vm-pulseaudio)
 pkgver=`cat version`
-pkgrel=8
+pkgrel=9
 epoch=
 pkgdesc="The Qubes GUI Agent for AppVMs"
 arch=("x86_64")
@@ -59,7 +59,7 @@ make appvm
 package_qubes-vm-gui() {
 
 depends=('xorg-xinit' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python2-xcffib'
-		'xorg-server>=1.20.0' 'xorg-server<1.20.1'
+		'xorg-server>=1.20.0' 'xorg-server<=1.20.1'
 		'qubes-vm-core>=3.0.14'
 		)
 install=PKGBUILD.install
