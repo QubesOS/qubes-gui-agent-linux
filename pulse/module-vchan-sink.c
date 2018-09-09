@@ -135,14 +135,38 @@ static const char *const valid_modargs[] = {
 	NULL
 };
 
+#if PA_CHECK_VERSION(12,0,0)
+static int sink_set_state_in_io_thread_cb(pa_sink *s, pa_sink_state_t new_state,
+		pa_suspend_cause_t suspend_cause __attribute__((unused))) {
+	struct userdata *u = s->userdata;
+	uint32_t cmd = 0;
+
+	pa_log("sink cork req state =%d, now state=%d\n", new_state,
+			(int) (s->state));
+	if (s->state == PA_SINK_SUSPENDED && new_state != PA_SINK_SUSPENDED)
+		cmd = QUBES_PA_SINK_UNCORK_CMD;
+	else if (s->state != PA_SINK_SUSPENDED && new_state == PA_SINK_SUSPENDED)
+		cmd = QUBES_PA_SINK_CORK_CMD;
+	if (cmd != 0) {
+		if (libvchan_send(u->rec_ctrl, (char*)&cmd, sizeof(cmd)) < 0) {
+			pa_log("vchan: failed to send sink cork cmd");
+		}
+	}
+
+	return 0;
+}
+#endif
+
 static int sink_process_msg(pa_msgobject * o, int code, void *data,
 			    int64_t offset, pa_memchunk * chunk)
 {
-	int r;
 	struct userdata *u = PA_SINK(o)->userdata;
-	int state;
 	switch (code) {
-	case PA_SINK_MESSAGE_SET_STATE:
+#if !PA_CHECK_VERSION(12,0,0)
+	case PA_SINK_MESSAGE_SET_STATE: {
+		int r;
+		int state;
+
 		state = PA_PTR_TO_UINT(data);
 		r = pa_sink_process_msg(o, code, data, offset, chunk);
 		if (r >= 0) {
@@ -160,6 +184,8 @@ static int sink_process_msg(pa_msgobject * o, int code, void *data,
 			}
 		}
 		return r;
+	}
+#endif
 
 	case PA_SINK_MESSAGE_GET_LATENCY:{
 			size_t n = 0;
@@ -174,14 +200,48 @@ static int sink_process_msg(pa_msgobject * o, int code, void *data,
 	return pa_sink_process_msg(o, code, data, offset, chunk);
 }
 
+#if PA_CHECK_VERSION(12,0,0)
+static int source_set_state_in_io_thread_cb(pa_source *s, pa_source_state_t new_state,
+		pa_suspend_cause_t suspend_cause __attribute__((unused))) {
+	struct userdata *u = s->userdata;
+	uint32_t cmd = 0;
+
+	pa_log("source cork req state =%d, now state=%d\n", new_state,
+			(int) (s->state));
+	if (s->state != PA_SOURCE_RUNNING && new_state == PA_SOURCE_RUNNING)
+		cmd = QUBES_PA_SOURCE_START_CMD;
+	else if (s->state == PA_SOURCE_RUNNING && new_state != PA_SOURCE_RUNNING)
+		cmd = QUBES_PA_SOURCE_STOP_CMD;
+	if (cmd != 0) {
+		if (libvchan_send(u->rec_ctrl, (char*)&cmd, sizeof(cmd)) < 0) {
+			pa_log("vchan: failed to send record cmd");
+			/* This is a problem in case of enabling recording, in case
+			 * of QUBES_PA_SOURCE_STOP_CMD it can happen that remote end
+			 * is already disconnected, so indeed will not send further data.
+			 * This can happen for example when we terminate the
+			 * process because of pacat in dom0 has disconnected.
+			 */
+			if (new_state == PA_SOURCE_RUNNING)
+				return -1;
+			else
+				return 0;
+		}
+	}
+
+	return 0;
+}
+#endif
+
 static int source_process_msg(pa_msgobject * o, int code, void *data,
 			    int64_t offset, pa_memchunk * chunk)
 {
-	int r;
 	struct userdata *u = PA_SOURCE(o)->userdata;
-	int state;
 	switch (code) {
-	case PA_SOURCE_MESSAGE_SET_STATE:
+#if !PA_CHECK_VERSION(12,0,0)
+	case PA_SOURCE_MESSAGE_SET_STATE: {
+		int r;
+		int state;
+
 		state = PA_PTR_TO_UINT(data);
 		r = pa_source_process_msg(o, code, data, offset, chunk);
 		if (r >= 0) {
@@ -209,6 +269,8 @@ static int source_process_msg(pa_msgobject * o, int code, void *data,
 			}
 		}
 		return r;
+	}
+#endif
 
 	case PA_SOURCE_MESSAGE_GET_LATENCY:{
 			size_t n = 0;
@@ -626,6 +688,9 @@ int pa__init(pa_module * m)
 	}
 
 	u->sink->parent.process_msg = sink_process_msg;
+#if PA_CHECK_VERSION(12,0,0)
+	u->sink->set_state_in_io_thread = sink_set_state_in_io_thread_cb;
+#endif
 	u->sink->userdata = u;
 
 	pa_sink_set_asyncmsgq(u->sink, u->thread_mq.inq);
@@ -669,6 +734,9 @@ int pa__init(pa_module * m)
 	}
 
 	u->source->parent.process_msg = source_process_msg;
+#if PA_CHECK_VERSION(12,0,0)
+	u->source->set_state_in_io_thread = source_set_state_in_io_thread_cb;
+#endif
 	u->source->userdata = u;
 
 	pa_source_set_asyncmsgq(u->source, u->thread_mq.inq);
