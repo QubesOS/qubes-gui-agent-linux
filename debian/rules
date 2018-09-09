@@ -8,6 +8,8 @@ include /usr/share/dpkg/default.mk
 export DESTDIR=$(shell pwd)/debian/tmp
 export LIBDIR=/usr/lib
 
+PA_VER=$(shell pkg-config --modversion libpulse | cut -d "-" -f 1 || echo 0.0)
+
 %:
 	dh $@ --with systemd,xsf
 
@@ -22,3 +24,7 @@ override_dh_systemd_start:
 
 override_dh_install:
 	dh_install --fail-missing
+
+override_dh_gencontrol:
+	echo "pulse:Depends=pulseaudio (>= $(PA_VER)), pulseaudio (<< $(PA_VER).1)" >> debian/pulseaudio-qubes.substvars
+	dh_gencontrol

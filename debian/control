@@ -82,6 +82,7 @@ Depends:
     pulseaudio,
     libpulse0,
     ${shlibs:Depends},
+    ${pulse:Depends},
 Replaces: qubes-gui-agent (<< 4.0.0-1)
 Breaks: qubes-gui-agent (<< 4.0.0-1)
 Description: Audio support for Qubes VM
