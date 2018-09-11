@@ -1,0 +1,4 @@
+# This is not meant to be executed
+pulseaudio-qubes: script-not-executable etc/pulse/qubes-default.pa
+# Pulseaudio config use #!/usr/bin/pulseaudio as a magic
+pulseaudio-qubes: unusual-interpreter etc/pulse/qubes-default.pa
