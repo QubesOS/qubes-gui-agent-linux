@@ -1910,7 +1910,7 @@ void get_xconf_and_run_x(libvchan_t *vchan)
     setenv("MEM", val, 1);
     snprintf(val, sizeof(val), "%d", xconf.depth);
     setenv("DEPTH", val, 1);
-    do_execute(NULL, "/usr/bin/qubes-run-xorg.sh");
+    do_execute(NULL, "/usr/bin/qubes-run-xorg");
 }
 
 void send_protocol_version(libvchan_t *vchan)

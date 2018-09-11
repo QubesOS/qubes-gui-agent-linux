@@ -140,7 +140,7 @@ rm -f %{name}-%{version}
 %defattr(-,root,root,-)
 /usr/bin/qubes-gui
 /usr/bin/qubes-session
-/usr/bin/qubes-run-xorg.sh
+/usr/bin/qubes-run-xorg
 /usr/bin/qubes-change-keyboard-layout
 /usr/bin/qubes-set-monitor-layout
 %{_libdir}/xorg/modules/drivers/qubes_drv.so

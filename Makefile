@@ -129,8 +129,8 @@ install-common:
 	install -D gui-agent/qubes-gui $(DESTDIR)/usr/bin/qubes-gui
 	install -D appvm-scripts/usrbin/qubes-session \
 		$(DESTDIR)/usr/bin/qubes-session
-	install -D appvm-scripts/usrbin/qubes-run-xorg.sh \
-		$(DESTDIR)/usr/bin/qubes-run-xorg.sh
+	install -D appvm-scripts/usrbin/qubes-run-xorg \
+		$(DESTDIR)/usr/bin/qubes-run-xorg
 	install -D appvm-scripts/usrbin/qubes-change-keyboard-layout \
 		$(DESTDIR)/usr/bin/qubes-change-keyboard-layout
 	install -D appvm-scripts/usrbin/qubes-set-monitor-layout \
