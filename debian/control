@@ -20,7 +20,7 @@ Build-Depends:
     qubesdb-dev,
     dh-systemd (>= 1.5),
     libltdl-dev
-Standards-Version: 3.9.3
+Standards-Version: 3.9.8
 Homepage: http://www.qubes-os.org/
 #Vcs-Git: git://git.debian.org/collab-maint/qubes-gui-agent.git
 #Vcs-Browser: http://git.debian.org/?p=collab-maint/qubes-gui-agent.git;a=summary
@@ -83,6 +83,7 @@ Depends:
     libpulse0,
     ${shlibs:Depends},
     ${pulse:Depends},
+    ${misc:Depends}
 Replaces: qubes-gui-agent (<< 4.0.0-1)
 Breaks: qubes-gui-agent (<< 4.0.0-1)
 Description: Audio support for Qubes VM
