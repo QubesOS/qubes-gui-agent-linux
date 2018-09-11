@@ -50,7 +50,7 @@ gui-agent/qubes-gui:
 	(cd gui-agent; $(MAKE))
 
 xf86-input-mfndev/src/.libs/qubes_drv.so:
-	(cd xf86-input-mfndev && ./bootstrap && ./configure && make LDFLAGS=-lu2mfn)
+	(cd xf86-input-mfndev && ./autogen.sh && ./configure && make LDFLAGS=-lu2mfn)
 
 xf86-video-dummy/src/.libs/dummyqbs_drv.so:
 	(cd xf86-video-dummy && ./autogen.sh && make)
