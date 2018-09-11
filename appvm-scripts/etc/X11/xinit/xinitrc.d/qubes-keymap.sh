@@ -1,4 +1,4 @@
-#!/bin/sh
+# This file is sourced by Xsession(5)/xinitrc, not executed.
 
 QUBES_KEYMAP="`/usr/bin/qubesdb-read /qubes-keyboard`"
 QUBES_KEYMAP="`/bin/echo -e $QUBES_KEYMAP`"

@@ -1,4 +1,4 @@
-#!/bin/sh
+# This file is sourced by Xsession(5), not executed.
 
 installConfigurationFile() {
     file="${1}"

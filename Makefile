@@ -104,10 +104,10 @@ install-xfce:
 		$(DESTDIR)/etc/X11/xinit/xinitrc.d/50-xfce-desktop.sh
 
 install-debian: appvm install-common install-pulseaudio
-	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh \
-		$(DESTDIR)/etc/X11/Xsession.d/90qubes-keymap
 	install -d $(DESTDIR)/etc/X11/Xsession.d
-	install appvm-scripts/etc/X11/Xsession.d/* $(DESTDIR)/etc/X11/Xsession.d/
+	install -m 0644 appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh \
+		$(DESTDIR)/etc/X11/Xsession.d/
+	install -m 0644 appvm-scripts/etc/X11/Xsession.d/* $(DESTDIR)/etc/X11/Xsession.d/
 	install -d $(DESTDIR)/etc/xdg
 	install -m 0644 appvm-scripts/etc/xdg-debian/* $(DESTDIR)/etc/xdg
 	install -m 0644 -D appvm-scripts/qubes-gui-agent.service \
