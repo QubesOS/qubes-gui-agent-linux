@@ -80,7 +80,7 @@ class IconRetriever(object):
         if icon.format == 0:
             raise NoIconError()
         # convert it later to a proper int array
-        icon_data = str(icon.value.buf())
+        icon_data = icon.value.buf()
         if icon.bytes_after:
             prop_cookie = self.conn.core.GetProperty(
                 False,  # delete
@@ -91,7 +91,7 @@ class IconRetriever(object):
                 icon.bytes_after  # long_length
             )
             icon_cont = prop_cookie.reply()
-            icon_data += str(icon_cont.value.buf())
+            icon_data += icon_cont.value.buf()
 
         # join each 4 bytes into a single int
         icon_data = struct.unpack("%dI" % (len(icon_data) / 4), icon_data)
@@ -114,12 +114,13 @@ class IconRetriever(object):
             icons = self.get_icons(w)
             chosen_size = sorted(icons.keys())[-1]
 
-            sys.stdout.write("{}\n".format(w))
-            sys.stdout.write("{} {}\n".format(chosen_size[0], chosen_size[1]))
-            sys.stdout.write(''.join(
+            sys.stdout.buffer.write("{}\n".format(w).encode('ascii'))
+            sys.stdout.buffer.write("{} {}\n".format(
+                chosen_size[0], chosen_size[1]).encode('ascii'))
+            sys.stdout.buffer.write(b''.join(
                 [struct.pack('>I', ((b << 8) & 0xffffff00) | (b >> 24)) for b in
                  icons[chosen_size]]))
-            sys.stdout.flush()
+            sys.stdout.buffer.flush()
         except NoIconError:
             pass
 
