@@ -58,7 +58,7 @@ make appvm
 
 package_qubes-vm-gui() {
 
-depends=('xorg-xinit' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python2-xcffib'
+depends=('xorg-xinit' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python3-xcffib'
 		'xorg-server>=1.20.1' 'xorg-server<1.20.2'
 		'qubes-vm-core>=3.0.14'
 		)
