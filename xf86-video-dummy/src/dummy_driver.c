@@ -278,8 +278,6 @@ dummy_output_detect (xf86OutputPtr output)
 static DisplayModePtr
 dummy_output_get_modes (xf86OutputPtr output)
 {
-    unsigned i;
-    uint32_t x, y, bpp;
     DisplayModePtr pModes = NULL, pMode, pModeSrc;
 
     /* copy modes from config */
