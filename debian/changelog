@@ -1,3 +1,18 @@
+qubes-gui-agent (4.0.17-1) unstable; urgency=medium
+
+  [ fepitre ]
+  * travis: add fc29
+  * Update to python3-xcffib
+
+  [ Marek Marczykowski-Górecki ]
+  * window-icon-updater: make it work with python3
+  * window-icon-updater: drop python-xcb support
+  * archlinux: update dependencies
+  * xf86-video-dummy: drop unused variables
+  * xf86-video-dummy: indent with spaces not tabs
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 09 Oct 2018 06:05:36 +0200
+
 qubes-gui-agent (4.0.16-1) unstable; urgency=medium
 
   [ Olivier MEDOC ]
