@@ -26,12 +26,8 @@
 #  tainted by dom0 and then attached to appropriate windows.
 # Usage: qrexec-client-vm dom0 qubes.WindowIconUpdater ./icon-sender
 
-try:
-    import xcffib as xcb
-    from xcffib import xproto
-except ImportError:
-    import xcb
-    from xcb import xproto
+import xcffib
+from xcffib import xproto
 
 import sys
 import struct
@@ -45,7 +41,7 @@ class NoIconError(KeyError):
 
 class IconRetriever(object):
     def __init__(self):
-        self.conn = xcb.connect()
+        self.conn = xcffib.connect()
         self.setup = self.conn.get_setup()
         self.root = self.setup.roots[0].root
 
