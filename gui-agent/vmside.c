@@ -86,6 +86,7 @@ struct _global_handles {
     unsigned int clipboard_data_len;
     int log_level;
     int sync_all_modifiers;
+    int composite_redirect_automatic;
 };
 
 struct window_data {
@@ -1943,11 +1944,12 @@ void handle_guid_disconnect()
 
 void usage()
 {
-    fprintf(stderr, "Usage: qubes_gui [-v] [-q] [-h]\n");
+    fprintf(stderr, "Usage: qubes_gui [options]\n");
     fprintf(stderr, "       -v  increase log verbosity\n");
     fprintf(stderr, "       -q  decrease log verbosity\n");
     fprintf(stderr, "       -m  sync all modifiers before key event (default)\n");
     fprintf(stderr, "       -M  sync only Caps Lock key event\n");
+    fprintf(stderr, "       -c  turn off composite \"redirect automatic\" mode\n");
     fprintf(stderr, "       -h  print this message\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "Log levels:\n");
@@ -1963,7 +1965,8 @@ void parse_args(Ghandles * g, int argc, char **argv)
     // defaults
     g->log_level = 0;
     g->sync_all_modifiers = 1;
-    while ((opt = getopt(argc, argv, "qvhmM")) != -1) {
+    g->composite_redirect_automatic = 1;
+    while ((opt = getopt(argc, argv, "qvchmM")) != -1) {
         switch (opt) {
             case 'q':
                 g->log_level--;
@@ -1976,6 +1979,9 @@ void parse_args(Ghandles * g, int argc, char **argv)
                 break;
             case 'M':
                 g->sync_all_modifiers = 0;
+                break;
+            case 'c':
+                g->composite_redirect_automatic = 0;
                 break;
             case 'h':
                 usage();
@@ -2013,11 +2019,19 @@ int main(int argc, char **argv)
     mkghandles(&g);
     ghandles_for_vchan_reinitialize = &g;
     parse_args(&g, argc, argv);
+    /* Turn on Composite for all children of root window. This way X server
+     * keeps separate buffers for each (root child) window.
+     * There are two modes:
+     *  - manual - this way only off-screen buffers are maintained
+     *  - automatic - in addition to manual, widows are rendered back to the
+     *  root window
+     */
     for (i = 0; i < ScreenCount(g.display); i++)
         XCompositeRedirectSubwindows(g.display,
                 RootWindow(g.display, i),
-                //                                           CompositeRedirectAutomatic);
-            CompositeRedirectManual);
+            (g.composite_redirect_automatic ?
+              CompositeRedirectAutomatic :
+              CompositeRedirectManual));
     for (i = 0; i < ScreenCount(g.display); i++)
         XSelectInput(g.display, RootWindow(g.display, i),
                 SubstructureNotifyMask);
