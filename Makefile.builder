@@ -10,6 +10,7 @@ endif
 
 
 source-debian-quilt-copy-in:
+	sed -i 's/$$(PA_VER)/1:$$(PA_VER)/g' $(CHROOT_DIR)/$(DIST_SRC)/debian/rules
 	sed -i /Trolltech.conf/d $(CHROOT_DIR)/$(DIST_SRC)/debian/qubes-gui-agent.install
 	-$(shell $(ORIG_SRC)/debian-quilt $(ORIG_SRC)/series-debian-vm.conf $(CHROOT_DIR)/$(DIST_SRC)/debian/patches)
 
