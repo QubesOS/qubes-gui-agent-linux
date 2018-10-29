@@ -1,3 +1,17 @@
+qubes-gui-agent (4.0.18-1) unstable; urgency=medium
+
+  [ unman ]
+  * Add epoch for pulseaudio-qubes requirements in Ubuntu builds
+
+  [ Marek Marczykowski-Górecki ]
+  * gui-agent: switch to automatic composition mode, fix in-vm
+    screenshots
+
+  [ Duncan X. Simpson ]
+  * Fix python-xcffib dependency
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 29 Oct 2018 01:31:03 +0100
+
 qubes-gui-agent (4.0.17-1) unstable; urgency=medium
 
   [ fepitre ]
