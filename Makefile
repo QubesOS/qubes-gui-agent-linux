@@ -90,7 +90,7 @@ install-rh-agent: appvm install-common
 		$(DESTDIR)/etc/sysconfig/desktop
 	install -D appvm-scripts/etc/sysconfig/modules/qubes-u2mfn.modules \
 		$(DESTDIR)/etc/sysconfig/modules/qubes-u2mfn.modules
-	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh \
+	install -m 0755 -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh \
 		$(DESTDIR)/etc/X11/xinit/xinitrc.d/qubes-keymap.sh
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh \
 		$(DESTDIR)/etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh
@@ -105,8 +105,8 @@ install-xfce:
 
 install-debian: appvm install-common install-pulseaudio
 	install -d $(DESTDIR)/etc/X11/Xsession.d
-	install -m 0644 appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh \
-		$(DESTDIR)/etc/X11/Xsession.d/
+	install -m 0755 appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh \
+		$(DESTDIR)/etc/X11/Xsession.d/90qubes-keymap
 	install -m 0644 appvm-scripts/etc/X11/Xsession.d/* $(DESTDIR)/etc/X11/Xsession.d/
 	install -d $(DESTDIR)/etc/xdg
 	install -m 0644 appvm-scripts/etc/xdg-debian/* $(DESTDIR)/etc/xdg
