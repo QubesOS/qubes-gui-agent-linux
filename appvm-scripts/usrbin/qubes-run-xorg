@@ -36,9 +36,17 @@ HSYNC_END=$((HSYNC_START+1))
 VREFR_START=$(($CLOCK*1000000/$HTOTAL/$VTOTAL))
 VREFR_END=$((VREFR_START+1))
 
-# Add extra memory to allow dynamic connection of extra monitor. Have space for
-# one FHD monitor, or multiple smaller.
-MEM=$(($MEM + 1920 * 1080 * 4 / 1024))
+# Add extra memory to allow dynamic connection of extra monitor.
+# By default, have space for one FHD monitor, or multiple smaller.
+MEM_MIN="$(qubesdb-read /qubes-gui-videoram-min 2>/dev/null)"
+MEM_OVERHEAD="$(qubesdb-read /qubes-gui-videoram-overhead 2>/dev/null)"
+: ${MEM_MIN:=0}
+: ${MEM_OVERHEAD:=$((1920 * 1080 * 4 / 1024))}
+
+MEM=$(($MEM + $MEM_OVERHEAD))
+if [ $MEM -lt $MEM_MIN ]; then
+    MEM=$MEM_MIN
+fi
 
 sed -e  s/%MEM%/$MEM/ \
         -e  s/%DEPTH%/$DEPTH/ \
