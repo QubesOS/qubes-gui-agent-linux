@@ -66,11 +66,6 @@ if [ -f /etc/X11/Xsession ]; then
     fi
 fi
 
-# Make qubes input socket readable by user in case Xorg is not running as
-# root (debian for example)
-chown root:user /var/run/xf86-qubes-socket
-chmod 770 /var/run/xf86-qubes-socket
-
 export XDG_SEAT=seat0 XDG_SESSION_CLASS=user DISPLAY=:0
 
 # Defaults value in case default-user value is not available
@@ -78,6 +73,10 @@ DEFAULT_USER="$(qubesdb-read /default-user 2>/dev/null)"
 if [ -z "$DEFAULT_USER" ];then
     DEFAULT_USER="user"
 fi
+# Make qubes input socket readable by user in case Xorg is not running as
+# root (debian for example)
+chown "$DEFAULT_USER" /var/run/xf86-qubes-socket
+chmod 770 /var/run/xf86-qubes-socket
 
 if [ -x /bin/loginctl ]; then
     # logind needs at least one device with "master-of-seat" tag to
