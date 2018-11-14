@@ -43,11 +43,15 @@ help:
 	    echo "make update-repo-installer -- copy dom0 rpms to installer repo"
 	    @exit 0;
 
-appvm: gui-agent/qubes-gui xf86-input-mfndev/src/.libs/qubes_drv.so \
+appvm: gui-agent/qubes-gui gui-common/qubes-gui-runuser \
+	xf86-input-mfndev/src/.libs/qubes_drv.so \
 	xf86-video-dummy/src/.libs/dummyqbs_drv.so pulse/module-vchan-sink.so
 
 gui-agent/qubes-gui:
 	(cd gui-agent; $(MAKE))
+
+gui-common/qubes-gui-runuser:
+	(cd gui-common; $(MAKE))
 
 xf86-input-mfndev/src/.libs/qubes_drv.so:
 	(cd xf86-input-mfndev && ./autogen.sh && ./configure && make LDFLAGS=-lu2mfn)
@@ -127,6 +131,7 @@ install-pulseaudio:
 
 install-common:
 	install -D gui-agent/qubes-gui $(DESTDIR)/usr/bin/qubes-gui
+	install -D gui-common/qubes-gui-runuser $(DESTDIR)/usr/bin/qubes-gui-runuser
 	install -D appvm-scripts/usrbin/qubes-session \
 		$(DESTDIR)/usr/bin/qubes-session
 	install -D appvm-scripts/usrbin/qubes-run-xorg \
@@ -167,4 +172,19 @@ endif
 		$(DESTDIR)/usr/lib/sysctl.d/30-qubes-gui-agent.conf
 	install -D -m 0644 appvm-scripts/usr/lib/modules-load.d/qubes-gui.conf \
 		$(DESTDIR)/usr/lib/modules-load.d/qubes-gui.conf
+	install -D -m 0644 appvm-scripts/lib/udev/rules.d/70-master-of-seat.rules \
+		$(DESTDIR)/lib/udev/rules.d/70-master-of-seat.rules
+ifeq ($(shell lsb_release -is), Debian)
+	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent.debian \
+		$(DESTDIR)/etc/pam.d/qubes-gui-agent
+else ifeq ($(shell lsb_release -is), Ubuntu)
+	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent.debian \
+		$(DESTDIR)/etc/pam.d/qubes-gui-agent
+else ifeq ($(shell lsb_release -is), Arch)
+	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent.archlinux \
+		$(DESTDIR)/etc/pam.d/qubes-gui-agent
+else
+	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent \
+		$(DESTDIR)/etc/pam.d/qubes-gui-agent
+endif
 	install -d $(DESTDIR)/var/log/qubes

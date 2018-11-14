@@ -1,0 +1,5 @@
+# logind needs _some_ device with master-of-seat tag, to consider seat0 being a
+# graphical seat. Since there are not many devices in Qubes VM, lets use pcspkr
+# which is an input device, apparently.
+
+ENV{ID_PATH}=="platform-pcspkr", TAG+="master-of-seat"

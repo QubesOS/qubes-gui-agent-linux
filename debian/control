@@ -3,6 +3,7 @@ Section: admin
 Priority: extra
 Maintainer: Davíð Steinn Geirsson <david@dsg.is>
 Build-Depends:
+    libpam0g-dev,
     libpulse-dev,
     libtool,
     automake,

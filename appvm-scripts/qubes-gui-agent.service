@@ -3,10 +3,15 @@ Description=Qubes GUI Agent
 After=qubes-meminfo-writer.service qubes-mount-dirs.service
 
 [Service]
+StandardInput=tty
+TTYPath=/dev/tty7
+# custom PATH for X session can be set with ENV_PATH; otherwise service's PATH
+# is inherited
+#Environment=ENV_PATH=/usr/local/bin:/usr/bin:/bin
 # pretend tha user is at local console
 ExecStartPre=/bin/mkdir -p /var/run/console ; /bin/touch /var/run/console/user
-# clean env
 ExecStart=/usr/bin/qubes-gui $GUI_OPTS
+# clean env
 ExecStopPost=/bin/rm -f /tmp/qubes-session-env /tmp/qubes-session-waiter
 StandardOutput=syslog
 Environment=DISPLAY=:0

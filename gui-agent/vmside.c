@@ -1731,10 +1731,10 @@ void do_execute(char *user, char *cmd)
             perror("fork cmd");
             break;
         case 0:
-            for (i = 0; i < 256; i++)
+            for (i = 1; i < 256; i++)
                 close(i);
             fd = open("/dev/null", O_RDWR);
-            for (i = 0; i <= 2; i++)
+            for (i = 1; i <= 2; i++)
                 dup2(fd, i);
             signal(SIGCHLD, SIG_DFL);
             if (user)
