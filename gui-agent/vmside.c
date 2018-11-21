@@ -29,7 +29,10 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <grp.h>
+#include <err.h>
 #include <X11/Xlib.h>
 #include <X11/Intrinsic.h>
 #include <X11/Xutil.h>
@@ -87,6 +90,7 @@ struct _global_handles {
     int log_level;
     int sync_all_modifiers;
     int composite_redirect_automatic;
+    pid_t x_pid;
 };
 
 struct window_data {
@@ -1723,27 +1727,42 @@ void handle_close(Ghandles * g, XID winid)
                 (int) winid);
 }
 
-void do_execute(char *user, char *cmd)
+/* start X server, returns its PID
+ */
+pid_t do_execute_xorg(
+        char *w_str, char *h_str, char *mem_str, char *depth_str)
 {
-    int i, fd;
-    switch (fork()) {
+    pid_t pid;
+    int fd;
+
+    pid = fork();
+    switch (pid) {
         case -1:
-            perror("fork cmd");
-            break;
+            perror("fork");
+            return -1;
         case 0:
-            for (i = 0; i < 256; i++)
-                close(i);
-            fd = open("/dev/null", O_RDWR);
-            for (i = 0; i <= 2; i++)
-                dup2(fd, i);
-            signal(SIGCHLD, SIG_DFL);
-            if (user)
-                execl("/bin/su", "su", "-", user, "-c", cmd, NULL);
-            else
-                execl("/bin/bash", "bash", "-c", cmd, NULL);
+            setenv("W", w_str, 1);
+            setenv("H", h_str, 1);
+            setenv("MEM", mem_str, 1);
+            setenv("DEPTH", depth_str, 1);
+            /* don't leak other FDs */
+            for (fd = 3; fd < 256; fd++)
+                close(fd);
+            execl("/usr/bin/qubes-run-xorg", "qubes-run-xorg", NULL);
             perror("execl cmd");
-            exit(1);
-        default:;
+            exit(127);
+        default:
+            return pid;
+    }
+}
+
+void terminate_and_cleanup_xorg(Ghandles *g) {
+    int status;
+
+    if (g->x_pid != (pid_t)-1) {
+        kill(g->x_pid, SIGTERM);
+        waitpid(g->x_pid, &status, 0);
+        g->x_pid = -1;
     }
 }
 
@@ -1898,20 +1917,21 @@ void handle_message(Ghandles * g)
     }
 }
 
-void get_xconf_and_run_x(libvchan_t *vchan)
+pid_t get_xconf_and_run_x(libvchan_t *vchan)
 {
     struct msg_xconf xconf;
-    char val[64];
+    char w_str[12], h_str[12], mem_str[12], depth_str[12];
+    pid_t x_pid;
     read_struct(vchan, xconf);
-    snprintf(val, sizeof(val), "%d", xconf.w);
-    setenv("W", val, 1);
-    snprintf(val, sizeof(val), "%d", xconf.h);
-    setenv("H", val, 1);
-    snprintf(val, sizeof(val), "%d", xconf.mem);
-    setenv("MEM", val, 1);
-    snprintf(val, sizeof(val), "%d", xconf.depth);
-    setenv("DEPTH", val, 1);
-    do_execute(NULL, "/usr/bin/qubes-run-xorg");
+    snprintf(w_str, sizeof(w_str), "%d", xconf.w);
+    snprintf(h_str, sizeof(h_str), "%d", xconf.h);
+    snprintf(mem_str, sizeof(mem_str), "%d", xconf.mem);
+    snprintf(depth_str, sizeof(depth_str), "%d", xconf.depth);
+    x_pid = do_execute_xorg(w_str, h_str, mem_str, depth_str);
+    if (x_pid == (pid_t)-1) {
+        errx(1, "X server startup failed");
+    }
+    return x_pid;
 }
 
 void send_protocol_version(libvchan_t *vchan)
@@ -1940,6 +1960,13 @@ void handle_guid_disconnect()
     /* discard */
     read_struct(g->vchan, xconf);
     send_all_windows_info(g);
+}
+
+void handle_sigterm()
+{
+    Ghandles *g = ghandles_for_vchan_reinitialize;
+    terminate_and_cleanup_xorg(g);
+    exit(0);
 }
 
 void usage()
@@ -2015,7 +2042,7 @@ int main(int argc, char **argv)
     saved_argv = argv;
     vchan_register_at_eof(handle_guid_disconnect);
     send_protocol_version(g.vchan);
-    get_xconf_and_run_x(g.vchan);
+    g.x_pid = get_xconf_and_run_x(g.vchan);
     mkghandles(&g);
     ghandles_for_vchan_reinitialize = &g;
     parse_args(&g, argc, argv);
@@ -2044,6 +2071,7 @@ int main(int argc, char **argv)
     }
     XAutoRepeatOff(g.display);
     signal(SIGCHLD, SIG_IGN);
+    signal(SIGTERM, handle_sigterm);
     windows_list = list_new();
     embeder_list = list_new();
     XSetErrorHandler(dummy_handler);

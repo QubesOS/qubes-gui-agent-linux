@@ -46,6 +46,7 @@ BuildRequires:	libXt-devel
 BuildRequires:	libtool-ltdl-devel
 BuildRequires:	pulseaudio-libs-devel >= 0.9.21, pulseaudio-libs-devel <= 12.2
 BuildRequires:	xorg-x11-server-devel
+BuildRequires:	pam-devel
 BuildRequires:	qubes-libvchan-@BACKEND_VMM@-devel
 BuildRequires:	qubes-gui-common-devel >= 3.2.0
 BuildRequires:	qubes-db-devel
@@ -135,6 +136,7 @@ rm -f %{name}-%{version}
 %files
 %defattr(-,root,root,-)
 /usr/bin/qubes-gui
+/usr/bin/qubes-gui-runuser
 /usr/bin/qubes-session
 /usr/bin/qubes-run-xorg
 /usr/bin/qubes-change-keyboard-layout
@@ -146,6 +148,7 @@ rm -f %{name}-%{version}
 /etc/profile.d/qubes-gui.sh
 /etc/profile.d/qubes-gui.csh
 /etc/profile.d/qubes-session.sh
+%config /etc/pam.d/qubes-gui-agent
 %config /etc/security/limits.d/90-qubes-gui.conf
 %config /etc/xdg/Trolltech.conf
 /etc/X11/xinit/xinitrc.d/qubes-keymap.sh
@@ -156,6 +159,7 @@ rm -f %{name}-%{version}
 %config /etc/sysconfig/desktop
 /etc/sysconfig/modules/qubes-u2mfn.modules
 /lib/systemd/system/qubes-gui-agent.service
+/lib/udev/rules.d/70-master-of-seat.rules
 /usr/lib/modules-load.d/qubes-gui.conf
 /usr/lib/tmpfiles.d/qubes-session.conf
 /usr/lib/sysctl.d/30-qubes-gui-agent.conf
