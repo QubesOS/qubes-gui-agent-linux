@@ -1,3 +1,21 @@
+qubes-gui-agent (4.0.19-1) unstable; urgency=medium
+
+  [ Duncan X. Simpson ]
+  * Bump xorg-server version
+
+  [ Marek Marczykowski-Górecki ]
+  * Fix qubes-keymap script permissions
+
+  [ Wojtek Porczyk ]
+  * qubes-run-xorg: add configurable videoram overhead
+
+  [ Marek Marczykowski-Górecki ]
+  * Fix X11 session registration in logind
+  * qubes-run-xorg: fix one more place with hardcoded 'user'
+  * vmside: cleanup calling qubes-run-xorg, terminate it on service stop
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 21 Nov 2018 03:09:41 +0100
+
 qubes-gui-agent (4.0.18-1) unstable; urgency=medium
 
   [ unman ]
