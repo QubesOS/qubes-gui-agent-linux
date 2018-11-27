@@ -173,7 +173,7 @@ endif
 	install -D -m 0644 appvm-scripts/usr/lib/modules-load.d/qubes-gui.conf \
 		$(DESTDIR)/usr/lib/modules-load.d/qubes-gui.conf
 	install -D -m 0644 appvm-scripts/lib/udev/rules.d/70-master-of-seat.rules \
-		$(DESTDIR)/lib/udev/rules.d/70-master-of-seat.rules
+		$(DESTDIR)/$(SYSLIBDIR)/udev/rules.d/70-master-of-seat.rules
 ifeq ($(shell lsb_release -is), Debian)
 	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent.debian \
 		$(DESTDIR)/etc/pam.d/qubes-gui-agent
