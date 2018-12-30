@@ -96,4 +96,4 @@ fi
 # Use sh -l here to load all session startup scripts (/etc/profile, ~/.profile
 # etc) to populate environment. This is the environment that will be used for
 # all user applications and qrexec calls.
-exec /usr/bin/qubes-gui-runuser "$DEFAULT_USER" /bin/sh -l -c "exec /usr/bin/xinit $XSESSION -- $XORG :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1"
+exec /usr/bin/qubes-gui-runuser "$DEFAULT_USER" /bin/bash -l -c "exec /usr/bin/xinit $XSESSION -- $XORG :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1"
