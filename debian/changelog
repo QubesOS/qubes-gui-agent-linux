@@ -1,3 +1,13 @@
+qubes-gui-agent (4.0.20-1) unstable; urgency=medium
+
+  [ Olivier MEDOC ]
+  * fix install path to follow archlinux packaging guidelines
+
+  [ Frédéric Pierret (fepitre) ]
+  * spec: fix missing abi version requirement
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 04 Jan 2019 22:25:23 +0100
+
 qubes-gui-agent (4.0.19-1) unstable; urgency=medium
 
   [ Duncan X. Simpson ]
