@@ -1,7 +1,7 @@
 # Maintainer: Olivier Medoc <o_medoc@yahoo.fr>
 pkgname=(qubes-vm-gui qubes-vm-pulseaudio)
 pkgver=`cat version`
-pkgrel=8
+pkgrel=9
 epoch=
 pkgdesc="The Qubes GUI Agent for AppVMs"
 arch=("x86_64")
@@ -49,8 +49,6 @@ sed 's/After=\(.*\)qubes-misc-post.service/After=\1qubes-misc-post.service getty
 export PYTHON=python2
 sed 's:#!/usr/bin/python:#!/usr/bin/python2:' -i appvm-scripts/usrbin/*
 sed 's:#!/usr/bin/env python:#!/usr/bin/env python2:' -i appvm-scripts/usrbin/*
-sed 's:#!/usr/bin/python:#!/usr/bin/python2:' -i window-icon-updater/*
-sed 's:#!/usr/bin/env python:#!/usr/bin/env python2:' -i window-icon-updater/*
 
 make appvm
 
