@@ -100,8 +100,6 @@ install-rh-agent: appvm install-common
 		$(DESTDIR)/etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/20qt-gnome-desktop-session-id.sh \
 		$(DESTDIR)/etc/X11/xinit/xinitrc.d/20qt-gnome-desktop-session-id.sh
-	install -m 0644 -D appvm-scripts/etc/X11/Xwrapper.config \
-		$(DESTDIR)/etc/X11/Xwrapper.config
 
 install-xfce:
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/50-xfce-desktop.sh \

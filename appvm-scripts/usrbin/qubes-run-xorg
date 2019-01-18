@@ -60,6 +60,10 @@ sed -e  s/%MEM%/$MEM/ \
 
 XSESSION="/etc/X11/xinit/xinitrc"
 XORG="/usr/bin/X"
+if [ -x /usr/libexec/Xorg ]; then
+    # bypass setuid-root wrapper, we don't need root here
+    XORG=/usr/libexec/Xorg
+fi
 if [ -f /etc/X11/Xsession ]; then
     # Debian-based distro, set Xsession appropriately
     XSESSION="/etc/X11/Xsession qubes-session"
