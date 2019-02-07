@@ -283,6 +283,11 @@ void send_pixmap_grant_refs(Ghandles * g, XID window)
         return;
     }
     wd_msg_buf = alloca(wd_msg_len);
+    if (!wd_msg_buf) {
+        fprintf(stderr, "Failed to allocate memory for window dump 0x%lx\n",
+                window);
+        exit(1);
+    }
     rcvd = 0;
     while (rcvd < wd_msg_len) {
         ret = read(g->xserver_fd, wd_msg_buf + rcvd, wd_msg_len - rcvd);
