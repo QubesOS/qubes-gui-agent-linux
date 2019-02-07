@@ -29,7 +29,7 @@ AM_CFLAGS = $(XORG_CFLAGS) $(PCIACCESS_CFLAGS)
 
 dummyqbs_drv_la_LTLIBRARIES = dummyqbs_drv.la
 dummyqbs_drv_la_LDFLAGS = -module -avoid-version
-dummyqbs_drv_la_LIBADD = $(XORG_LIBS)
+dummyqbs_drv_la_LIBADD = $(XORG_LIBS) -L../../xf86-qubes-common -lxf86-qubes-common
 dummyqbs_drv_ladir = @moduledir@/drivers
 
 dummyqbs_drv_la_SOURCES = \

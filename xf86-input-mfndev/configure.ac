@@ -63,13 +63,6 @@ AC_ARG_WITH([sdkdir], [],
     [sdkdir=`$PKG_CONFIG --variable=sdkdir xorg-server`])
 AC_SUBST([sdkdir])
 
-# Checks for libraries.
-AC_CHECK_LIB([u2mfn], [u2mfn_get_mfn_for_page])
-
-# Checks for header files.
-AC_HEADER_STDC
-AC_CHECK_HEADER([u2mfnlib.h])
-
 DRIVER_NAME=qubes
 AC_SUBST([DRIVER_NAME])
 
