@@ -91,6 +91,9 @@ fi
 chown "$DEFAULT_USER" /var/run/xf86-qubes-socket
 chmod 770 /var/run/xf86-qubes-socket
 
+# 2**30
+echo 1073741824 > /sys/module/xen_gntalloc/parameters/limit
+
 if [ -x /bin/loginctl ]; then
     # logind needs at least one device with "master-of-seat" tag to
     # consider this seat as graphical; we use pcspkr, for which we ship udev
