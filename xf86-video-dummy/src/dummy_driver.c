@@ -637,7 +637,7 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
     xf86ProcessOptions(pScrn->scrnIndex, pScrn->options, dPtr->Options);
 
     xf86GetOptValBool(dPtr->Options, OPTION_SW_CURSOR,&dPtr->swCursor);
-    xf86GetOptValInteger(dPtr->Options, OPTION_GUI_DOMID, &dPtr->gui_domid);
+    xf86GetOptValInteger(dPtr->Options, OPTION_GUI_DOMID, (int*)&dPtr->gui_domid);
 
     if (device->videoRam != 0) {
         pScrn->videoRam = device->videoRam;
