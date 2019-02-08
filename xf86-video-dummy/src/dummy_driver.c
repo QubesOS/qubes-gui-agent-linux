@@ -881,6 +881,13 @@ qubes_create_screen_resources(ScreenPtr pScreen) {
     return ret;
 }
 
+static void qubes_free_pixmap_private(DUMMYPtr dPtr,
+                                      struct xf86_qubes_pixmap *priv) {
+    xengntshr_unshare(dPtr->xgs, priv->data, priv->pages);
+    // Also frees refs
+    free(priv);
+}
+
 Bool
 qubes_destroy_pixmap(PixmapPtr pixmap) {
     DUMMYPtr dPtr = DUMMYPTR(DUMMYScrn);
@@ -888,9 +895,7 @@ qubes_destroy_pixmap(PixmapPtr pixmap) {
 
     priv = xf86_qubes_pixmap_get_private(pixmap);
     if (priv != NULL && pixmap->refcnt == 1) {
-        xengntshr_unshare(dPtr->xgs, priv->data, priv->pages);
-        // Also frees refs
-        free(priv);
+        qubes_free_pixmap_private(dPtr, priv);
     }
 
     return fbDestroyPixmap(pixmap);
@@ -1150,7 +1155,11 @@ DUMMYCloseScreen(CLOSE_SCREEN_ARGS_DECL)
 
     if(pScrn->vtSema){
         dummyRestore(pScrn, TRUE);
-        free(dPtr->FBBase);
+        if (dPtr->FBBasePriv) {
+            qubes_free_pixmap_private(dPtr, dPtr->FBBasePriv);
+            dPtr->FBBasePriv = NULL;
+            dPtr->FBBase = NULL;
+        }
     }
 
     if (dPtr->CursorInfo)
