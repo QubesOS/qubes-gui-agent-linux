@@ -49,10 +49,12 @@ int dummy_handler(Display * dpy, XErrorEvent * ev)
         for (ext = dpy->ext_procs;
                 ext && ext->codes.major_opcode != ev->request_code;
                 ext = ext->next);
-        if (ext)
-            strncpy(buf, ext->name, sizeof(buf));
-        else
+        if (ext) {
+            strncpy(buf, ext->name, sizeof(buf)-1);
+            buf[sizeof(buf)-1] = '\0';
+	} else {
             buf[0] = '\0';
+        }
     }
     fprintf(stderr, "                 Major opcode: %d (%s)\n",
             ev->request_code, buf);

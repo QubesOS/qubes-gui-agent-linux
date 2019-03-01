@@ -531,8 +531,10 @@ void send_wmclass(Ghandles * g, XID window, int ignore_fail)
         return;
     }
 
-    strncpy(msg.res_class, class_hint.res_class, sizeof(msg.res_class));
-    strncpy(msg.res_name, class_hint.res_name, sizeof(msg.res_name));
+    strncpy(msg.res_class, class_hint.res_class, sizeof(msg.res_class)-1);
+    msg.res_class[sizeof(msg.res_class)-1] = '\0';
+    strncpy(msg.res_name, class_hint.res_name, sizeof(msg.res_name)-1);
+    msg.res_name[sizeof(msg.res_name)-1] = '\0';
     XFree(class_hint.res_class);
     XFree(class_hint.res_name);
     hdr.window = window;
