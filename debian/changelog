@@ -1,3 +1,19 @@
+qubes-gui-agent (4.0.21-1) unstable; urgency=medium
+
+  [ Olivier MEDOC ]
+  * archlinux: switch to using icon-sender with python3
+
+  [ Marek Marczykowski-Górecki ]
+  * Drop /etc/X11/Xwrapper.config
+
+  [ Frédéric Pierret (fepitre) ]
+  * Fix GCC9 warning about size in strncpy
+
+  [ Marek Marczykowski-Górecki ]
+  * Indentation fix
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 08 Mar 2019 18:32:31 +0100
+
 qubes-gui-agent (4.0.20-1) unstable; urgency=medium
 
   [ Olivier MEDOC ]
