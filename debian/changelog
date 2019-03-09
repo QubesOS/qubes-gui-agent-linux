@@ -1,3 +1,26 @@
+qubes-gui-agent (4.1.0-1) unstable; urgency=medium
+
+  [ Simon Gaiser ]
+  * Adapt to new gui protocol version using grant refs
+
+  [ Marek Marczykowski-Górecki ]
+  * vmside: handle memory allocation error
+  * Use CFLAGS/LDFLAGS set by rpm
+  * rpm/deb: bump required qubes-gui-common-devel version
+  * xf86-video-dummy: fix compiler warning
+  * xf86-video-dummy: fix FBBase release
+  * Increase gntalloc limit
+
+  [ Your Name ]
+  * CLIPBOARD_DATA: send window id, and ignore window id in incoming
+    pastes
+
+  [ Marek Marczykowski-Górecki ]
+  * travis: update to R4.1
+  * rpm,deb: add xen devel to build requirements
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 09 Mar 2019 05:37:31 +0100
+
 qubes-gui-agent (4.0.21-1) unstable; urgency=medium
 
   [ Olivier MEDOC ]
