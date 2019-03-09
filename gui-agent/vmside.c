@@ -717,15 +717,15 @@ void process_xevent_configure(Ghandles * g, XID window,
     send_pixmap_grant_refs(g, window);
 }
 
-void send_clipboard_data(libvchan_t *vchan, char *data, int len)
+void send_clipboard_data(libvchan_t *vchan, XID window, char *data, uint32_t len)
 {
     struct msg_hdr hdr;
     hdr.type = MSG_CLIPBOARD_DATA;
+    hdr.window = window;
     if (len > MAX_CLIPBOARD_SIZE)
+    {
         len = MAX_CLIPBOARD_SIZE;
-    else
-        hdr.window = len;
-    hdr.window = len;
+    }
     hdr.untrusted_len = len;
     write_struct(vchan, hdr);
     write_data(vchan, (char *) data, len);
@@ -796,7 +796,7 @@ void process_xevent_selection(Ghandles * g, XSelectionEvent * ev)
                 Utf8_string_atom, Qprop,
                 g->stub_win, CurrentTime);
     else
-        send_clipboard_data(g->vchan, (char *) data, len);
+        send_clipboard_data(g->vchan, g->stub_win, (char *) data, len);
     /* even if the clipboard owner does not support UTF8 and we requested
        XA_STRING, it is fine - ascii is legal UTF8 */
     XFree(data);
@@ -1772,7 +1772,7 @@ void terminate_and_cleanup_xorg(Ghandles *g) {
 }
 
 #define CLIPBOARD_4WAY
-void handle_clipboard_req(Ghandles * g, XID UNUSED(winid))
+void handle_clipboard_req(Ghandles * g, XID winid)
 {
     Atom Clp;
     Atom QProp = XInternAtom(g->display, "QUBES_SELECTION", False);
@@ -1788,14 +1788,14 @@ void handle_clipboard_req(Ghandles * g, XID UNUSED(winid))
         fprintf(stderr, "clipboard req, owner=0x%x\n",
                 (int) owner);
     if (owner == None) {
-        send_clipboard_data(g->vchan, NULL, 0);
+        send_clipboard_data(g->vchan, winid, NULL, 0);
         return;
     }
     XConvertSelection(g->display, Clp, Targets, QProp,
             g->stub_win, CurrentTime);
 }
 
-void handle_clipboard_data(Ghandles * g, int len)
+void handle_clipboard_data(Ghandles * g, XID UNUSED(winid), unsigned int len)
 {
     Atom Clp = XInternAtom(g->display, "CLIPBOARD", False);
 
@@ -1906,7 +1906,7 @@ void handle_message(Ghandles * g)
             handle_clipboard_req(g, hdr.window);
             break;
         case MSG_CLIPBOARD_DATA:
-            handle_clipboard_data(g, hdr.window);
+            handle_clipboard_data(g, hdr.window, hdr.untrusted_len);
             break;
         case MSG_KEYMAP_NOTIFY:
             handle_keymap_notify(g);
