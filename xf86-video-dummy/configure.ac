@@ -70,6 +70,11 @@ AM_CONDITIONAL([DGA], [test "x$DGA" = xyes])
 PKG_CHECK_MODULES(XORG, [xorg-server >= 1.0.99.901] xproto fontsproto $REQUIRED_MODULES)
 
 # Checks for libraries.
+AC_CHECK_LIB([xengnttab], [xengntshr_open])
+
+# Checks for header files.
+AC_HEADER_STDC
+AC_CHECK_HEADER([xengnttab.h])
 
 
 DRIVER_NAME=dummy-qubes

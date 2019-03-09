@@ -48,7 +48,7 @@ BuildRequires:	pulseaudio-libs-devel >= 0.9.21, pulseaudio-libs-devel <= 12.2
 BuildRequires:	xorg-x11-server-devel
 BuildRequires:	pam-devel
 BuildRequires:	qubes-libvchan-@BACKEND_VMM@-devel
-BuildRequires:	qubes-gui-common-devel >= 3.2.0
+BuildRequires:	qubes-gui-common-devel >= 4.1.0
 BuildRequires:	qubes-db-devel
 Requires:	Xorg %(xserver-sdk-abi-requires ansic)
 Requires:	Xorg %(xserver-sdk-abi-requires videodrv)
@@ -145,6 +145,7 @@ rm -f %{name}-%{version}
 /usr/bin/qubes-set-monitor-layout
 %{_libdir}/xorg/modules/drivers/qubes_drv.so
 %{_libdir}/xorg/modules/drivers/dummyqbs_drv.so
+%{_libdir}/libxf86-qubes-common.so
 %attr(0644,root,root) /etc/X11/xorg-qubes.conf.template
 /etc/init.d/qubes-gui-agent
 /etc/profile.d/qubes-gui.sh
@@ -158,10 +159,8 @@ rm -f %{name}-%{version}
 /etc/X11/xinit/xinitrc.d/20qt-gnome-desktop-session-id.sh
 /etc/qubes-rpc/qubes.SetMonitorLayout
 %config /etc/sysconfig/desktop
-/etc/sysconfig/modules/qubes-u2mfn.modules
 /lib/systemd/system/qubes-gui-agent.service
 /lib/udev/rules.d/70-master-of-seat.rules
-/usr/lib/modules-load.d/qubes-gui.conf
 /usr/lib/tmpfiles.d/qubes-session.conf
 /usr/lib/sysctl.d/30-qubes-gui-agent.conf
 %{_datadir}/glib-2.0/schemas/20_qubes-gui-vm.gschema.override

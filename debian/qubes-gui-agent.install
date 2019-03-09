@@ -16,7 +16,6 @@ usr/bin/qubes-gui-runuser
 usr/bin/qubes-run-xorg
 usr/bin/qubes-session
 usr/bin/qubes-set-monitor-layout
-usr/lib/modules-load.d/qubes-gui.conf
 usr/lib/qubes/icon-sender
 usr/lib/sysctl.d/30-qubes-gui-agent.conf
 usr/lib/tmpfiles.d/*

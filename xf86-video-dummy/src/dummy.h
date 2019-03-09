@@ -13,6 +13,9 @@
 
 #include "compat-api.h"
 
+#include <xengnttab.h>
+#include "../../xf86-qubes-common/include/xf86-qubes-common.h"
+
 #define DUMMY_MAX_SCREENS 16
 
 /* Supported chipsets */
@@ -56,6 +59,7 @@ typedef struct dummyRec
     /* proc pointer */
     CloseScreenProcPtr CloseScreen;
     xf86CursorInfoPtr CursorInfo;
+    CreateScreenResourcesProcPtr CreateScreenResources;
 
     Bool DummyHWCursorShown;
     int cursorX, cursorY;
@@ -78,8 +82,12 @@ typedef struct dummyRec
     int interlace;
     dummy_colors colors[256];
     pointer* FBBase;
+    struct xf86_qubes_pixmap *FBBasePriv;
     Bool        (*CreateWindow)() ;     /* wrapped CreateWindow */
     Bool prop;
+
+    xengntshr_handle *xgs;
+    uint32_t gui_domid;
 } DUMMYRec, *DUMMYPtr;
 
 /* The privates of the DUMMY driver */

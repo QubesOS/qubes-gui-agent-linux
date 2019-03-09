@@ -2,5 +2,4 @@
 .libs/
 qubes.lo
 qubes_drv.la
-u2mfnlib.lo
 

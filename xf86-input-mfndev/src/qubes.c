@@ -101,6 +101,8 @@
 #include "xdriver-shm-cmd.h"
 #include "qubes.h"
 
+#include "../../xf86-qubes-common/include/xf86-qubes-common.h"
+
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
 static int QubesPreInit(InputDriverPtr drv, InputInfoPtr pInfo,
                         int flags);
@@ -477,66 +479,6 @@ static int write_exact(int fd, const void *data, size_t size)
     return 0;
 }
 
-static void dump_window_mfns(WindowPtr pWin, int id, int fd);
-
-static void dump_window_mfns(WindowPtr pWin, int id, int fd)
-{
-    ScreenPtr screen;
-    PixmapPtr pixmap;
-    int i, off, num_mfn, mfn;
-    struct shm_cmd shmcmd;
-    char *pixels, *pixels_end;
-    if (!pWin)
-        return;
-
-    screen = pWin->drawable.pScreen;
-    pixmap = (*screen->GetWindowPixmap) (pWin);
-
-    pixels = pixmap->devPrivate.ptr;
-    pixels_end =
-        pixels +
-        pixmap->drawable.width * pixmap->drawable.height *
-        pixmap->drawable.bitsPerPixel / 8;
-    off = ((long) pixels) & (4096 - 1);
-    pixels -= off;
-    num_mfn = ((long) pixels_end - (long) pixels + 4095) >> 12;
-    shmcmd.width = pixmap->drawable.width;
-    shmcmd.height = pixmap->drawable.height;
-    shmcmd.bpp = pixmap->drawable.bitsPerPixel;
-    shmcmd.off = off;
-    if (!pixmap->devPrivate.ptr)
-        num_mfn = 0;
-    shmcmd.num_mfn = num_mfn;
-    shmcmd.domid = 0x12345678; // just a placeholder; qubes_guid must not trust it anyway
-
-    if (write_exact(fd, &shmcmd, sizeof(shmcmd)) == -1) {
-        char errbuf[128];
-        if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0)
-            xf86Msg(X_ERROR,
-                    "failed write to gui-agent: %s\n", errbuf);
-        return;
-    }
-    if (mlock(pixels, 4096 * num_mfn) == -1) {
-        char errbuf[128];
-        if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0)
-            xf86Msg(X_ERROR,
-                    "failed mlock memory at %p + %#x, (%d x %d): %s\n",
-                    pixels, 4096 * num_mfn, shmcmd.width, shmcmd.height,
-                    errbuf);
-    }
-    for (i = 0; i < num_mfn; i++) {
-        u2mfn_get_mfn_for_page ((long)(pixels + 4096 * i), &mfn);
-        if (write_exact(fd, &mfn, 4) == -1) {
-            char errbuf[128];
-            if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0)
-                xf86Msg(X_ERROR,
-                        "failed write to gui-agent: %s\n", errbuf);
-            return;
-        }
-    }
-}
-
-
 static WindowPtr id2winptr(unsigned int xid)
 {
     int ret;
@@ -548,22 +490,87 @@ static WindowPtr id2winptr(unsigned int xid)
         return NULL;
 }
 
-static void process_window_mfns_request(InputInfoPtr pInfo) {
+static void dump_window_grant_refs(int window_id, int fd);
+
+static void dump_window_grant_refs(int window_id, int fd)
+{
+    ScreenPtr screen;
+    PixmapPtr pixmap;
+    struct msg_window_dump_hdr wd_hdr;
+    size_t wd_msg_len = 0; // 0 means error
+    struct xf86_qubes_pixmap *priv = NULL;
+    WindowPtr x_window = id2winptr(window_id);
+    if (x_window == NULL)
+        // This error condition (window not found) can happen when
+        // the window is destroyed before the driver sees the req
+        goto send_response;
+
+    screen = x_window->drawable.pScreen;
+    pixmap = (*screen->GetWindowPixmap) (x_window);
+
+    priv = xf86_qubes_pixmap_get_private(pixmap);
+    if (priv == NULL) {
+        xf86Msg(X_ERROR, "can't dump window without grant table allocation\n");
+        goto send_response;
+    }
+
+    wd_hdr.type = WINDOW_DUMP_TYPE_GRANT_REFS;
+    wd_hdr.width = pixmap->drawable.width;
+    wd_hdr.height = pixmap->drawable.height;
+    wd_hdr.bpp = pixmap->drawable.bitsPerPixel;
+
+    if (wd_hdr.width > MAX_WINDOW_WIDTH ||
+        wd_hdr.height > MAX_WINDOW_HEIGHT ||
+        priv->pages > MAX_GRANT_REFS_COUNT) {
+        xf86Msg(X_ERROR,
+                "window has invalid dimensions %ix%i (%i bpp), %zu grant pages\n",
+                wd_hdr.width,
+                wd_hdr.height,
+                wd_hdr.bpp,
+                priv->pages);
+        goto send_response;
+    }
+
+    // We don't have any custom arguments except the variable length refs list.
+    assert(sizeof(struct msg_window_dump_grant_refs) == 0);
+
+    wd_msg_len = MSG_WINDOW_DUMP_HDR_LEN + priv->pages * SIZEOF_GRANT_REF;
+
+send_response:
+    if (write_exact(fd, &wd_msg_len, sizeof(wd_msg_len)) == -1) {
+        char errbuf[128];
+        if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0)
+            xf86Msg(X_ERROR,
+                    "failed write to gui-agent: %s\n", errbuf);
+        return;
+    }
+
+    if (wd_msg_len == 0)
+        // error case
+        return;
+
+    if (write_exact(fd, &wd_hdr, sizeof(wd_hdr)) == -1) {
+        char errbuf[128];
+        if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0)
+            xf86Msg(X_ERROR,
+                    "failed write to gui-agent: %s\n", errbuf);
+        return;
+    }
+
+    if (write_exact(fd, &priv->refs[0], priv->pages * SIZEOF_GRANT_REF) == -1) {
+        char errbuf[128];
+        if (strerror_r(errno, errbuf, sizeof(errbuf)) == 0)
+            xf86Msg(X_ERROR,
+                    "failed write to gui-agent: %s\n", errbuf);
+        return;
+    }
+}
+
+static void process_window_dump_request(InputInfoPtr pInfo) {
     QubesDevicePtr pQubes = pInfo->private;
-    WindowPtr w1;
 
     if (pQubes->window_id != 0) {
-        w1 = id2winptr(pQubes->window_id);
-        if (w1) {
-            dump_window_mfns(w1, pQubes->window_id, pInfo->fd);
-        } else {
-            // This error condition (window not found) can happen when
-            // the window is destroyed before the driver sees the req
-            struct shm_cmd shmcmd;
-            shmcmd.num_mfn = 0;
-            write_exact(pInfo->fd, &shmcmd, sizeof(shmcmd));
-        }
-
+        dump_window_grant_refs(pQubes->window_id, pInfo->fd);
         pQubes->window_id = 0;
     }
 }
@@ -573,7 +580,7 @@ static void QubesBlockHandler(void *arg, void *timeout) {
     InputInfoPtr pInfo = arg;
 
     input_lock();
-    process_window_mfns_request(pInfo);
+    process_window_dump_request(pInfo);
     input_unlock();
 }
 
@@ -615,7 +622,7 @@ static void process_request(int fd, InputInfoPtr pInfo)
         // answer in the main thread.
 #else
         // In the classical case we can process the window directly.
-        process_window_mfns_request(pInfo);
+        process_window_dump_request(pInfo);
 #endif
         break;
     case 'B':

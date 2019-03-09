@@ -88,6 +88,8 @@ static Bool     dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
 #define DUMMY_MAX_WIDTH 32767
 #define DUMMY_MAX_HEIGHT 32767
 
+static ScrnInfoPtr DUMMYScrn; /* static-globalize it */
+
 /*
  * This is intentionally screen-independent.  It indicates the binding
  * choice made in the first PreInit.
@@ -124,11 +126,13 @@ static SymTabRec DUMMYChipsets[] = {
 };
 
 typedef enum {
-    OPTION_SW_CURSOR
+    OPTION_SW_CURSOR,
+    OPTION_GUI_DOMID
 } DUMMYOpts;
 
 static const OptionInfoRec DUMMYOptions[] = {
     { OPTION_SW_CURSOR,	"SWcursor",	OPTV_BOOLEAN,	{0}, FALSE },
+    { OPTION_GUI_DOMID, "GUIDomID",     OPTV_INTEGER,   {0}, FALSE },
     { -1,                  NULL,           OPTV_NONE,	{0}, FALSE }
 };
 
@@ -633,6 +637,7 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
     xf86ProcessOptions(pScrn->scrnIndex, pScrn->options, dPtr->Options);
 
     xf86GetOptValBool(dPtr->Options, OPTION_SW_CURSOR,&dPtr->swCursor);
+    xf86GetOptValInteger(dPtr->Options, OPTION_GUI_DOMID, (int*)&dPtr->gui_domid);
 
     if (device->videoRam != 0) {
         pScrn->videoRam = device->videoRam;
@@ -784,7 +789,117 @@ DUMMYLoadPalette(
 
 }
 
-static ScrnInfoPtr DUMMYScrn; /* static-globalize it */
+static struct xf86_qubes_pixmap *
+qubes_alloc_pixmap_private(size_t size) {
+    DUMMYPtr dPtr = DUMMYPTR(DUMMYScrn);
+    struct xf86_qubes_pixmap *priv;
+    size_t pages;
+
+    pages = (size + XC_PAGE_SIZE - 1) >> XC_PAGE_SHIFT;
+
+    priv = calloc(1, sizeof(struct xf86_qubes_pixmap) + pages * sizeof(uint32_t));
+    if (priv == NULL)
+        return NULL;
+
+    priv->pages = pages;
+    priv->refs = (uint32_t *) (((uint8_t *) priv) + sizeof(struct xf86_qubes_pixmap));
+
+    priv->data = xengntshr_share_pages(dPtr->xgs,
+                                       dPtr->gui_domid,
+                                       pages,
+                                       priv->refs,
+                                       0);
+    if (priv->data == NULL) {
+        xf86DrvMsg(DUMMYScrn->scrnIndex, X_ERROR,
+                   "Failed to allocate %zu grant pages!\n", pages);
+        free(priv);
+        return NULL;
+    }
+
+    return priv;
+}
+
+static PixmapPtr
+qubes_create_pixmap(ScreenPtr pScreen, int width, int height, int depth,
+                    unsigned hint)
+{
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
+    DUMMYPtr dPtr = DUMMYPTR(pScrn);
+    PixmapPtr pixmap;
+    struct xf86_qubes_pixmap *priv;
+    size_t bytes_per_line;
+    size_t size;
+
+    if (width == 0 || height == 0 || depth == 0)
+        return fbCreatePixmap(pScreen, width, height, depth, hint);
+
+    pixmap = fbCreatePixmap(pScreen, 0, 0, depth, hint);
+    if (pixmap == NULL)
+        return NULL;
+
+    bytes_per_line = PixmapBytePad(width, depth);
+    size = bytes_per_line * height;
+
+    priv = qubes_alloc_pixmap_private(size);
+    if (priv == NULL)
+        goto err_destroy_pixmap;
+    xf86_qubes_pixmap_set_private(pixmap, priv);
+
+    if (!pScreen->ModifyPixmapHeader(pixmap,
+                                    width,
+                                    height,
+                                    depth,
+                                    BitsPerPixel(depth),
+                                    bytes_per_line,
+                                    priv->data))
+        goto err_unshare;
+
+    return pixmap;
+
+err_unshare:
+    xengntshr_unshare(dPtr->xgs, priv->data, priv->pages);
+    // Also frees refs
+    free(priv);
+err_destroy_pixmap:
+    fbDestroyPixmap(pixmap);
+
+    return NULL;
+}
+
+static Bool
+qubes_create_screen_resources(ScreenPtr pScreen) {
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
+    DUMMYPtr dPtr = DUMMYPTR(pScrn);
+
+    Bool ret = dPtr->CreateScreenResources(pScreen);
+
+    if (ret) {
+        xf86_qubes_pixmap_set_private(pScreen->GetScreenPixmap(pScreen),
+                                      dPtr->FBBasePriv);
+    }
+
+    return ret;
+}
+
+static void qubes_free_pixmap_private(DUMMYPtr dPtr,
+                                      struct xf86_qubes_pixmap *priv) {
+    xengntshr_unshare(dPtr->xgs, priv->data, priv->pages);
+    // Also frees refs
+    free(priv);
+}
+
+Bool
+qubes_destroy_pixmap(PixmapPtr pixmap) {
+    DUMMYPtr dPtr = DUMMYPTR(DUMMYScrn);
+    struct xf86_qubes_pixmap *priv;
+
+    priv = xf86_qubes_pixmap_get_private(pixmap);
+    if (priv != NULL && pixmap->refcnt == 1) {
+        qubes_free_pixmap_private(dPtr, priv);
+    }
+
+    return fbDestroyPixmap(pixmap);
+}
 
 /* Mandatory */
 static Bool
@@ -794,7 +909,10 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
     DUMMYPtr dPtr;
     int ret;
     VisualPtr visual;
-    
+
+    if (!xf86_qubes_pixmap_register_private())
+        return FALSE;
+
     /*
      * we need to get the ScrnInfoRec for this screen, so let's allocate
      * one first thing
@@ -803,9 +921,16 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
     dPtr = DUMMYPTR(pScrn);
     DUMMYScrn = pScrn;
 
-
-    if (!(dPtr->FBBase = malloc(pScrn->videoRam * 1024)))
+    dPtr->xgs = xengntshr_open(NULL, 0);
+    if (dPtr->xgs == NULL) {
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Failed to open xengntshr!\n");
         return FALSE;
+    }
+
+    dPtr->FBBasePriv = qubes_alloc_pixmap_private(pScrn->videoRam * 1024);
+    if (dPtr->FBBasePriv == NULL)
+        return FALSE;
+    dPtr->FBBase = (void *) dPtr->FBBasePriv->data;
     
     /*
      * next we save the current state and setup the first mode
@@ -856,6 +981,11 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
         }
     }
     
+    pScreen->CreatePixmap = qubes_create_pixmap;
+    pScreen->DestroyPixmap = qubes_destroy_pixmap;
+    dPtr->CreateScreenResources = pScreen->CreateScreenResources;
+    pScreen->CreateScreenResources = qubes_create_screen_resources;
+
     /* must be after RGB ordering fixed */
     fbPictureInit(pScreen, 0, 0);
 
@@ -1025,7 +1155,11 @@ DUMMYCloseScreen(CLOSE_SCREEN_ARGS_DECL)
 
     if(pScrn->vtSema){
         dummyRestore(pScrn, TRUE);
-        free(dPtr->FBBase);
+        if (dPtr->FBBasePriv) {
+            qubes_free_pixmap_private(dPtr, dPtr->FBBasePriv);
+            dPtr->FBBasePriv = NULL;
+            dPtr->FBBase = NULL;
+        }
     }
 
     if (dPtr->CursorInfo)

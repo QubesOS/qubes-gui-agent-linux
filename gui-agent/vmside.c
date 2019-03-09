@@ -91,6 +91,7 @@ struct _global_handles {
     int sync_all_modifiers;
     int composite_redirect_automatic;
     pid_t x_pid;
+    uint32_t domid;
 };
 
 struct window_data {
@@ -98,7 +99,7 @@ struct window_data {
     XID embeder;   /* for docked icon points embeder window */
     int input_hint; /* the window should get input focus - False=Never */
     int support_take_focus;
-    int mfndump_pending; /* send MSG_MFNDUMP at next damage notification */
+    int window_dump_pending; /* send MSG_WINDOW_DUMP at next damage notification */
 };
 
 struct embeder_data {
@@ -115,7 +116,7 @@ Ghandles *ghandles_for_vchan_reinitialize;
 void send_wmname(Ghandles * g, XID window);
 void send_wmnormalhints(Ghandles * g, XID window, int ignore_fail);
 void send_wmclass(Ghandles * g, XID window, int ignore_fail);
-void send_pixmap_mfns(Ghandles * g, XID window);
+void send_pixmap_grant_refs(Ghandles * g, XID window);
 void retrieve_wmhints(Ghandles * g, XID window, int ignore_fail);
 void retrieve_wmprotocols(Ghandles * g, XID window, int ignore_fail);
 
@@ -132,9 +133,9 @@ void process_xevent_damage(Ghandles * g, XID window,
         return;
 
     wd = l->data;
-    if (wd->mfndump_pending) {
-        send_pixmap_mfns(g, window);
-        wd->mfndump_pending = False;
+    if (wd->window_dump_pending) {
+        send_pixmap_grant_refs(g, window);
+        wd->window_dump_pending = False;
     }
 
     hdr.type = MSG_SHMIMAGE;
@@ -188,7 +189,7 @@ void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
     wd->is_docked = False;
     wd->input_hint = True;
     wd->support_take_focus = False;
-    wd->mfndump_pending = False;
+    wd->window_dump_pending = False;
     list_insert(windows_list, ev->window, wd);
 
     if (attr.border_width > 0) {
@@ -263,32 +264,33 @@ void read_discarding(int fd, int size)
     }
 }
 
-void send_pixmap_mfns(Ghandles * g, XID window)
+void send_pixmap_grant_refs(Ghandles * g, XID window)
 {
-    struct shm_cmd shmcmd;
     struct msg_hdr hdr;
-    uint32_t *mfnbuf;
-    int ret, rcvd = 0, size;
+    uint8_t *wd_msg_buf;
+    size_t wd_msg_len;
+    size_t rcvd;
+    int ret;
 
     feed_xdriver(g, 'W', (int) window, 0);
-    if (read(g->xserver_fd, &shmcmd, sizeof(shmcmd)) != sizeof(shmcmd)) {
-        perror("unix read shmcmd");
+    if (read(g->xserver_fd, &wd_msg_len, sizeof(wd_msg_len)) != sizeof(wd_msg_len)) {
+        perror("unix read wd_msg_len");
         exit(1);
     }
-    if (shmcmd.num_mfn == 0 || shmcmd.num_mfn > (unsigned)MAX_MFN_COUNT ||
-            shmcmd.width > MAX_WINDOW_WIDTH || shmcmd.height > MAX_WINDOW_HEIGHT) {
-        fprintf(stderr, "got num_mfn=0x%x for window 0x%x (%dx%d)\n",
-                shmcmd.num_mfn, (int) window, shmcmd.width, shmcmd.height);
-        read_discarding(g->xserver_fd,
-                shmcmd.num_mfn * sizeof(*mfnbuf));
+    if (wd_msg_len == 0) {
+        fprintf(stderr, "Failed to get window dump for window 0x%lx\n",
+                window);
         return;
     }
-    size = shmcmd.num_mfn * sizeof(*mfnbuf);
-    mfnbuf = alloca(size);
-    while (rcvd < size) {
-        ret =
-            read(g->xserver_fd, ((char *) mfnbuf) + rcvd,
-                    size - rcvd);
+    wd_msg_buf = alloca(wd_msg_len);
+    if (!wd_msg_buf) {
+        fprintf(stderr, "Failed to allocate memory for window dump 0x%lx\n",
+                window);
+        exit(1);
+    }
+    rcvd = 0;
+    while (rcvd < wd_msg_len) {
+        ret = read(g->xserver_fd, wd_msg_buf + rcvd, wd_msg_len - rcvd);
         if (ret == 0) {
             fprintf(stderr, "unix read EOF\n");
             exit(1);
@@ -299,12 +301,11 @@ void send_pixmap_mfns(Ghandles * g, XID window)
         }
         rcvd += ret;
     }
-    hdr.type = MSG_MFNDUMP;
+    hdr.type = MSG_WINDOW_DUMP;
     hdr.window = window;
-    hdr.untrusted_len = sizeof(shmcmd) + size;
+    hdr.untrusted_len = wd_msg_len;
     write_struct(g->vchan, hdr);
-    write_struct(g->vchan, shmcmd);
-    write_data(g->vchan, (char *) mfnbuf, size);
+    write_data(g->vchan, (char *) wd_msg_buf, wd_msg_len);
 }
 
 /* return 1 on success, 0 otherwise */
@@ -595,7 +596,7 @@ void process_xevent_map(Ghandles * g, XID window)
 
     if (g->log_level > 1)
         fprintf(stderr, "MAP for window 0x%x\n", (int)window);
-    wd->mfndump_pending = True;
+    wd->window_dump_pending = True;
     send_window_state(g, window);
     XGetWindowAttributes(g->display, window, &attr);
     if (XGetTransientForHint(g->display, window, &transient))
@@ -713,7 +714,7 @@ void process_xevent_configure(Ghandles * g, XID window,
     conf.height = ev->height;
     conf.override_redirect = ev->override_redirect;
     write_message(g->vchan, hdr, conf);
-    send_pixmap_mfns(g, window);
+    send_pixmap_grant_refs(g, window);
 }
 
 void send_clipboard_data(libvchan_t *vchan, char *data, int len)
@@ -1171,7 +1172,7 @@ int send_full_window_info(Ghandles *g, XID w, struct window_data *wd)
     conf.height = attr.height;
     conf.override_redirect = attr.override_redirect;
     write_message(g->vchan, hdr, conf);
-    send_pixmap_mfns(g, w);
+    send_pixmap_grant_refs(g, w);
 
     send_wmclass(g, w, 1);
     send_wmnormalhints(g, w, 1);
@@ -1732,7 +1733,8 @@ void handle_close(Ghandles * g, XID winid)
 /* start X server, returns its PID
  */
 pid_t do_execute_xorg(
-        char *w_str, char *h_str, char *mem_str, char *depth_str)
+        char *w_str, char *h_str, char *mem_str, char *depth_str,
+        char *gui_domid_str)
 {
     pid_t pid;
     int fd;
@@ -1747,6 +1749,7 @@ pid_t do_execute_xorg(
             setenv("H", h_str, 1);
             setenv("MEM", mem_str, 1);
             setenv("DEPTH", depth_str, 1);
+            setenv("GUI_DOMID", gui_domid_str, 1);
             /* don't leak other FDs */
             for (fd = 3; fd < 256; fd++)
                 close(fd);
@@ -1919,17 +1922,18 @@ void handle_message(Ghandles * g)
     }
 }
 
-pid_t get_xconf_and_run_x(libvchan_t *vchan)
+pid_t get_xconf_and_run_x(Ghandles *g)
 {
     struct msg_xconf xconf;
-    char w_str[12], h_str[12], mem_str[12], depth_str[12];
+    char w_str[12], h_str[12], mem_str[12], depth_str[12], gui_domid_str[12];
     pid_t x_pid;
-    read_struct(vchan, xconf);
+    read_struct(g->vchan, xconf);
     snprintf(w_str, sizeof(w_str), "%d", xconf.w);
     snprintf(h_str, sizeof(h_str), "%d", xconf.h);
     snprintf(mem_str, sizeof(mem_str), "%d", xconf.mem);
     snprintf(depth_str, sizeof(depth_str), "%d", xconf.depth);
-    x_pid = do_execute_xorg(w_str, h_str, mem_str, depth_str);
+    snprintf(gui_domid_str, sizeof(gui_domid_str), "%u", g->domid);
+    x_pid = do_execute_xorg(w_str, h_str, mem_str, depth_str, gui_domid_str);
     if (x_pid == (pid_t)-1) {
         errx(1, "X server startup failed");
     }
@@ -1980,6 +1984,7 @@ void usage()
     fprintf(stderr, "       -M  sync only Caps Lock key event\n");
     fprintf(stderr, "       -c  turn off composite \"redirect automatic\" mode\n");
     fprintf(stderr, "       -h  print this message\n");
+    fprintf(stderr, "       -d  GUI domain id (default: 0)\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "Log levels:\n");
     fprintf(stderr, " 0 - only errors\n");
@@ -1995,7 +2000,8 @@ void parse_args(Ghandles * g, int argc, char **argv)
     g->log_level = 0;
     g->sync_all_modifiers = 1;
     g->composite_redirect_automatic = 1;
-    while ((opt = getopt(argc, argv, "qvchmM")) != -1) {
+    g->domid = 0;
+    while ((opt = getopt(argc, argv, "qvchmMd:")) != -1) {
         switch (opt) {
             case 'q':
                 g->log_level--;
@@ -2015,6 +2021,9 @@ void parse_args(Ghandles * g, int argc, char **argv)
             case 'h':
                 usage();
                 exit(0);
+            case 'd':
+                g->domid = atoi(optarg);
+                break;
             default:
                 usage();
                 exit(1);
@@ -2032,8 +2041,9 @@ int main(int argc, char **argv)
     Ghandles g;
     int wait_fds[2];
 
-    /* FIXME: 0 is remote domain */
-    g.vchan = libvchan_server_init(0, 6000, 4096, 4096);
+    parse_args(&g, argc, argv);
+
+    g.vchan = libvchan_server_init(g.domid, 6000, 4096, 4096);
     if (!g.vchan) {
         fprintf(stderr, "vchan initialization failed\n");
         exit(1);
@@ -2044,10 +2054,9 @@ int main(int argc, char **argv)
     saved_argv = argv;
     vchan_register_at_eof(handle_guid_disconnect);
     send_protocol_version(g.vchan);
-    g.x_pid = get_xconf_and_run_x(g.vchan);
+    g.x_pid = get_xconf_and_run_x(&g);
     mkghandles(&g);
     ghandles_for_vchan_reinitialize = &g;
-    parse_args(&g, argc, argv);
     /* Turn on Composite for all children of root window. This way X server
      * keeps separate buffers for each (root child) window.
      * There are two modes:

@@ -45,7 +45,8 @@ help:
 
 appvm: gui-agent/qubes-gui gui-common/qubes-gui-runuser \
 	xf86-input-mfndev/src/.libs/qubes_drv.so \
-	xf86-video-dummy/src/.libs/dummyqbs_drv.so pulse/module-vchan-sink.so
+	xf86-video-dummy/src/.libs/dummyqbs_drv.so pulse/module-vchan-sink.so \
+	xf86-qubes-common/libxf86-qubes-common.so
 
 gui-agent/qubes-gui:
 	(cd gui-agent; $(MAKE))
@@ -53,16 +54,19 @@ gui-agent/qubes-gui:
 gui-common/qubes-gui-runuser:
 	(cd gui-common; $(MAKE))
 
-xf86-input-mfndev/src/.libs/qubes_drv.so:
-	(cd xf86-input-mfndev && ./autogen.sh && ./configure && make LDFLAGS=-lu2mfn)
+xf86-input-mfndev/src/.libs/qubes_drv.so: xf86-qubes-common/libxf86-qubes-common.so
+	(cd xf86-input-mfndev && ./autogen.sh && ./configure && make)
 
-xf86-video-dummy/src/.libs/dummyqbs_drv.so:
+xf86-video-dummy/src/.libs/dummyqbs_drv.so: xf86-qubes-common/libxf86-qubes-common.so
 	(cd xf86-video-dummy && ./autogen.sh && make)
 
 pulse/module-vchan-sink.so:
 	rm -f pulse/pulsecore
 	ln -s pulsecore-$(PA_VER) pulse/pulsecore
 	$(MAKE) -C pulse module-vchan-sink.so
+
+xf86-qubes-common/libxf86-qubes-common.so:
+	$(MAKE) -C xf86-qubes-common libxf86-qubes-common.so
 
 rpms: rpms-dom0 rpms-vm
 	rpm --addsign rpm/x86_64/*$(VERSION)*.rpm
@@ -79,6 +83,7 @@ clean:
 	(cd gui-agent && $(MAKE) clean)
 	(cd gui-common && $(MAKE) clean)
 	$(MAKE) -C pulse clean
+	$(MAKE) -C xf86-qubes-common clean
 	(cd xf86-input-mfndev; if [ -e Makefile ] ; then \
 		$(MAKE) distclean; fi; ./bootstrap --clean || echo )
 
@@ -92,8 +97,6 @@ install-rh-agent: appvm install-common
 		$(DESTDIR)/$(SYSLIBDIR)/systemd/system/qubes-gui-agent.service
 	install -m 0644 -D appvm-scripts/etc/sysconfig/desktop \
 		$(DESTDIR)/etc/sysconfig/desktop
-	install -D appvm-scripts/etc/sysconfig/modules/qubes-u2mfn.modules \
-		$(DESTDIR)/etc/sysconfig/modules/qubes-u2mfn.modules
 	install -m 0755 -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh \
 		$(DESTDIR)/etc/X11/xinit/xinitrc.d/qubes-keymap.sh
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh \
@@ -138,6 +141,8 @@ install-common:
 		$(DESTDIR)/usr/bin/qubes-change-keyboard-layout
 	install -D appvm-scripts/usrbin/qubes-set-monitor-layout \
 		$(DESTDIR)/usr/bin/qubes-set-monitor-layout
+	install -D xf86-qubes-common/libxf86-qubes-common.so \
+		$(DESTDIR)$(LIBDIR)/libxf86-qubes-common.so
 	install -D xf86-input-mfndev/src/.libs/qubes_drv.so \
 		$(DESTDIR)$(LIBDIR)/xorg/modules/drivers/qubes_drv.so
 	install -D xf86-video-dummy/src/.libs/dummyqbs_drv.so \
@@ -168,8 +173,6 @@ endif
 		$(DESTDIR)/etc/xdg/autostart/qubes-icon-sender.desktop
 	install -D -m 0644 appvm-scripts/usr/lib/sysctl.d/30-qubes-gui-agent.conf \
 		$(DESTDIR)/usr/lib/sysctl.d/30-qubes-gui-agent.conf
-	install -D -m 0644 appvm-scripts/usr/lib/modules-load.d/qubes-gui.conf \
-		$(DESTDIR)/usr/lib/modules-load.d/qubes-gui.conf
 	install -D -m 0644 appvm-scripts/lib/udev/rules.d/70-master-of-seat.rules \
 		$(DESTDIR)/$(SYSLIBDIR)/udev/rules.d/70-master-of-seat.rules
 ifeq ($(shell lsb_release -is), Debian)
