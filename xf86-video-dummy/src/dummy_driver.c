@@ -394,7 +394,7 @@ Bool DUMMYAdjustScreenPixmap(ScrnInfoPtr pScrn, int width, int height)
                 "Failed to get the screen pixmap.\n");
         return FALSE;
     }
-    if (cbLine > UINT32_MAX || cbLine * height >= pScrn->videoRam * 1024)
+    if (cbLine > UINT32_MAX || cbLine * height > pScrn->videoRam * 1024)
     {
         xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
                 "Unable to set up a virtual screen size of %dx%d with %d Kb of video memory available.  Please increase the video memory size.\n",
