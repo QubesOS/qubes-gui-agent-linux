@@ -1,3 +1,9 @@
+qubes-gui-agent (4.0.23-1) unstable; urgency=medium
+
+  * Convert qubes-change-keyboard-layout to python3
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 05 Apr 2019 05:15:47 +0200
+
 qubes-gui-agent (4.0.22-1) unstable; urgency=medium
 
   * video-dummy: fix off by one error in memory size check
