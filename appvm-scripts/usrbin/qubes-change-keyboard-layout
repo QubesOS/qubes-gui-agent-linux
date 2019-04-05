@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import re
 import subprocess
 import os
@@ -40,11 +40,11 @@ cmd_param_layout = ""
 try:
     opts, args = getopt.getopt(sys.argv[1:], "h", ["help", "layout="])
 except getopt.GetoptError:
-    print usage
+    print(usage)
     sys.exit()
 for opt, arg in opts:
     if opt in ("-h", "--help"):
-        print usage
+        print(usage)
         sys.exit()
     elif opt in ("-l", "--layout"):
         cmd_param_layout = arg
