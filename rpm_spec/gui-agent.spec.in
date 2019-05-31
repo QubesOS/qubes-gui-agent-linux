@@ -106,8 +106,6 @@ make install install-xfce DESTDIR=$RPM_BUILD_ROOT \
 %post
 if [ -x /bin/systemctl ] && readlink /sbin/init | grep -q systemd; then
     /bin/systemctl enable qubes-gui-agent.service 2> /dev/null
-else
-    chkconfig qubes-gui-agent on
 fi
 
 %post -n pulseaudio-qubes
@@ -124,6 +122,10 @@ fi
 
 %posttrans
     /usr/bin/glib-compile-schemas %{_datadir}/glib-2.0/schemas &> /dev/null || :
+
+if ! [ "$(ls -A /etc/init.d/ 2> /dev/null)" ]; then
+    rm -rf /etc/init.d
+fi
 
 %triggerin -n pulseaudio-qubes -- pulseaudio-libs
 
