@@ -91,8 +91,6 @@ clean:
 install: install-rh-agent install-pulseaudio
 
 install-rh-agent: appvm install-common
-	install -D appvm-scripts/etc/init.d/qubes-gui-agent \
-		$(DESTDIR)/etc/init.d/qubes-gui-agent
 	install -m 0644 -D appvm-scripts/qubes-gui-agent.service \
 		$(DESTDIR)/$(SYSLIBDIR)/systemd/system/qubes-gui-agent.service
 	install -m 0644 -D appvm-scripts/etc/sysconfig/desktop \
