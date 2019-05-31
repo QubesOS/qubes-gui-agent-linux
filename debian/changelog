@@ -1,3 +1,12 @@
+qubes-gui-agent (4.0.24-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * Init script qubes-gui-agent is not needed anymore
+  * spec: ensure we remove empty /etc/inid.d folder
+  * spec: better use rmdir and check if exist for /etc/init.d
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 01 Jun 2019 01:42:26 +0200
+
 qubes-gui-agent (4.0.23-1) unstable; urgency=medium
 
   * Convert qubes-change-keyboard-layout to python3
