@@ -1,3 +1,17 @@
+qubes-gui-agent (4.1.1-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * video-dummy: fix off by one error in memory size check
+  * Convert qubes-change-keyboard-layout to python3
+  * travis: add fc30, switch to xenial
+
+  [ Frédéric Pierret (fepitre) ]
+  * Init script qubes-gui-agent is not needed anymore
+  * spec: ensure we remove empty /etc/inid.d folder
+  * spec: better use rmdir and check if exist for /etc/init.d
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 08 Jun 2019 12:35:03 +0200
+
 qubes-gui-agent (4.1.0-1) unstable; urgency=medium
 
   [ Simon Gaiser ]
