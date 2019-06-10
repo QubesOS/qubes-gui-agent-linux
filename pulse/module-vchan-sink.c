@@ -85,16 +85,22 @@ PA_MODULE_DESCRIPTION("VCHAN sink/source");
 PA_MODULE_VERSION(PACKAGE_VERSION);
 PA_MODULE_LOAD_ONCE(false);
 PA_MODULE_USAGE("sink_name=<name for the sink> "
+		"sink_desc=<description string for the sink> "
 		"sink_properties=<properties for the sink> "
 		"source_name=<name for the source> "
+		"source_desc=<description string for the source> "
 		"source_properties=<properties for the source> "
 		"format=<sample format> "
 		"rate=<sample rate>"
+		"domid=<target domain id>"
 		"channels=<number of channels> "
 		"channel_map=<channel map>");
 
+#define DEFAULT_DOMID 0
 #define DEFAULT_SINK_NAME "vchan_output"
+#define DEFAULT_SINK_DESC "Qubes VCHAN sink"
 #define DEFAULT_SOURCE_NAME "vchan_input"
+#define DEFAULT_SOURCE_DESC "Qubes VCHAN source"
 #define DEFAULT_PROFILE_NAME "qubes-vchan-profile"
 
 #define VCHAN_BUF 8192
@@ -125,11 +131,14 @@ struct userdata {
 
 static const char *const valid_modargs[] = {
 	"sink_name",
+	"sink_desc",
 	"sink_properties",
 	"source_name",
+	"source_desc",
 	"source_properties",
 	"format",
 	"rate",
+	"domid",
 	"channels",
 	"channel_map",
 	NULL
@@ -478,17 +487,15 @@ static void thread_func(void *userdata)
 	pa_log_debug("Thread shutting down");
 }
 
-static int do_conn(struct userdata *u)
+static int do_conn(struct userdata *u, int domid)
 {
 	int fd;
-    /* FIXME: 0 is remote domain ID */
-	u->play_ctrl = libvchan_server_init(0, QUBES_PA_SINK_VCHAN_PORT, 128, 2048);
+	u->play_ctrl = libvchan_server_init(domid, QUBES_PA_SINK_VCHAN_PORT, 128, 2048);
 	if (!u->play_ctrl) {
 		pa_log("libvchan_server_init play failed\n");
 		return -1;
 	}
-    /* FIXME: 0 is remote domain ID */
-	u->rec_ctrl = libvchan_server_init(0, QUBES_PA_SOURCE_VCHAN_PORT, 2048, 128);
+	u->rec_ctrl = libvchan_server_init(domid, QUBES_PA_SOURCE_VCHAN_PORT, 2048, 128);
 	if (!u->rec_ctrl) {
 		pa_log("libvchan_server_init rec failed\n");
 		return -1;
@@ -617,6 +624,7 @@ int pa__init(pa_module * m)
 	struct pollfd *pollfd;
 	pa_sink_new_data data_sink;
 	pa_source_new_data data_source;
+	int domid = DEFAULT_DOMID;
 
 	pa_assert(m);
 
@@ -644,7 +652,9 @@ int pa__init(pa_module * m)
 	u->rtpoll = pa_rtpoll_new();
 	pa_thread_mq_init(&u->thread_mq, m->core->mainloop, u->rtpoll);
 
-	if ((do_conn(u)) < 0) {
+
+	pa_modargs_get_value_s32(ma, "domid", &domid);
+	if ((do_conn(u, domid)) < 0) {
 
 		pa_log("get_early_allocated_vchan: %s",
 		       pa_cstrerror(errno));
@@ -665,8 +675,10 @@ int pa__init(pa_module * m)
 	pa_proplist_sets(data_sink.proplist,
 			 PA_PROP_DEVICE_STRING, DEFAULT_SINK_NAME);
 	pa_proplist_setf(data_sink.proplist,
-			PA_PROP_DEVICE_DESCRIPTION,
-			"Qubes VCHAN sink");
+			 PA_PROP_DEVICE_DESCRIPTION,
+			 pa_modargs_get_value(ma,
+					      "sink_desc",
+					      DEFAULT_SINK_DESC));
 	pa_sink_new_data_set_sample_spec(&data_sink, &ss);
 	pa_sink_new_data_set_channel_map(&data_sink, &map);
 
@@ -713,7 +725,8 @@ int pa__init(pa_module * m)
 	data_source.module = m;
 	pa_source_new_data_set_name(&data_source, pa_modargs_get_value(ma, "source_name", DEFAULT_SOURCE_NAME));
 	pa_proplist_sets(data_source.proplist, PA_PROP_DEVICE_STRING, DEFAULT_SOURCE_NAME);
-	pa_proplist_setf(data_source.proplist, PA_PROP_DEVICE_DESCRIPTION, "Qubes VCHAN source");
+	pa_proplist_setf(data_source.proplist, PA_PROP_DEVICE_DESCRIPTION, 
+						pa_modargs_get_value(ma, "source_desc", DEFAULT_SOURCE_DESC));
 	pa_source_new_data_set_sample_spec(&data_source, &ss);
 	pa_source_new_data_set_channel_map(&data_source, &map);
 
