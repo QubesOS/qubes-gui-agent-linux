@@ -1,11 +1,9 @@
-ifeq ($(PACKAGE_SET),vm)
-  RPM_SPEC_FILES := rpm_spec/gui-agent.spec
-  ARCH_BUILD_DIRS := archlinux
-  DEBIAN_BUILD_DIRS := debian
+RPM_SPEC_FILES := rpm_spec/gui-agent.spec
+ARCH_BUILD_DIRS := archlinux
+DEBIAN_BUILD_DIRS := debian
 
-  ifneq (,$(findstring $(DISTRIBUTION),qubuntu))
-    SOURCE_COPY_IN := source-debian-quilt-copy-in
-  endif
+ifneq (,$(findstring $(DISTRIBUTION),qubuntu))
+  SOURCE_COPY_IN := source-debian-quilt-copy-in
 endif
 
 
