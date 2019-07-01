@@ -16,6 +16,7 @@ Build-Depends:
     x11proto-xf86dga-dev,
     libxt-dev,
     libxen-dev,
+    lsb-release,
     quilt,
     debhelper (>= 8.0.0),
     qubes-gui-common (>= 4.1.0),
