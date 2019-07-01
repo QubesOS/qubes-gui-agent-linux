@@ -15,6 +15,7 @@ Build-Depends:
     libxdamage-dev,
     x11proto-xf86dga-dev,
     libxt-dev,
+    lsb-release,
     quilt,
     debhelper (>= 8.0.0),
     qubes-gui-common (>= 3.2.0),
