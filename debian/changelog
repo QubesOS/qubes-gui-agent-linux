@@ -1,3 +1,11 @@
+qubes-gui-agent (4.1.3-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * Add pulseaudio-12.99.2 symlinked headers
+  * spec: handle newer pulseaudio for Fedora 31+
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 06 Sep 2019 05:32:10 +0200
+
 qubes-gui-agent (4.1.2-1) wheezy; urgency=medium
 
   [ Laurent ]
