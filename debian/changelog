@@ -1,3 +1,18 @@
+qubes-gui-agent (4.0.26-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * travis: add fc30, switch to xenial
+
+  [ Neowutran ]
+  * add pulseaudio 13.0 headers
+
+  [ Marek Marczykowski-Górecki ]
+  * rpm: update pulseaudio version
+  * archlinux: do not force python2 anymore
+  * Disable "transparent hugepage" kernel feature
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 22 Sep 2019 05:06:51 +0200
+
 qubes-gui-agent (4.0.25-1) unstable; urgency=medium
 
   [ Laurent ]
