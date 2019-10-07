@@ -12,7 +12,7 @@ TTYPath=/dev/tty7
 ExecStartPre=/bin/mkdir -p /var/run/console ; /bin/touch /var/run/console/user
 # Disable "transparent hugepage" feature, as it's incompatible with u2mfn module.
 # See QubesOS/qubes-issues#5212 for details
-ExecStartPre=/bin/sh -c 'p=/sys/kernel/mm/transparent_hugepage/enabled; fgrep -q [always] $p && echo madvise > $p; true'
+ExecStartPre=/bin/sh -c 'p=/sys/kernel/mm/transparent_hugepage/enabled; fgrep -q [always] $$p && echo madvise > $$p; true'
 ExecStart=/usr/bin/qubes-gui $GUI_OPTS
 # clean env
 ExecStopPost=/bin/rm -f /tmp/qubes-session-env /tmp/qubes-session-waiter
