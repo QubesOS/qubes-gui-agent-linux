@@ -24,38 +24,38 @@
 DUMMY_MAX_CLOCK=300 #hardcoded in dummy_drv
 PREFERRED_HSYNC=50
 RES="$W"x"$H"
-HTOTAL=$(($W+3))
-VTOTAL=$(($H+3))
-CLOCK=$(($PREFERRED_HSYNC*$HTOTAL/1000))
+HTOTAL=$((W+3))
+VTOTAL=$((H+3))
+CLOCK=$((PREFERRED_HSYNC*HTOTAL/1000))
 if [ $CLOCK -gt $DUMMY_MAX_CLOCK ] ; then CLOCK=$DUMMY_MAX_CLOCK ; fi
-MODELINE="$CLOCK $W $(($W+1)) $(($W+2)) $HTOTAL $H $(($H+1)) $(($H+2)) $VTOTAL"
+MODELINE="$CLOCK $W $((W+1)) $((W+2)) $HTOTAL $H $((H+1)) $((H+2)) $VTOTAL"
 
-HSYNC_START=$(($CLOCK*1000/$HTOTAL))
+HSYNC_START=$((CLOCK*1000/HTOTAL))
 HSYNC_END=$((HSYNC_START+1))
 
-VREFR_START=$(($CLOCK*1000000/$HTOTAL/$VTOTAL))
+VREFR_START=$((CLOCK*1000000/HTOTAL/VTOTAL))
 VREFR_END=$((VREFR_START+1))
 
 # Add extra memory to allow dynamic connection of extra monitor.
 # By default, have space for one FHD monitor, or multiple smaller.
 MEM_MIN="$(qubesdb-read /qubes-gui-videoram-min 2>/dev/null)"
 MEM_OVERHEAD="$(qubesdb-read /qubes-gui-videoram-overhead 2>/dev/null)"
-: ${MEM_MIN:=0}
-: ${MEM_OVERHEAD:=$((1920 * 1080 * 4 / 1024))}
+: "${MEM_MIN:=0}"
+: "${MEM_OVERHEAD:=$((1920 * 1080 * 4 / 1024))}"
 
-MEM=$(($MEM + $MEM_OVERHEAD))
+MEM=$((MEM + MEM_OVERHEAD))
 if [ $MEM -lt $MEM_MIN ]; then
     MEM=$MEM_MIN
 fi
 
 sed -e  s/%MEM%/$MEM/ \
-        -e  s/%DEPTH%/$DEPTH/ \
+        -e  s/%DEPTH%/"$DEPTH"/ \
         -e  s/%MODELINE%/"$MODELINE"/ \
         -e  s/%HSYNC_START%/"$HSYNC_START"/ \
         -e  s/%HSYNC_END%/"$HSYNC_END"/ \
         -e  s/%VREFR_START%/"$VREFR_START"/ \
         -e  s/%VREFR_END%/"$VREFR_END"/ \
-        -e  s/%RES%/QB$RES/ \
+        -e  s/%RES%/"QB$RES"/ \
         -e  s/%GUI_DOMID%/"$GUI_DOMID"/ < /etc/X11/xorg-qubes.conf.template \
         > /etc/X11/xorg-qubes.conf
 
