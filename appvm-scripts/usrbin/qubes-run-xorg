@@ -20,6 +20,10 @@
 #
 #
 
+# Source Qubes library.
+# shellcheck disable=SC1091
+. /usr/lib/qubes/init/functions
+
 #expects W, H, MEM and DEPTH env vars to be set by invoker
 DUMMY_MAX_CLOCK=300 #hardcoded in dummy_drv
 PREFERRED_HSYNC=50
@@ -79,8 +83,6 @@ if [ -f /etc/X11/Xsession ]; then
     fi
 fi
 
-export XDG_SEAT=seat0 XDG_SESSION_CLASS=user DISPLAY=:0
-
 # Defaults value in case default-user value is not available
 DEFAULT_USER="$(qubesdb-read /default-user 2>/dev/null)"
 if [ -z "$DEFAULT_USER" ];then
@@ -94,6 +96,8 @@ chmod 770 /var/run/xf86-qubes-socket
 # 2**30
 echo 1073741824 > /sys/module/xen_gntalloc/parameters/limit
 
+export XDG_SEAT=seat0 XDG_SESSION_CLASS=user DISPLAY=:0
+
 if [ -x /bin/loginctl ]; then
     # logind needs at least one device with "master-of-seat" tag to
     # consider this seat as graphical; we use pcspkr, for which we ship udev
@@ -101,7 +105,22 @@ if [ -x /bin/loginctl ]; then
     loginctl attach "$XDG_SEAT" /sys/devices/platform/pcspkr/input/*
 fi
 
-# Use sh -l here to load all session startup scripts (/etc/profile, ~/.profile
-# etc) to populate environment. This is the environment that will be used for
-# all user applications and qrexec calls.
-exec /usr/bin/qubes-gui-runuser "$DEFAULT_USER" /bin/sh -l -c "exec /usr/bin/xinit $XSESSION -- $XORG :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1"
+if qsvc guivm-gui-agent; then
+    DISPLAY_XORG=:1
+    DISPLAY_XEPHYR=:0
+
+    # Create Xorg and Xephyr server (emulated GPU passthrough)
+    runuser -u "$DEFAULT_USER" -- /bin/sh -l -c "exec /usr/bin/xinit /usr/bin/qubes-run-xephyr $DISPLAY_XEPHYR -- $XORG $DISPLAY_XORG -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xorg-errors 2>&1" &
+    # Wait Xephyr display available
+    while ! [ -e /tmp/.X11-unix/X0 ]
+    do
+        sleep 1
+    done
+    # Run xsession
+    /usr/bin/qubes-gui-runuser "$DEFAULT_USER" /bin/sh -l -c "DISPLAY=$DISPLAY_XEPHYR exec $XSESSION > ~/.xsession-errors 2>&1"
+else
+    # Use sh -l here to load all session startup scripts (/etc/profile, ~/.profile
+    # etc) to populate environment. This is the environment that will be used for
+    # all user applications and qrexec calls.
+    exec /usr/bin/qubes-gui-runuser "$DEFAULT_USER" /bin/sh -l -c "exec /usr/bin/xinit $XSESSION -- $XORG :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1"
+fi

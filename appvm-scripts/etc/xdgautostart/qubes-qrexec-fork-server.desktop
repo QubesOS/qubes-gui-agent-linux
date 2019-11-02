@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=qrexec-fork-server
+Icon=qubes
+Exec=/usr/bin/qrexec-fork-server
+Terminal=false
+Type=Application

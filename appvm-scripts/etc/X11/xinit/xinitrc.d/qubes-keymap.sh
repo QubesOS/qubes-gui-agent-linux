@@ -16,7 +16,13 @@ set_keyboard_layout() {
     if [ -n "$KEYMAP_VARIANT" ]; then
         KEYMAP_VARIANT="-variant $KEYMAP_VARIANT"
     fi
-    setxkbmap "$KEYMAP_LAYOUT" "$KEYMAP_VARIANT"
+
+    # Set layout on all DISPLAY
+    for x in /tmp/.X11-unix/X*
+    do
+        display="$(basename "$x")"
+        setxkbmap -display ":${display#X}" -layout "$KEYMAP_LAYOUT" $KEYMAP_VARIANT
+    done
 }
 
 if [ -n "$QUBES_KEYMAP" ]; then

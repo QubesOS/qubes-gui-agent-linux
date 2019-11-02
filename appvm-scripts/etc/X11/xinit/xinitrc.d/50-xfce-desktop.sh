@@ -1,5 +1,10 @@
 #!/bin/sh
 
+# shellcheck disable=SC1091
+. /usr/lib/qubes/init/functions
+
+if ! qsvc guivm-gui-agent; then
+
 XDG_MENU_PREFIX="xfce-"
 export XDG_MENU_PREFIX
 
@@ -22,3 +27,4 @@ fi
 export QT_QPA_PLATFORMTHEME=qt5ct
 
 xfsettingsd &
+fi

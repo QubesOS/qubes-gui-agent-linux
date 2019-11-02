@@ -10,6 +10,7 @@ TTYPath=/dev/tty7
 #Environment=ENV_PATH=/usr/local/bin:/usr/bin:/bin
 # pretend tha user is at local console
 ExecStartPre=/bin/mkdir -p /var/run/console ; /bin/touch /var/run/console/user
+ExecStartPre=/bin/sh -c ". /usr/lib/qubes/init/functions; if qsvc guivm-gui-agent; then sed -i '/DISPLAY=/d' /var/run/qubes-service-environment; echo DISPLAY=:1 >> /var/run/qubes-service-environment; fi;"
 ExecStart=/usr/bin/qubes-gui $GUI_OPTS
 # clean env
 ExecStopPost=/bin/rm -f /tmp/qubes-session-env /tmp/qubes-session-waiter

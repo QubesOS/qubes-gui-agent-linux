@@ -135,6 +135,8 @@ install-common:
 		$(DESTDIR)/usr/bin/qubes-session
 	install -D appvm-scripts/usrbin/qubes-run-xorg \
 		$(DESTDIR)/usr/bin/qubes-run-xorg
+	install -D appvm-scripts/usrbin/qubes-run-xephyr \
+		$(DESTDIR)/usr/bin/qubes-run-xephyr
 	install -D appvm-scripts/usrbin/qubes-change-keyboard-layout \
 		$(DESTDIR)/usr/bin/qubes-change-keyboard-layout
 	install -D appvm-scripts/usrbin/qubes-set-monitor-layout \
@@ -169,6 +171,8 @@ endif
 		$(DESTDIR)/usr/lib/qubes/icon-sender
 	install -m 0644 -D window-icon-updater/qubes-icon-sender.desktop \
 		$(DESTDIR)/etc/xdg/autostart/qubes-icon-sender.desktop
+	install -m 0644 -D appvm-scripts/etc/xdgautostart/qubes-qrexec-fork-server.desktop \
+		$(DESTDIR)/etc/xdg/autostart/qubes-qrexec-fork-server.desktop
 	install -D -m 0644 appvm-scripts/usr/lib/sysctl.d/30-qubes-gui-agent.conf \
 		$(DESTDIR)/usr/lib/sysctl.d/30-qubes-gui-agent.conf
 	install -D -m 0644 appvm-scripts/lib/udev/rules.d/70-master-of-seat.rules \
