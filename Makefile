@@ -159,6 +159,8 @@ install-common:
 		$(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-session.conf
 	install -m 0644 -D appvm-scripts/etc/securitylimits.d/90-qubes-gui.conf \
 		$(DESTDIR)/etc/security/limits.d/90-qubes-gui.conf
+	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/50-guivm-windows-prefix.sh \
+		$(DESTDIR)/etc/X11/xinit/xinitrc.d/50-guivm-windows-prefix.sh
 ifneq ($(shell lsb_release -is), Ubuntu)
 	install -m 0644 -D appvm-scripts/etc/xdg/Trolltech.conf \
 		$(DESTDIR)/etc/xdg/Trolltech.conf
