@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# Source Qubes library.
+# shellcheck disable=SC1091
+. /usr/lib/qubes/init/functions
+
+QUBES_VMNAME="$(qubesdb-read /guivm-windows-prefix)"
+
+# Set _QUBES_VMNAME atom for a window manager (e.g. xfwm4)
+if qsvc guivm-gui-agent; then
+    xprop -root -f _QUBES_VMNAME 8s -set _QUBES_VMNAME "${QUBES_VMNAME:-GuiVM}"
+fi

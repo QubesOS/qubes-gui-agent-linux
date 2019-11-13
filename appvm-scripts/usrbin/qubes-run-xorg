@@ -20,42 +20,46 @@
 #
 #
 
+# Source Qubes library.
+# shellcheck disable=SC1091
+. /usr/lib/qubes/init/functions
+
 #expects W, H, MEM and DEPTH env vars to be set by invoker
 DUMMY_MAX_CLOCK=300 #hardcoded in dummy_drv
 PREFERRED_HSYNC=50
 RES="$W"x"$H"
-HTOTAL=$(($W+3))
-VTOTAL=$(($H+3))
-CLOCK=$(($PREFERRED_HSYNC*$HTOTAL/1000))
+HTOTAL=$((W+3))
+VTOTAL=$((H+3))
+CLOCK=$((PREFERRED_HSYNC*HTOTAL/1000))
 if [ $CLOCK -gt $DUMMY_MAX_CLOCK ] ; then CLOCK=$DUMMY_MAX_CLOCK ; fi
-MODELINE="$CLOCK $W $(($W+1)) $(($W+2)) $HTOTAL $H $(($H+1)) $(($H+2)) $VTOTAL"
+MODELINE="$CLOCK $W $((W+1)) $((W+2)) $HTOTAL $H $((H+1)) $((H+2)) $VTOTAL"
 
-HSYNC_START=$(($CLOCK*1000/$HTOTAL))
+HSYNC_START=$((CLOCK*1000/HTOTAL))
 HSYNC_END=$((HSYNC_START+1))
 
-VREFR_START=$(($CLOCK*1000000/$HTOTAL/$VTOTAL))
+VREFR_START=$((CLOCK*1000000/HTOTAL/VTOTAL))
 VREFR_END=$((VREFR_START+1))
 
 # Add extra memory to allow dynamic connection of extra monitor.
 # By default, have space for one FHD monitor, or multiple smaller.
 MEM_MIN="$(qubesdb-read /qubes-gui-videoram-min 2>/dev/null)"
 MEM_OVERHEAD="$(qubesdb-read /qubes-gui-videoram-overhead 2>/dev/null)"
-: ${MEM_MIN:=0}
-: ${MEM_OVERHEAD:=$((1920 * 1080 * 4 / 1024))}
+: "${MEM_MIN:=0}"
+: "${MEM_OVERHEAD:=$((1920 * 1080 * 4 / 1024))}"
 
-MEM=$(($MEM + $MEM_OVERHEAD))
+MEM=$((MEM + MEM_OVERHEAD))
 if [ $MEM -lt $MEM_MIN ]; then
     MEM=$MEM_MIN
 fi
 
 sed -e  s/%MEM%/$MEM/ \
-        -e  s/%DEPTH%/$DEPTH/ \
+        -e  s/%DEPTH%/"$DEPTH"/ \
         -e  s/%MODELINE%/"$MODELINE"/ \
         -e  s/%HSYNC_START%/"$HSYNC_START"/ \
         -e  s/%HSYNC_END%/"$HSYNC_END"/ \
         -e  s/%VREFR_START%/"$VREFR_START"/ \
         -e  s/%VREFR_END%/"$VREFR_END"/ \
-        -e  s/%RES%/QB$RES/ \
+        -e  s/%RES%/"QB$RES"/ \
         -e  s/%GUI_DOMID%/"$GUI_DOMID"/ < /etc/X11/xorg-qubes.conf.template \
         > /etc/X11/xorg-qubes.conf
 
@@ -79,8 +83,6 @@ if [ -f /etc/X11/Xsession ]; then
     fi
 fi
 
-export XDG_SEAT=seat0 XDG_SESSION_CLASS=user DISPLAY=:0
-
 # Defaults value in case default-user value is not available
 DEFAULT_USER="$(qubesdb-read /default-user 2>/dev/null)"
 if [ -z "$DEFAULT_USER" ];then
@@ -94,6 +96,8 @@ chmod 770 /var/run/xf86-qubes-socket
 # 2**30
 echo 1073741824 > /sys/module/xen_gntalloc/parameters/limit
 
+export XDG_SEAT=seat0 XDG_SESSION_CLASS=user DISPLAY=:0
+
 if [ -x /bin/loginctl ]; then
     # logind needs at least one device with "master-of-seat" tag to
     # consider this seat as graphical; we use pcspkr, for which we ship udev
@@ -101,7 +105,22 @@ if [ -x /bin/loginctl ]; then
     loginctl attach "$XDG_SEAT" /sys/devices/platform/pcspkr/input/*
 fi
 
-# Use sh -l here to load all session startup scripts (/etc/profile, ~/.profile
-# etc) to populate environment. This is the environment that will be used for
-# all user applications and qrexec calls.
-exec /usr/bin/qubes-gui-runuser "$DEFAULT_USER" /bin/sh -l -c "exec /usr/bin/xinit $XSESSION -- $XORG :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1"
+if qsvc guivm-gui-agent; then
+    DISPLAY_XORG=:1
+    DISPLAY_XEPHYR=:0
+
+    # Create Xorg and Xephyr server (emulated GPU passthrough)
+    runuser -u "$DEFAULT_USER" -- /bin/sh -l -c "exec $XORG $DISPLAY_XORG -terminate -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xorg-errors 2>&1" &
+    # Wait Xorg display available
+    while ! xdpyinfo -display $DISPLAY_XORG > /dev/null 2>&1
+    do
+        sleep 1
+    done
+    # Run xsession into Xephyr
+    /usr/bin/qubes-gui-runuser "$DEFAULT_USER" /bin/sh -l -c "DISPLAY=$DISPLAY_XORG /usr/bin/xinit $XSESSION -- /usr/bin/qubes-run-xephyr $DISPLAY_XEPHYR > ~/.xsession-errors 2>&1"
+else
+    # Use sh -l here to load all session startup scripts (/etc/profile, ~/.profile
+    # etc) to populate environment. This is the environment that will be used for
+    # all user applications and qrexec calls.
+    exec /usr/bin/qubes-gui-runuser "$DEFAULT_USER" /bin/sh -l -c "exec /usr/bin/xinit $XSESSION -- $XORG :0 -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xsession-errors 2>&1"
+fi

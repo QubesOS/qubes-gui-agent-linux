@@ -1,0 +1,5 @@
+#!/bin/sh
+DISPLAY_XEPHYR="$1"
+OPTIONS_XEPHYR="-no-host-grab -fullscreen"
+
+LD_PRELOAD=/usr/lib64/qubes-gui-daemon/shmoverride.so /usr/bin/Xephyr $OPTIONS_XEPHYR "$DISPLAY_XEPHYR" > ~/.xephyr-errors 2>&1

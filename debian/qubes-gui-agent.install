@@ -4,6 +4,7 @@ etc/pam.d/qubes-gui-agent
 etc/security/limits.d/90-qubes-gui.conf
 etc/qubes-rpc/qubes.SetMonitorLayout
 etc/xdg/autostart/qubes-icon-sender.desktop
+etc/xdg/autostart/qubes-qrexec-fork-server.desktop
 etc/xdg/Trolltech.conf
 etc/xdg/Xresources
 etc/xdg/fonts.conf
@@ -14,6 +15,7 @@ usr/bin/qubes-change-keyboard-layout
 usr/bin/qubes-gui
 usr/bin/qubes-gui-runuser
 usr/bin/qubes-run-xorg
+usr/bin/qubes-run-xephyr
 usr/bin/qubes-session
 usr/bin/qubes-set-monitor-layout
 usr/lib/qubes/icon-sender
