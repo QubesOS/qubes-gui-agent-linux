@@ -131,6 +131,9 @@ install-pulseaudio:
 install-common:
 	install -D gui-agent/qubes-gui $(DESTDIR)/usr/bin/qubes-gui
 	install -D gui-common/qubes-gui-runuser $(DESTDIR)/usr/bin/qubes-gui-runuser
+	install -d $(DESTDIR)/etc/qubes/post-install.d
+	install -m 0755 appvm-scripts/etc/qubes/post-install.d/20-qubes-guivm-gui-agent.sh \
+                $(DESTDIR)/etc/qubes/post-install.d/20-qubes-guivm-gui-agent.sh
 	install -D appvm-scripts/usrbin/qubes-session \
 		$(DESTDIR)/usr/bin/qubes-session
 	install -D appvm-scripts/usrbin/qubes-run-xorg \

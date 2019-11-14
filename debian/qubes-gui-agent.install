@@ -3,6 +3,7 @@ etc/profile.d/*
 etc/pam.d/qubes-gui-agent
 etc/security/limits.d/90-qubes-gui.conf
 etc/qubes-rpc/qubes.SetMonitorLayout
+etc/qubes/post-install.d/20-qubes-guivm-gui-agent.sh
 etc/xdg/autostart/qubes-icon-sender.desktop
 etc/xdg/autostart/qubes-qrexec-fork-server.desktop
 etc/xdg/Trolltech.conf

@@ -164,6 +164,7 @@ rm -f %{name}-%{version}
 /etc/X11/xinit/xinitrc.d/20qt-gnome-desktop-session-id.sh
 /etc/X11/xinit/xinitrc.d/50-guivm-windows-prefix.sh
 /etc/qubes-rpc/qubes.SetMonitorLayout
+/etc/qubes/post-install.d/20-qubes-guivm-gui-agent.sh
 %config /etc/sysconfig/desktop
 /lib/systemd/system/qubes-gui-agent.service
 /lib/udev/rules.d/70-master-of-seat.rules
