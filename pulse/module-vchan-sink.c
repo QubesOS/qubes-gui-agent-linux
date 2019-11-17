@@ -673,6 +673,7 @@ int pa__init(pa_module * m)
     pa_thread_mq_init(&u->thread_mq, m->core->mainloop, u->rtpoll);
 
 
+    pa_log("using domid: %d", domid);
     pa_modargs_get_value_s32(ma, "domid", &domid);
     if ((do_conn(u, domid)) < 0) {
 
