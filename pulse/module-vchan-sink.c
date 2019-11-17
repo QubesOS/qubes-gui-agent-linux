@@ -79,6 +79,7 @@
 #include "module-vchan-sink-symdef.h"
 #include "qubes-vchan-sink.h"
 #include <libvchan.h>
+#include <qubesdb-client.h>
 
 PA_MODULE_AUTHOR("Marek Marczykowski-Górecki");
 PA_MODULE_DESCRIPTION("VCHAN sink/source");
@@ -625,6 +626,25 @@ int pa__init(pa_module * m)
 	pa_sink_new_data data_sink;
 	pa_source_new_data data_source;
 	int domid = DEFAULT_DOMID;
+    qdb_handle_t qdb;
+    char *qdb_entry, *tmp;
+    int qdb_domid;
+
+    qdb = qdb_open(NULL);
+    if (!qdb) {
+        perror("qdb_open");
+        exit(1);
+    }
+	// Read domid from qubesdb
+    qdb_entry = qdb_read(qdb, "/qubes-audio-domain-xid", NULL);
+    if (qdb_entry) {
+        qdb_domid = strtol(qdb_entry, &tmp, 10);
+        if ((*tmp == '\0') && (tmp != qdb_entry)) {
+            domid = qdb_domid;
+        }
+        free(qdb_entry);
+    }
+    qdb_close(qdb);
 
 	pa_assert(m);
 
