@@ -52,7 +52,7 @@ make appvm
 package_qubes-vm-gui() {
 
 depends=('xorg-xinit' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python-xcffib'
-		'xorg-server>=1.20.4' 'xorg-server<1.20.6'
+		'xorg-server>=1.20.4' 'xorg-server<1.20.7'
 		'qubes-vm-core>=3.0.14'
 		)
 install=PKGBUILD.install
