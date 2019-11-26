@@ -25,6 +25,8 @@
 # shellcheck disable=SC1091
 . /usr/lib/qubes/init/functions
 
+loginctl activate "$XDG_SESSION_ID"
+
 if qsvc guivm-gui-agent; then
     if [ -e "$HOME/.xinitrc" ]; then
         . "$HOME/.xinitrc"
@@ -35,8 +37,6 @@ if qsvc guivm-gui-agent; then
     "$XSESSION"
     exit
 fi
-
-loginctl activate "$XDG_SESSION_ID"
 
 # Set desktop background
 xsetroot -solid white
