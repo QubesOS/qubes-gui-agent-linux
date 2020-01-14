@@ -182,6 +182,8 @@ endif
 		$(DESTDIR)/usr/lib/sysctl.d/30-qubes-gui-agent.conf
 	install -D -m 0644 appvm-scripts/lib/udev/rules.d/70-master-of-seat.rules \
 		$(DESTDIR)/$(SYSLIBDIR)/udev/rules.d/70-master-of-seat.rules
+	install -D appvm-scripts/usr/lib/qubes/qubes-gui-agent-pre.sh \
+		$(DESTDIR)/usr/lib/qubes/qubes-gui-agent-pre.sh
 ifeq ($(shell lsb_release -is), Debian)
 	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent.debian \
 		$(DESTDIR)/etc/pam.d/qubes-gui-agent
