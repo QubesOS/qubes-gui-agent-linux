@@ -27,9 +27,7 @@ if [ -f /etc/this-is-dvm ]; then
   qubesdb-watch /qubes-restore-complete
 fi
 
-while [ -z "$(qubesdb-read /qubes-audio-domain-xid >/dev/null 2>&1)" ]; do
-  sleep 1
-done
+qubesdb-read -w /qubes-audio-domain-xid >/dev/null
 
 pulseaudio --start \
   -n --file=/etc/pulse/qubes-default.pa \

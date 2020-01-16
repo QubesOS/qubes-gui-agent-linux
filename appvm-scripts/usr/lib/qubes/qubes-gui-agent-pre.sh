@@ -11,13 +11,12 @@ if qsvc guivm-gui-agent; then
     echo DISPLAY=:1 >> /var/run/qubes-service-environment
 fi
 
-while [ -z "$(qubesdb-read /qubes-gui-domain-xid > /dev/null 2>&1)" ];
-do
-    sleep 1
-done
-
 # set gui opts
-gui_opts="-d $(qubesdb-read /qubes-gui-domain-xid)"
+gui_xid="$(qubesdb-read -w /qubes-gui-domain-xid)"
+if [ -z "$gui_xid" ]; then
+    gui_xid=0
+fi
+gui_opts="-d $gui_xid"
 
 debug_mode=$(qubesdb-read /qubes-debug-mode 2> /dev/null)
 if [ -n "$debug_mode" ] && [ "$debug_mode" -gt 0 ]; then
