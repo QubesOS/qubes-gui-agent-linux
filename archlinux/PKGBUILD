@@ -51,10 +51,7 @@ make appvm
 
 package_qubes-vm-gui() {
 
-depends=('xorg-xinit' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python-xcffib'
-		'xorg-server>=1.20.4' 'xorg-server<1.20.7'
-		'qubes-vm-core>=3.0.14'
-		)
+depends=('xorg-xinit' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python-xcffib' 'xorg-server' 'xorg-server<1.21' 'qubes-vm-core')
 install=PKGBUILD.install
 
 make install-rh-agent DESTDIR=$pkgdir LIBDIR=/usr/lib USRLIBDIR=/usr/lib SYSLIBDIR=/usr/lib
@@ -70,9 +67,7 @@ install -D $srcdir/PKGBUILD-z-qubes-session.sh $pkgdir/etc/X11/xinit/xinitrc.d/z
 package_qubes-vm-pulseaudio() {
 
 pkgdesc="Pulseaudio support for Qubes VM"
-depends=( 'alsa-lib' 'alsa-utils' 'pulseaudio-alsa'
-		'pulseaudio>=13.0' 'pulseaudio<14.0'
-)
+depends=( 'alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'pulseaudio<14.0')
 install=PKGBUILD-pulseaudio.install
 pa_ver=`(pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-"`
 
