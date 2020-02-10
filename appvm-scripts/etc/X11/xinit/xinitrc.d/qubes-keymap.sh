@@ -2,6 +2,7 @@
 
 # This file may be also executed by qubes-change-keyboard-layout
 
+QUBES_KEYMAP_LEGACY="$(/usr/bin/qubesdb-read /qubes-keyboard)"
 QUBES_KEYMAP="$(/usr/bin/qubesdb-read /keyboard-layout)"
 QUBES_USER_KEYMAP="$(cat "$HOME/.config/qubes-keyboard-layout.rc" 2> /dev/null)"
 
@@ -29,6 +30,10 @@ set_keyboard_layout() {
         setxkbmap -display ":${display#X}" -layout "$KEYMAP_LAYOUT" $KEYMAP_VARIANT $KEYMAP_OPTIONS
     done
 }
+
+if [ -n "$QUBES_KEYMAP_LEGACY" ]; then
+	echo -e "$QUBES_KEYMAP_LEGACY" | xkbcomp - $DISPLAY
+fi
 
 if [ -n "$QUBES_KEYMAP" ]; then
     set_keyboard_layout "$QUBES_KEYMAP"
