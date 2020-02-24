@@ -170,7 +170,7 @@ ifneq ($(shell lsb_release -is), Ubuntu)
 endif
 	install -m 0644 -D appvm-scripts/qubes-gui-vm.gschema.override \
 		$(DESTDIR)$(DATADIR)/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
-	install -m 0644 -D appvm-scripts/etc/qubes-rpc/qubes.SetMonitorLayout \
+	ln -s ../../usr/bin/qubes-set-monitor-layout \
 		$(DESTDIR)/etc/qubes-rpc/qubes.SetMonitorLayout
 	install -D window-icon-updater/icon-sender \
 		$(DESTDIR)/usr/lib/qubes/icon-sender
