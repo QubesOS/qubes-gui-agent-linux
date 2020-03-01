@@ -1,3 +1,32 @@
+qubes-gui-agent (4.1.6-1) unstable; urgency=medium
+
+  [ Neowutran ]
+  * ARCHLINUX: xf86dgaproto doesn't exist anymore, and is no longer
+    required. Removing it from the dependencies.
+
+  [ Frédéric Pierret (fepitre) ]
+  * travis: switch to dom0 Fedora 31
+
+  [ Foppe ]
+  * Update .travis.yml
+
+  [ Zaoqi ]
+  * archlinux: qubes-vm-gui: update PKGBUILD
+
+  [ Marek Marczykowski-Górecki ]
+  * Replace non-executable qubes.SetMonitorLayout file with a symlink
+  * create /etc/qubes-rpc directory before placing a symlink there
+
+  [ Frédéric Pierret (fepitre) ]
+  * Allow GUI and AUDIO client to be ran before their corresonding
+    servers
+  * GUI/AUDIO xid: use 'wait' option of qubesdb-read
+
+  [ Marek Marczykowski-Górecki ]
+  * Require new enough qubesdb-read for -w option
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 01 Mar 2020 03:07:45 +0100
+
 qubes-gui-agent (4.1.5-1) unstable; urgency=medium
 
   [ Frédéric Pierret (fepitre) ]
