@@ -35,7 +35,7 @@ Depends:
     xinit,
     x11-xserver-utils,
     qubes-core-agent (>= 3.0.14),
-    qubesdb-vm,
+    qubesdb-vm (>= 4.1.4),
     libxdamage1,
     libxcomposite1,
     libxt6,
@@ -92,6 +92,7 @@ Description: X input driver for injecting events from qubes-gui-agent
 Package: pulseaudio-qubes
 Architecture: any
 Depends:
+    qubesdb-vm (>= 4.1.4),
     pulseaudio,
     libpulse0,
     ${shlibs:Depends},
