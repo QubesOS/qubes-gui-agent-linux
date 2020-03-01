@@ -20,12 +20,15 @@
 #
 #
 
-type pulseaudio >/dev/null 2> /dev/null || exit 0
+type pulseaudio >/dev/null 2>&1 || exit 0
 
 if [ -f /etc/this-is-dvm ]; then
-    # ... wait for Dom0 notify
-    qubesdb-watch /qubes-restore-complete
+  # ... wait for Dom0 notify
+  qubesdb-watch /qubes-restore-complete
 fi
+
+qubesdb-read -w /qubes-audio-domain-xid >/dev/null
+
 pulseaudio --start \
-    -n --file=/etc/pulse/qubes-default.pa \
-	--exit-idle-time=-1
+  -n --file=/etc/pulse/qubes-default.pa \
+  --exit-idle-time=-1

@@ -22,5 +22,6 @@ usr/bin/qubes-set-monitor-layout
 usr/lib/qubes/icon-sender
 usr/lib/sysctl.d/30-qubes-gui-agent.conf
 usr/lib/tmpfiles.d/*
+usr/lib/qubes/qubes-gui-agent-pre.sh
 usr/share/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
 var/log/qubes
