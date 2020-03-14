@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# -*- encoding: utf8 -*-
+# -*- encoding: utf-8 -*-
 #
 # The Qubes OS Project, http://www.qubes-os.org
 #
@@ -24,13 +24,14 @@
 
 # Tool for sending windows icon over qrexec to dom0/GUI domain. Icons will be
 #  tainted by dom0 and then attached to appropriate windows.
-# Usage: qrexec-client-vm dom0 qubes.WindowIconUpdater ./icon-sender
 
 import xcffib
 from xcffib import xproto
 
-import sys
 import struct
+import subprocess
+import traceback
+import sys
 
 ICON_MAX_SIZE = 128
 
@@ -52,6 +53,28 @@ class IconRetriever(object):
         self.atom_net_wm_icon = self.conn.core.InternAtom(
             False, len("_NET_WM_ICON"), "_NET_WM_ICON").reply().atom
 
+        self.client = None
+
+    def check_connection(self):
+        '''
+        Check if we are still connected to qrexec. If not, attempt to reconnect
+        and sync - this can happen if the user restarted the GUI session.
+        '''
+        if not self.is_client_running():
+            print('icon-sender: disconnected, trying to reconnect')
+            self.try_start_client()
+            self.initial_sync()
+
+    def try_start_client(self):
+        self.client = subprocess.Popen(
+            ['qrexec-client-vm', 'dom0', 'qubes.WindowIconUpdater'],
+            stdin=subprocess.PIPE)
+
+    def is_client_running(self):
+        if self.client is None or self.client.returncode is not None:
+             return False
+        self.client.poll()
+        return self.client.returncode is None
 
     def watch_window(self, w):
         self.conn.core.ChangeWindowAttributesChecked(
@@ -108,17 +131,24 @@ class IconRetriever(object):
     def send_icon(self, w):
         try:
             icons = self.get_icons(w)
-            chosen_size = sorted(icons.keys())[-1]
+        except NoIconError:
+            return
 
-            sys.stdout.buffer.write("{}\n".format(w).encode('ascii'))
-            sys.stdout.buffer.write("{} {}\n".format(
+        chosen_size = sorted(icons.keys())[-1]
+
+        try:
+            self.client.stdin.write("{}\n".format(w).encode('ascii'))
+            self.client.stdin.write("{} {}\n".format(
                 chosen_size[0], chosen_size[1]).encode('ascii'))
-            sys.stdout.buffer.write(b''.join(
+            self.client.stdin.write(b''.join(
                 [struct.pack('>I', ((b << 8) & 0xffffff00) | (b >> 24)) for b in
                  icons[chosen_size]]))
-            sys.stdout.buffer.flush()
-        except NoIconError:
-            pass
+            self.client.stdin.flush()
+        except IOError:
+            # We probably got disconnected. Ignore the failure, we will
+            # re-attempt connection with next update.
+            print('icon-sender: error during send')
+            traceback.print_exc()
 
     def initial_sync(self):
         cookie = self.conn.core.QueryTree(self.root)
@@ -132,6 +162,7 @@ class IconRetriever(object):
             self.root, xproto.CW.EventMask,
             [xproto.EventMask.SubstructureNotify])
         self.conn.flush()
+        self.try_start_client()
         self.initial_sync()
 
         for ev in iter(self.conn.wait_for_event, None):
@@ -140,10 +171,12 @@ class IconRetriever(object):
                 self.watch_window(ev.window)
             elif isinstance(ev, xproto.MapNotifyEvent):
                 if ev.window in self.window_queue:
+                    self.check_connection()
                     self.send_icon(ev.window)
                     self.window_queue.remove(ev.window)
             elif isinstance(ev, xproto.PropertyNotifyEvent):
                 if ev.atom == self.atom_net_wm_icon:
+                    self.check_connection()
                     self.send_icon(ev.window)
 
 
