@@ -112,6 +112,7 @@ struct userdata {
     pa_sink *sink;
     pa_source *source;
 
+    int domid;
     libvchan_t *play_ctrl;
     libvchan_t *rec_ctrl;
 
@@ -143,6 +144,8 @@ static const char *const valid_modargs[] = {
     "channel_map",
     NULL
 };
+
+static int do_conn(struct userdata *u);
 
 #if PA_CHECK_VERSION(12,0,0)
 static int sink_set_state_in_io_thread_cb(pa_sink *s, pa_sink_state_t new_state,
@@ -421,6 +424,26 @@ static void thread_func(void *userdata)
         struct pollfd *rec_pollfd;
         int ret;
 
+        if (!libvchan_is_open(u->play_ctrl) || !libvchan_is_open(u->rec_ctrl)) {
+            pa_log("vchan disconnected, restarting server");
+
+            libvchan_close(u->play_ctrl);
+            libvchan_close(u->rec_ctrl);
+            pa_rtpoll_item_free(u->play_rtpoll_item);
+            pa_rtpoll_item_free(u->rec_rtpoll_item);
+
+            u->play_ctrl = NULL;
+            u->rec_ctrl = NULL;
+            u->play_rtpoll_item = NULL;
+            u->rec_rtpoll_item = NULL;
+
+            if (do_conn(u) < 0) {
+                pa_log("failed to restart vchan server");
+                goto fail;
+            }
+            pa_log("vchan server restarted");
+        }
+
         play_pollfd = pa_rtpoll_item_get_pollfd(u->play_rtpoll_item, NULL);
         rec_pollfd = pa_rtpoll_item_get_pollfd(u->rec_rtpoll_item, NULL);
 
@@ -487,23 +510,35 @@ static void thread_func(void *userdata)
     pa_log_debug("Thread shutting down");
 }
 
-static int do_conn(struct userdata *u, int domid)
+static int do_conn(struct userdata *u)
 {
-    int fd;
-    u->play_ctrl = libvchan_server_init(domid, QUBES_PA_SINK_VCHAN_PORT, 128, 2048);
+    struct pollfd *pollfd;
+
+    u->play_ctrl = libvchan_server_init(u->domid, QUBES_PA_SINK_VCHAN_PORT, 128, 2048);
     if (!u->play_ctrl) {
         pa_log("libvchan_server_init play failed\n");
         return -1;
     }
-    u->rec_ctrl = libvchan_server_init(domid, QUBES_PA_SOURCE_VCHAN_PORT, 2048, 128);
+    u->rec_ctrl = libvchan_server_init(u->domid, QUBES_PA_SOURCE_VCHAN_PORT, 2048, 128);
     if (!u->rec_ctrl) {
         pa_log("libvchan_server_init rec failed\n");
         return -1;
     }
-    fd = libvchan_fd_for_select(u->play_ctrl);
-    pa_log("play libvchan_fd_for_select=%d, ctrl=%p\n", fd, u->play_ctrl);
-    fd = libvchan_fd_for_select(u->rec_ctrl);
-    pa_log("rec libvchan_fd_for_select=%d, ctrl=%p\n", fd, u->rec_ctrl);
+
+    u->play_rtpoll_item = pa_rtpoll_item_new(u->rtpoll, PA_RTPOLL_NEVER, 1);
+    pollfd = pa_rtpoll_item_get_pollfd(u->play_rtpoll_item, NULL);
+    pollfd->fd = libvchan_fd_for_select(u->play_ctrl);
+    pollfd->events = POLLIN;
+    pollfd->revents = 0;
+    pa_log("play libvchan_fd_for_select=%d, ctrl=%p\n", pollfd->fd, u->play_ctrl);
+
+    u->rec_rtpoll_item = pa_rtpoll_item_new(u->rtpoll, PA_RTPOLL_NEVER, 1);
+    pollfd = pa_rtpoll_item_get_pollfd(u->rec_rtpoll_item, NULL);
+    pollfd->fd = libvchan_fd_for_select(u->rec_ctrl);
+    pollfd->events = POLLIN;
+    pollfd->revents = 0;
+    pa_log("rec libvchan_fd_for_select=%d, ctrl=%p\n", pollfd->fd, u->rec_ctrl);
+
     return 0;
 }
 
@@ -621,7 +656,6 @@ int pa__init(pa_module * m)
     pa_sample_spec ss;
     pa_channel_map map;
     pa_modargs *ma;
-    struct pollfd *pollfd;
     pa_sink_new_data data_sink;
     pa_source_new_data data_source;
     int domid = DEFAULT_DOMID;
@@ -655,7 +689,8 @@ int pa__init(pa_module * m)
 
     pa_log("using domid: %d", domid);
     pa_modargs_get_value_s32(ma, "domid", &domid);
-    if ((do_conn(u, domid)) < 0) {
+    u->domid = domid;
+    if ((do_conn(u)) < 0) {
 
         pa_log("get_early_allocated_vchan: %s",
                pa_cstrerror(errno));
@@ -714,12 +749,6 @@ int pa__init(pa_module * m)
                   (VCHAN_BUF,
                    &u->sink->sample_spec));
 
-    u->play_rtpoll_item = pa_rtpoll_item_new(u->rtpoll, PA_RTPOLL_NEVER, 1);
-    pollfd = pa_rtpoll_item_get_pollfd(u->play_rtpoll_item, NULL);
-    pollfd->fd = libvchan_fd_for_select(u->play_ctrl);
-    pollfd->events = POLLIN;
-    pollfd->revents = 0;
-
     /* SOURCE preparation */
     pa_source_new_data_init(&data_source);
     data_source.driver = __FILE__;
@@ -756,12 +785,6 @@ int pa__init(pa_module * m)
     pa_source_set_asyncmsgq(u->source, u->thread_mq.inq);
     pa_source_set_rtpoll(u->source, u->rtpoll);
     pa_source_set_fixed_latency(u->source, pa_bytes_to_usec(PIPE_BUF, &u->source->sample_spec));
-
-    u->rec_rtpoll_item = pa_rtpoll_item_new(u->rtpoll, PA_RTPOLL_NEVER, 1);
-    pollfd = pa_rtpoll_item_get_pollfd(u->rec_rtpoll_item, NULL);
-    pollfd->fd = libvchan_fd_for_select(u->rec_ctrl);
-    pollfd->events = POLLIN;
-    pollfd->revents = 0;
 
 #if PA_CHECK_VERSION(0,9,22)
     if (!(u->thread = pa_thread_new("vchan-sink", thread_func, u))) {
