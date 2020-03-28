@@ -1551,6 +1551,10 @@ void handle_crossing(Ghandles * g, XID winid)
         XID window_under_pointer, root_returned;
         int root_x, root_y, win_x, win_y;
         unsigned int mask_return;
+
+        // move pointer out of window
+        feed_xdriver(g, 'M', attr.x + key.x, attr.y + key.y);
+
         ret =
             XQueryPointer(g->display, g->root_win, &root_returned,
                     &window_under_pointer, &root_x, &root_y,
