@@ -36,7 +36,8 @@ License:	GPL
 URL:		http://www.qubes-os.org
 
 
-%define pa_ver %((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -d "-" -f 1)
+%define pa_ver_full %((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -d "-" -f 1)
+%define pa_ver_major_minor %((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -d "-" -f 1 | cut -d "." -f 1,2)
 
 BuildRequires:	gcc
 BuildRequires:	libX11-devel
@@ -44,7 +45,7 @@ BuildRequires:	libXcomposite-devel
 BuildRequires:	libXdamage-devel
 BuildRequires:	libXt-devel
 BuildRequires:	libtool-ltdl-devel
-BuildRequires:	pulseaudio-libs-devel >= 0.9.21, pulseaudio-libs-devel <= 13.0
+BuildRequires:	pulseaudio-libs-devel >= 0.9.21, pulseaudio-libs-devel <= 13.99.1
 BuildRequires:	xorg-x11-server-devel
 BuildRequires:	pam-devel
 BuildRequires:	qubes-libvchan-@BACKEND_VMM@-devel
@@ -74,7 +75,7 @@ Summary: Audio support for Qubes VM
 # possible to change across version. They are copied to gui git.
 # It is possible that our code will work fine with any later pulseaudio
 # version; but this needs to be verified for each pulseaudio version.
-Requires:	pulseaudio = %{pa_ver}
+Requires:	pulseaudio = %{pa_ver_full}
 Conflicts:  qubes-gui-vm < 4.0.0
 
 %description -n pulseaudio-qubes
@@ -94,7 +95,7 @@ Qubes fancy GUI.
 %setup -q
 
 rm -f pulse/pulsecore
-ln -s pulsecore-%{pa_ver} pulse/pulsecore
+ln -s pulsecore-%{pa_ver_full} pulse/pulsecore
 
 %build
 %{?set_build_flags}
@@ -106,7 +107,7 @@ rm -rf $RPM_BUILD_ROOT
 make install install-xfce DESTDIR=$RPM_BUILD_ROOT \
                      LIBDIR=%{_libdir} \
                      DATADIR=%{_datadir} \
-                     PA_VER=%{pa_ver}
+                     PA_VER_FULL=%{pa_ver_full}
 
 %post
 if [ -x /bin/systemctl ] && readlink /sbin/init | grep -q systemd; then
@@ -183,7 +184,7 @@ rm -f %{name}-%{version}
 /usr/lib/tmpfiles.d/qubes-pulseaudio.conf
 /etc/pulse/qubes-default.pa
 /usr/bin/start-pulseaudio-with-vchan
-%{_libdir}/pulse-%{pa_ver}/modules/module-vchan-sink.so
+%{_libdir}/pulse-%{pa_ver_major_minor}/modules/module-vchan-sink.so
 /etc/xdg/autostart/qubes-pulseaudio.desktop
 
 %files xfce

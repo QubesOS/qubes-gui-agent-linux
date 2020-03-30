@@ -28,7 +28,8 @@ LIBDIR ?= /usr/lib64
 USRLIBDIR ?= /usr/lib
 SYSLIBDIR ?= /lib
 DATADIR ?= /usr/share
-PA_VER ?= $(shell pkg-config --modversion libpulse | cut -d "-" -f 1 || echo 0.0)
+PA_VER_FULL ?= $(shell pkg-config --modversion libpulse | cut -d "-" -f 1 || echo 0.0)
+PA_VER_MAJOR_MINOR ?= $(shell echo $(PA_VER_FULL) | cut -d "." -f 1,2)
 
 help:
 	@echo "Qubes GUI main Makefile:" ;\
@@ -62,7 +63,7 @@ xf86-video-dummy/src/.libs/dummyqbs_drv.so: xf86-qubes-common/libxf86-qubes-comm
 
 pulse/module-vchan-sink.so:
 	rm -f pulse/pulsecore
-	ln -s pulsecore-$(PA_VER) pulse/pulsecore
+	ln -s pulsecore-$(PA_VER_FULL) pulse/pulsecore
 	$(MAKE) -C pulse module-vchan-sink.so
 
 xf86-qubes-common/libxf86-qubes-common.so:
@@ -122,7 +123,7 @@ install-pulseaudio:
 	install -m 0644 -D pulse/qubes-default.pa \
 		$(DESTDIR)/etc/pulse/qubes-default.pa
 	install -D pulse/module-vchan-sink.so \
-		$(DESTDIR)$(LIBDIR)/pulse-$(PA_VER)/modules/module-vchan-sink.so
+		$(DESTDIR)$(LIBDIR)/pulse-$(PA_VER_MAJOR_MINOR)/modules/module-vchan-sink.so
 	install -m 0644 -D appvm-scripts/etc/tmpfiles.d/qubes-pulseaudio.conf \
 		$(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-pulseaudio.conf
 	install -m 0644 -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop \
