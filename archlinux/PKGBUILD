@@ -1,7 +1,6 @@
-# Maintainer: Olivier Medoc <o_medoc@yahoo.fr>
 pkgname=(qubes-vm-gui qubes-vm-pulseaudio)
 pkgver=`cat version`
-pkgrel=9
+pkgrel=10
 epoch=
 pkgdesc="The Qubes GUI Agent for AppVMs"
 arch=("x86_64")
@@ -51,10 +50,7 @@ make appvm
 
 package_qubes-vm-gui() {
 
-depends=('xorg-xinit' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python-xcffib'
-		'xorg-server>=1.20.4' 'xorg-server<1.20.8'
-		'qubes-vm-core>=3.0.14'
-		)
+depends=('xorg-xinit' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python-xcffib' 'xorg-server>=1.20' 'xorg-server<1.21')
 install=PKGBUILD.install
 
 make install-rh-agent DESTDIR=$pkgdir LIBDIR=/usr/lib USRLIBDIR=/usr/lib SYSLIBDIR=/usr/lib
@@ -70,9 +66,7 @@ install -D $srcdir/PKGBUILD-z-qubes-session.sh $pkgdir/etc/X11/xinit/xinitrc.d/z
 package_qubes-vm-pulseaudio() {
 
 pkgdesc="Pulseaudio support for Qubes VM"
-depends=( 'alsa-lib' 'alsa-utils' 'pulseaudio-alsa'
-		'pulseaudio>=13.0' 'pulseaudio<14.0'
-)
+depends=( 'alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'pulseaudio<14.0')
 install=PKGBUILD-pulseaudio.install
 pa_ver=`(pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-"`
 
@@ -81,4 +75,3 @@ make install-pulseaudio DESTDIR=$pkgdir PA_VER=$pa_ver LIBDIR=/usr/lib USRLIBDIR
 }
 
 # vim:set ts=2 sw=2 et:
-
