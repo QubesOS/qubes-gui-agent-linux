@@ -32,7 +32,7 @@ from xcffib import xproto
 import sys
 import struct
 
-ICON_MAX_SIZE = 128
+ICON_MAX_SIZE = 256
 
 
 class NoIconError(KeyError):
