@@ -53,7 +53,16 @@
 
 #define SOCKET_ADDRESS  "/var/run/xf86-qubes-socket"
 
-#define QUBES_GUI_PROTOCOL_VERSION_LINUX (1 << 16 | 3)
+/* Supported protocol version */
+
+#define PROTOCOL_VERSION_MAJOR 1
+#define PROTOCOL_VERSION_MINOR 3
+#define PROTOCOL_VERSION (PROTOCOL_VERSION_MAJOR << 16 | PROTOCOL_VERSION_MINOR)
+
+#if !(PROTOCOL_VERSION_MAJOR == QUBES_GUID_PROTOCOL_VERSION_MAJOR && \
+      PROTOCOL_VERSION_MINOR <= QUBES_GUID_PROTOCOL_VERSION_MINOR)
+#  error Incompatible qubes-gui-protocol.h.
+#endif
 
 #ifdef __GNUC__
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
@@ -2143,7 +2152,7 @@ pid_t get_xconf_and_run_x(Ghandles *g)
 
 void send_protocol_version(libvchan_t *vchan)
 {
-    uint32_t version = QUBES_GUI_PROTOCOL_VERSION_LINUX;
+    uint32_t version = PROTOCOL_VERSION;
     write_struct(vchan, version);
 }
 
