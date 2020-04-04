@@ -20,6 +20,7 @@
  *
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -41,6 +42,7 @@
 #include <X11/XKBlib.h>
 #include <X11/Xlibint.h>
 #include <X11/Xatom.h>
+#include <X11/cursorfont.h>
 #include <qubes-gui-protocol.h>
 #include <qubes-xorg-tray-defs.h>
 #include "xdriver-shm-cmd.h"
@@ -51,7 +53,16 @@
 
 #define SOCKET_ADDRESS  "/var/run/xf86-qubes-socket"
 
-#define QUBES_GUI_PROTOCOL_VERSION_LINUX (1 << 16 | 1)
+/* Supported protocol version */
+
+#define PROTOCOL_VERSION_MAJOR 1
+#define PROTOCOL_VERSION_MINOR 3
+#define PROTOCOL_VERSION (PROTOCOL_VERSION_MAJOR << 16 | PROTOCOL_VERSION_MINOR)
+
+#if !(PROTOCOL_VERSION_MAJOR == QUBES_GUID_PROTOCOL_VERSION_MAJOR && \
+      PROTOCOL_VERSION_MINOR <= QUBES_GUID_PROTOCOL_VERSION_MINOR)
+#  error Incompatible qubes-gui-protocol.h.
+#endif
 
 #ifdef __GNUC__
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
@@ -60,6 +71,7 @@
 #endif
 
 int damage_event, damage_error;
+int xfixes_event, xfixes_error;
 /* from gui-common/error.c */
 extern int print_x11_errors;
 
@@ -113,6 +125,135 @@ Ghandles *ghandles_for_vchan_reinitialize;
 
 #define SKIP_NONMANAGED_WINDOW if (!list_lookup(windows_list, window)) return
 
+/* Cursor name translation. See X11/cursorfont.h. */
+
+struct supported_cursor {
+    const char *name;
+    uint32_t cursor_id;
+};
+
+struct supported_cursor supported_cursors[] = {
+    /* Names as defined by Xlib. Most programs will use these. */
+    { "X_cursor",            XC_X_cursor },
+    { "arrow",               XC_arrow },
+    { "based_arrow_down",    XC_based_arrow_down },
+    { "based_arrow_up",      XC_based_arrow_up },
+    { "boat",                XC_boat },
+    { "bogosity",            XC_bogosity },
+    { "bottom_left_corner",  XC_bottom_left_corner },
+    { "bottom_right_corner", XC_bottom_right_corner },
+    { "bottom_side",         XC_bottom_side },
+    { "bottom_tee",          XC_bottom_tee },
+    { "box_spiral",          XC_box_spiral },
+    { "center_ptr",          XC_center_ptr },
+    { "circle",              XC_circle },
+    { "clock",               XC_clock },
+    { "coffee_mug",          XC_coffee_mug },
+    { "cross",               XC_cross },
+    { "cross_reverse",       XC_cross_reverse },
+    { "crosshair",           XC_crosshair },
+    { "diamond_cross",       XC_diamond_cross },
+    { "dot",                 XC_dot },
+    { "dotbox",              XC_dotbox },
+    { "double_arrow",        XC_double_arrow },
+    { "draft_large",         XC_draft_large },
+    { "draft_small",         XC_draft_small },
+    { "draped_box",          XC_draped_box },
+    { "exchange",            XC_exchange },
+    { "fleur",               XC_fleur },
+    { "gobbler",             XC_gobbler },
+    { "gumby",               XC_gumby },
+    { "hand1",               XC_hand1 },
+    { "hand2",               XC_hand2 },
+    { "heart",               XC_heart },
+    { "icon",                XC_icon },
+    { "iron_cross",          XC_iron_cross },
+    { "left_ptr",            XC_left_ptr },
+    { "left_side",           XC_left_side },
+    { "left_tee",            XC_left_tee },
+    { "leftbutton",          XC_leftbutton },
+    { "ll_angle",            XC_ll_angle },
+    { "lr_angle",            XC_lr_angle },
+    { "man",                 XC_man },
+    { "middlebutton",        XC_middlebutton },
+    { "mouse",               XC_mouse },
+    { "pencil",              XC_pencil },
+    { "pirate",              XC_pirate },
+    { "plus",                XC_plus },
+    { "question_arrow",      XC_question_arrow },
+    { "right_ptr",           XC_right_ptr },
+    { "right_side",          XC_right_side },
+    { "right_tee",           XC_right_tee },
+    { "rightbutton",         XC_rightbutton },
+    { "rtl_logo",            XC_rtl_logo },
+    { "sailboat",            XC_sailboat },
+    { "sb_down_arrow",       XC_sb_down_arrow },
+    { "sb_h_double_arrow",   XC_sb_h_double_arrow },
+    { "sb_left_arrow",       XC_sb_left_arrow },
+    { "sb_right_arrow",      XC_sb_right_arrow },
+    { "sb_up_arrow",         XC_sb_up_arrow },
+    { "sb_v_double_arrow",   XC_sb_v_double_arrow },
+    { "shuttle",             XC_shuttle },
+    { "sizing",              XC_sizing },
+    { "spider",              XC_spider },
+    { "spraycan",            XC_spraycan },
+    { "star",                XC_star },
+    { "target",              XC_target },
+    { "tcross",              XC_tcross },
+    { "top_left_arrow",      XC_top_left_arrow },
+    { "top_left_corner",     XC_top_left_corner },
+    { "top_right_corner",    XC_top_right_corner },
+    { "top_side",            XC_top_side },
+    { "top_tee",             XC_top_tee },
+    { "trek",                XC_trek },
+    { "ul_angle",            XC_ul_angle },
+    { "umbrella",            XC_umbrella },
+    { "ur_angle",            XC_ur_angle },
+    { "watch",               XC_watch },
+    { "xterm",               XC_xterm },
+
+    /* Chromium (and derived projects) use different names.
+     * See: https://github.com/chromium/chromium/blob/ccd149af47315e4c6f2fc45d55be1b271f39062c/ui/base/cursor/cursor_loader_x11.cc#L25
+     */
+    { "pointer",    XC_hand2 },
+    { "progress",   XC_watch },
+    { "wait",       XC_watch },
+    { "cell",       XC_plus },
+    { "all-scroll", XC_fleur },
+    { "v-scroll",   XC_fleur },
+    { "h-scroll",   XC_fleur },
+    { "crosshair",  XC_cross },
+    { "text",       XC_xterm },
+    // { "not-allowed", x11::None },
+    { "grabbing",   XC_hand2 },
+    { "col-resize", XC_sb_h_double_arrow },
+    { "row-resize", XC_sb_v_double_arrow },
+    { "n-resize",   XC_top_side },
+    { "e-resize",   XC_right_side },
+    { "s-resize",   XC_bottom_side },
+    { "w-resize",   XC_left_side },
+    { "ne-resize",  XC_top_right_corner },
+    { "nw-resize",  XC_top_left_corner },
+    { "se-resize",  XC_bottom_right_corner },
+    { "sw-resize",  XC_bottom_left_corner },
+    { "ew-resize",  XC_sb_h_double_arrow },
+    { "ns-resize",  XC_sb_v_double_arrow },
+    // { "nesw-resize",x11::None},
+    // { "nwse-resize",x11::None},
+    { "dnd-none",   XC_hand2 },
+    { "dnd-move",   XC_hand2 },
+    { "dnd-copy",   XC_hand2 },
+    { "dnd-link",   XC_hand2 },
+};
+
+#define NUM_SUPPORTED_CURSORS (sizeof(supported_cursors) / sizeof(supported_cursors[0]))
+
+int compare_supported_cursors(const void *a,
+                              const void *b) {
+    return strcmp(((struct supported_cursor *)a)->name,
+                  ((struct supported_cursor *)b)->name);
+}
+
 void send_wmname(Ghandles * g, XID window);
 void send_wmnormalhints(Ghandles * g, XID window, int ignore_fail);
 void send_wmclass(Ghandles * g, XID window, int ignore_fail);
@@ -145,6 +286,71 @@ void process_xevent_damage(Ghandles * g, XID window,
     mx.width = width;
     mx.height = height;
     write_message(g->vchan, hdr, mx);
+}
+
+void send_cursor(Ghandles *g, XID window, uint32_t cursor)
+{
+    struct msg_hdr hdr;
+    struct msg_cursor msg;
+
+    hdr.type = MSG_CURSOR;
+    hdr.window = window;
+    msg.cursor = cursor;
+    write_message(g->vchan, hdr, msg);
+}
+
+uint32_t find_cursor(Ghandles *g, Atom atom)
+{
+    char *name;
+    struct supported_cursor c;
+    struct supported_cursor *found;
+
+    if (atom == None)
+        return CURSOR_DEFAULT;
+
+    name = XGetAtomName(g->display, atom);
+    if (!name)
+        return CURSOR_DEFAULT;
+
+    c.name = name;
+    found = bsearch(&c, supported_cursors, NUM_SUPPORTED_CURSORS,
+                    sizeof(supported_cursors[0]),
+                    compare_supported_cursors);
+    XFree(name);
+
+    if (found) {
+        uint32_t cursor = CURSOR_X11 + found->cursor_id;
+        assert(cursor < CURSOR_X11_MAX);
+        return cursor;
+    }
+
+    return CURSOR_DEFAULT;
+}
+
+void process_xevent_cursor(Ghandles *g, XFixesCursorNotifyEvent *ev)
+{
+    if (ev->subtype == XFixesDisplayCursorNotify) {
+        /* The event from XFixes specifies only the root window, so we need to
+         * find out the window under pointer.
+         */
+        Window root, window_under_pointer;
+        int root_x, root_y, win_x, win_y;
+        unsigned int mask;
+        Bool ret;
+        int cursor;
+
+        ret = XQueryPointer(g->display, ev->window, &root,
+                            &window_under_pointer,
+                            &root_x, &root_y, &win_x, &win_y, &mask);
+        if (!ret || window_under_pointer == None)
+            return;
+
+        if (!list_lookup(windows_list, window_under_pointer))
+            return;
+
+        cursor = find_cursor(g, ev->cursor_name);
+        send_cursor(g, window_under_pointer, cursor);
+    }
 }
 
 void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
@@ -1108,6 +1314,10 @@ void process_xevent(Ghandles * g)
                         dev->area.width,
                         dev->area.height);
                 //                      fprintf(stderr, "@");
+            } else if (event_buffer.type == (xfixes_event + XFixesCursorNotify)) {
+                process_xevent_cursor(
+                    g,
+                    (XFixesCursorNotifyEvent *) &event_buffer);
             } else if (g->log_level > 1)
                 fprintf(stderr, "#");
     }
@@ -1942,7 +2152,7 @@ pid_t get_xconf_and_run_x(Ghandles *g)
 
 void send_protocol_version(libvchan_t *vchan)
 {
-    uint32_t version = QUBES_GUI_PROTOCOL_VERSION_LINUX;
+    uint32_t version = PROTOCOL_VERSION;
     write_struct(vchan, version);
 }
 
@@ -2080,6 +2290,21 @@ int main(int argc, char **argv)
         perror("XDamageQueryExtension");
         exit(1);
     }
+
+    /* Sort the cursors table for use with bsearch. */
+    qsort(supported_cursors,
+          NUM_SUPPORTED_CURSORS, sizeof(supported_cursors[0]),
+          compare_supported_cursors);
+
+    /* Use XFixes to handle cursor shape. */
+    if (XFixesQueryExtension(
+            g.display, &xfixes_event, &xfixes_error)) {
+        for (i = 0; i < ScreenCount(g.display); i++)
+            XFixesSelectCursorInput(g.display, RootWindow(g.display, i),
+                                    XFixesDisplayCursorNotifyMask);
+    } else
+        fprintf(stderr, "XFixes not available, cursor shape handling off");
+
     XAutoRepeatOff(g.display);
     signal(SIGCHLD, SIG_IGN);
     signal(SIGTERM, handle_sigterm);

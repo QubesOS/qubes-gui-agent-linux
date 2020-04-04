@@ -43,6 +43,7 @@ BuildRequires:	gcc
 BuildRequires:	libX11-devel
 BuildRequires:	libXcomposite-devel
 BuildRequires:	libXdamage-devel
+BuildRequires:	libXfixes-devel
 BuildRequires:	libXt-devel
 BuildRequires:	libtool-ltdl-devel
 BuildRequires:	pulseaudio-libs-devel >= 0.9.21, pulseaudio-libs-devel <= 13.99.1
@@ -54,6 +55,7 @@ BuildRequires:	qubes-db-devel
 BuildRequires:	xen-devel
 Requires:	Xorg %(xserver-sdk-abi-requires ansic)
 Requires:	Xorg %(xserver-sdk-abi-requires videodrv)
+Requires:	libXfixes
 Requires:	qubes-core-vm >= 3.0.14
 Requires:	xorg-x11-xinit
 Requires:	qubes-libvchan-@BACKEND_VMM@
