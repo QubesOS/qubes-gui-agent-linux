@@ -1,3 +1,21 @@
+qubes-gui-agent (4.1.7-1) unstable; urgency=medium
+
+  [ Paweł Marczewski ]
+  * pulseaudio: support reconnecting
+  * pulseaudio 13.99.1
+  * pulseaudio 13.99.1: add internal headers
+  * Bump ICON_MAX_SIZE
+
+  [ Yukikoo ]
+  * Archlinux: more permissive with xorg-server update
+
+  [ Paweł Marczewski ]
+  * icon-sender: reconnect on failure
+  * Send MSG_CURSOR
+  * Check protocol version defined in qubes-gui-protocol.h
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 10 Apr 2020 05:57:53 +0200
+
 qubes-gui-agent (4.1.6-1) unstable; urgency=medium
 
   [ Neowutran ]
