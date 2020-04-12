@@ -710,7 +710,7 @@ int pa__init(pa_module * m)
                                DEFAULT_SINK_NAME));
     pa_proplist_sets(data_sink.proplist,
              PA_PROP_DEVICE_STRING, DEFAULT_SINK_NAME);
-    pa_proplist_setf(data_sink.proplist,
+    pa_proplist_sets(data_sink.proplist,
              PA_PROP_DEVICE_DESCRIPTION,
              pa_modargs_get_value(ma,
                           "sink_desc",
@@ -755,7 +755,7 @@ int pa__init(pa_module * m)
     data_source.module = m;
     pa_source_new_data_set_name(&data_source, pa_modargs_get_value(ma, "source_name", DEFAULT_SOURCE_NAME));
     pa_proplist_sets(data_source.proplist, PA_PROP_DEVICE_STRING, DEFAULT_SOURCE_NAME);
-    pa_proplist_setf(data_source.proplist, PA_PROP_DEVICE_DESCRIPTION, 
+    pa_proplist_sets(data_source.proplist, PA_PROP_DEVICE_DESCRIPTION, 
                         pa_modargs_get_value(ma, "source_desc", DEFAULT_SOURCE_DESC));
     pa_source_new_data_set_sample_spec(&data_source, &ss);
     pa_source_new_data_set_channel_map(&data_source, &map);
