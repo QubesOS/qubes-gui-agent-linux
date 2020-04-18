@@ -1,3 +1,38 @@
+qubes-gui-agent (4.0.28-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * travis: switch to bionic
+
+  [ Neowutran ]
+  * ARCHLINUX: xf86dgaproto doesn't exist anymore, and is no longer
+    required. Removing it from the dependencies.
+  * ARCHLINUX: Allow xorg-server<1.20.7
+
+  [ Zaoqi ]
+  * archlinux: qubes-vm-gui: update PKGBUILD
+
+  [ Yukikoo ]
+  * Archlinux: more permissive with xorg-server update
+
+  [ Marek Marczykowski-Górecki ]
+  * Replace non-executable qubes.SetMonitorLayout file with a symlink
+  * create /etc/qubes-rpc directory before placing a symlink there
+
+  [ xaki23 ]
+  * add modargs for target domid and sink/source descr strings
+
+  [ Frédéric Pierret (fepitre) ]
+  * module-vchan-sink: convert tabs to spaces
+  * module-vchan-sink: log for domid used
+
+  [ Paweł Marczewski ]
+  * pulseaudio: support reconnecting
+
+  [ Marek Marczykowski-Górecki ]
+  * pulse: fix pa_proplist_set[fs] usage
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 18 Apr 2020 12:59:59 +0200
+
 qubes-gui-agent (4.0.27-1) unstable; urgency=medium
 
   [ Neowutran ]
