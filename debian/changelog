@@ -1,3 +1,14 @@
+qubes-gui-agent (4.0.29-1) unstable; urgency=medium
+
+  [ Paweł Marczewski ]
+  * pulseaudio 13.99.1: add internal headers
+  * pulseaudio 13.99.1
+
+  [ Marek Marczykowski-Górecki ]
+  * travis: use imported config
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 18 Apr 2020 13:49:44 +0200
+
 qubes-gui-agent (4.0.28-1) unstable; urgency=medium
 
   [ Frédéric Pierret (fepitre) ]
