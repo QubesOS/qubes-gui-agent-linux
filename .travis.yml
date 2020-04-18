@@ -1,21 +1,3 @@
-sudo: required
-dist: bionic
-language: generic
-install: git clone https://github.com/QubesOS/qubes-builder ~/qubes-builder
-script: ~/qubes-builder/scripts/travis-build
-env:
- - DISTS_VM=fc26 USE_QUBES_REPO_VERSION=4.0 USE_QUBES_REPO_TESTING=1
- - DISTS_VM=fc27 USE_QUBES_REPO_VERSION=4.0 USE_QUBES_REPO_TESTING=1
- - DISTS_VM=fc28 USE_QUBES_REPO_VERSION=4.0 USE_QUBES_REPO_TESTING=1
- - DISTS_VM=fc29 USE_QUBES_REPO_VERSION=4.0 USE_QUBES_REPO_TESTING=1
- - DISTS_VM=fc30 USE_QUBES_REPO_VERSION=4.0 USE_QUBES_REPO_TESTING=1
- - DISTS_VM=jessie USE_QUBES_REPO_VERSION=4.0 USE_QUBES_REPO_TESTING=1
- - DISTS_VM=stretch USE_QUBES_REPO_VERSION=4.0 USE_QUBES_REPO_TESTING=1
- - DISTS_VM=buster USE_QUBES_REPO_VERSION=4.0 USE_QUBES_REPO_TESTING=1
- - DISTS_VM=centos7 USE_QUBES_REPO_VERSION=4.0 USE_QUBES_REPO_TESTING=1
-
-# don't build tags which are meant for code signing only
-branches:
-  except:
-    - /.*_.*/
-    - build
+import:
+  - source: QubesOS/qubes-continuous-integration:R4.0/travis-base-r4.0.yml
+  - source: QubesOS/qubes-continuous-integration:R4.0/travis-vms-r4.0.yml
