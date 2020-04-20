@@ -19,7 +19,7 @@ set_keyboard_layout() {
     fi
 
     if [ -n "$KEYMAP_OPTIONS" ]; then
-        KEYMAP_OPTIONS="-options $KEYMAP_OPTIONS"
+        KEYMAP_OPTIONS="-option $KEYMAP_OPTIONS"
     fi
 
     # Set layout on all DISPLAY
