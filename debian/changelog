@@ -1,3 +1,13 @@
+qubes-gui-agent (4.1.8-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * pulse: fix pa_proplist_set[fs] usage
+
+  [ Ivan Kardykov ]
+  * fix typo
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 21 May 2020 02:51:19 +0200
+
 qubes-gui-agent (4.1.7-1) unstable; urgency=medium
 
   [ Paweł Marczewski ]
