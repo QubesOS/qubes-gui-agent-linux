@@ -10,6 +10,6 @@ module-vchan-sink.so: module-vchan-sink.o
 	$(CC) -shared -o module-vchan-sink.so module-vchan-sink.o \
 		$(VCHANLIBS) $(LIBS)
 module-vchan-sink.o: module-vchan-sink.c
-	$(CC) $(CFLAGS) -g -c $(VCHANCFLAGS) -fPIC module-vchan-sink.c  -DHAVE_CONFIG_H -I.
+	$(CC) $(CFLAGS) -g -c $(VCHANCFLAGS) -fPIC module-vchan-sink.c  -DHAVE_CONFIG_H -DHAVE_QUBESDB_CLIENT_H -I.
 clean:
 	rm -f *.so *.o *~

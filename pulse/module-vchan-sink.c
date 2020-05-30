@@ -79,7 +79,9 @@
 #include "module-vchan-sink-symdef.h"
 #include "qubes-vchan-sink.h"
 #include <libvchan.h>
+#ifdef HAVE_QUBESDB_CLIENT_H
 #include <qubesdb-client.h>
+#endif
 
 PA_MODULE_AUTHOR("Marek Marczykowski-Górecki");
 PA_MODULE_DESCRIPTION("VCHAN sink/source");
@@ -660,6 +662,7 @@ int pa__init(pa_module * m)
     pa_sink_new_data data_sink;
     pa_source_new_data data_source;
     int domid = DEFAULT_DOMID;
+#ifdef HAVE_QUBESDB_CLIENT_H
     qdb_handle_t qdb;
     char *qdb_entry, *tmp;
     int qdb_domid;
@@ -679,6 +682,7 @@ int pa__init(pa_module * m)
         free(qdb_entry);
     }
     qdb_close(qdb);
+#endif
 
     pa_assert(m);
 
