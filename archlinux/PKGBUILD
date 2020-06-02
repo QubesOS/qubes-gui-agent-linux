@@ -50,7 +50,12 @@ make appvm
 
 package_qubes-vm-gui() {
 
-depends=('xorg-xinit' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python-xcffib' 'xorg-server>=1.20' 'xorg-server<1.21')
+depends=('xorg-xinit' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python-xcffib'
+			# Xorg dependencies are on specific ABI versions: https://www.x.org/wiki/XorgModuleABIVersions/
+			# These can also be verified with pacman -Qi xorg-server (Provides)
+			# There is however a discrepency if verifying via pkg-config --variable abi_videodrv xorg-server
+			'X-ABI-VIDEODRV_VERSION=24.0' 'X-ABI-XINPUT_VERSION=24.1' 'X-ABI-EXTENSION_VERSION=10.0'
+			)
 install=PKGBUILD.install
 
 make install-rh-agent DESTDIR=$pkgdir LIBDIR=/usr/lib USRLIBDIR=/usr/lib SYSLIBDIR=/usr/lib
