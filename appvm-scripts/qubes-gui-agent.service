@@ -1,6 +1,7 @@
 [Unit]
 Description=Qubes GUI Agent
 After=qubes-meminfo-writer.service qubes-mount-dirs.service
+ConditionPathExists=!/var/run/qubes-service/lightdm
 
 [Service]
 StandardInput=tty
