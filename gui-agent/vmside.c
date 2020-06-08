@@ -97,6 +97,7 @@ struct window_data {
     int is_docked; /* is it docked icon window */
     XID embeder;   /* for docked icon points embeder window */
     int input_hint; /* the window should get input focus - False=Never */
+    int support_delete_window;
     int support_take_focus;
     int mfndump_pending; /* send MSG_MFNDUMP at next damage notification */
 };
@@ -187,6 +188,7 @@ void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
     /* Default values for window_data. By default, window should receive InputFocus events */
     wd->is_docked = False;
     wd->input_hint = True;
+    wd->support_delete_window = False;
     wd->support_take_focus = False;
     wd->mfndump_pending = False;
     list_insert(windows_list, ev->window, wd);
@@ -415,18 +417,23 @@ void retrieve_wmprotocols(Ghandles * g, XID window, int ignore_fail)
     int i;
     struct genlist *l;
 
+    if (!((l=list_lookup(windows_list, window)) && (l->data))) {
+        fprintf(stderr, "ERROR retrieve_wmprotocols: Window 0x%x data not initialized", (int)window);
+        return;
+    }
+
     if (XGetWMProtocols(g->display, window, &supported_protocols, &nitems) == 1) {
         for (i=0; i < nitems; i++) {
             if (supported_protocols[i] == g->wm_take_focus) {
-                // Retrieve window data and set support_take_focus
-                if (!((l=list_lookup(windows_list, window)) && (l->data))) {
-                    fprintf(stderr, "ERROR retrieve_wmprotocols: Window 0x%x data not initialized", (int)window);
-                    return;
-                }
                 if (g->log_level > 1)
                     fprintf(stderr, "Protocol take_focus supported for Window 0x%x\n", (int)window);
 
                 ((struct window_data*)l->data)->support_take_focus = True;
+            } else if (supported_protocols[i] == g->wmDeleteMessage) {
+                if (g->log_level > 1)
+                    fprintf(stderr, "Protocol delete_window supported for Window 0x%x\n", (int)window);
+
+                ((struct window_data*)l->data)->support_delete_window = True;
             }
         }
     } else {
@@ -1714,19 +1721,37 @@ void handle_map(Ghandles * g, XID winid)
 
 void handle_close(Ghandles * g, XID winid)
 {
-    XClientMessageEvent ev;
-    memset(&ev, 0, sizeof(ev));
-    ev.type = ClientMessage;
-    ev.display = g->display;
-    ev.window = winid;
-    ev.format = 32;
-    ev.message_type = g->wmProtocols;
-    ev.data.l[0] = g->wmDeleteMessage;
-    //        XSetInputFocus(g->display, winid, RevertToParent, CurrentTime);
-    XSendEvent(ev.display, ev.window, TRUE, 0, (XEvent *) & ev);
-    if (g->log_level > 0)
-        fprintf(stderr, "wmDeleteMessage sent for 0x%x\n",
-                (int) winid);
+    struct genlist *l;
+    int use_delete_window;
+
+    if ( (l=list_lookup(windows_list, winid)) && (l->data) ) {
+        use_delete_window = ((struct window_data*)l->data)->support_delete_window;
+    } else {
+        fprintf(stderr, "WARNING handle_close: Window 0x%x data not initialized",
+                (int)winid);
+        use_delete_window = True; /* gentler, though it may be a no-op */
+    }
+
+    if (use_delete_window) {
+        XClientMessageEvent ev;
+        memset(&ev, 0, sizeof(ev));
+        ev.type = ClientMessage;
+        ev.display = g->display;
+        ev.window = winid;
+        ev.format = 32;
+        ev.message_type = g->wmProtocols;
+        ev.data.l[0] = g->wmDeleteMessage;
+        //        XSetInputFocus(g->display, winid, RevertToParent, CurrentTime);
+        XSendEvent(ev.display, ev.window, TRUE, 0, (XEvent *) & ev);
+        if (g->log_level > 0)
+            fprintf(stderr, "wmDeleteMessage sent for 0x%x\n",
+                    (int) winid);
+    } else {
+        XKillClient(g->display, winid);
+        if (g->log_level > 0)
+            fprintf(stderr, "XKillClient() called for 0x%x\n",
+                    (int) winid);
+    }
 }
 
 /* start X server, returns its PID
