@@ -39,10 +39,7 @@ struct genlist *list_lookup(struct genlist *l, long key)
     struct genlist *curr = l->next;
     while (curr != l && curr->key != key)
         curr = curr->next;
-    if (curr == l)
-        return 0;
-    else
-        return curr;
+    return curr == l ? 0 : curr;
 }
 
 struct genlist *list_insert(struct genlist *l, long key, void *data)
