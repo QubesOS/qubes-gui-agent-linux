@@ -1,3 +1,5 @@
 *.o
 tags
 deb/
+pkgs
+debian/changelog.*

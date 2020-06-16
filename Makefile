@@ -82,6 +82,8 @@ clean:
 	$(MAKE) -C pulse clean
 	(cd xf86-input-mfndev; if [ -e Makefile ] ; then \
 		$(MAKE) distclean; fi; ./bootstrap --clean || echo )
+	rm -rf debian/changelog.*
+	rm -rf pkgs
 
 
 install: install-rh-agent install-pulseaudio
