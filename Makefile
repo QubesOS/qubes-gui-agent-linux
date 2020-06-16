@@ -87,6 +87,8 @@ clean:
 	$(MAKE) -C xf86-qubes-common clean
 	(cd xf86-input-mfndev; if [ -e Makefile ] ; then \
 		$(MAKE) distclean; fi; ./bootstrap --clean || echo )
+	rm -rf debian/changelog.*
+	rm -rf pkgs
 
 
 install: install-rh-agent install-pulseaudio
