@@ -1,5 +1,12 @@
-etc/X11/*
-etc/profile.d/*
+etc/X11/Xsession.d/90qubes-keymap
+etc/X11/Xsession.d/20qt-gnome-desktop-session-id
+etc/X11/Xsession.d/20qt-x11-no-mitshm
+etc/X11/Xsession.d/25xdg-qubes-settings
+etc/X11/Xsession.d/50guivm-windows-prefix
+etc/X11/xorg-qubes.conf.template
+etc/profile.d/qubes-gui.sh
+etc/profile.d/qubes-gui.csh
+etc/profile.d/qubes-session.sh
 etc/pam.d/qubes-gui-agent
 etc/security/limits.d/90-qubes-gui.conf
 etc/qubes-rpc/qubes.SetMonitorLayout
@@ -21,7 +28,7 @@ usr/bin/qubes-session
 usr/bin/qubes-set-monitor-layout
 usr/lib/qubes/icon-sender
 usr/lib/sysctl.d/30-qubes-gui-agent.conf
-usr/lib/tmpfiles.d/*
+usr/lib/tmpfiles.d/qubes-session.conf
 usr/lib/qubes/qubes-gui-agent-pre.sh
 usr/share/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
 var/log/qubes

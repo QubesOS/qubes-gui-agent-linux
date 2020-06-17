@@ -1,0 +1,1 @@
+../../Xsession.d/60xfce-desktop

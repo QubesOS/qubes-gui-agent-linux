@@ -104,3 +104,11 @@ Replaces: qubes-gui-agent (<< 4.0.0-1)
 Breaks: qubes-gui-agent (<< 4.0.0-1)
 Description: Audio support for Qubes VM
  Pulseaudio module to enable sound support in Qubes VM
+
+Package: qubes-gui-agent-xfce
+Architecture: any
+Depends:
+    ${shlibs:Depends},
+    ${misc:Depends}
+Description: XFCE desktop support for Qubes VM
+ XFCE desktop support for Qubes VM
