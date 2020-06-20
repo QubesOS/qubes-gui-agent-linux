@@ -2,9 +2,9 @@
 DISPLAY_XEPHYR="$1"
 OPTIONS_XEPHYR="-no-host-grab -fullscreen"
 
-if [ -e /etc/debian_version ]; then
+if [ -e /usr/lib/x86_64-linux-gnu/qubes-gui-daemon/shmoverride.so ]; then
     SHMOVERRIDE=/usr/lib/x86_64-linux-gnu/qubes-gui-daemon/shmoverride.so
-else
+elif [ -e /usr/lib64/qubes-gui-daemon/shmoverride.so ]; then
     SHMOVERRIDE=/usr/lib64/qubes-gui-daemon/shmoverride.so
 fi
 
