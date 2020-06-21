@@ -1,3 +1,23 @@
+qubes-gui-agent (4.1.9-1) unstable; urgency=medium
+
+  [ Dmitry Fedorov ]
+  * conditionally use qubesdb dependency in vchan-sink module
+
+  [ Olivier MEDOC ]
+  * archlinux: set dependencies on xorg server ABI version instead of
+    the server version itself
+
+  [ Artur Puzio ]
+  * Disable gui-agent on sys-gui-gpu
+
+  [ deathgrippin ]
+  * Condense conditional
+
+  [ Rusty Bird ]
+  * vmside: use XKillClient() if WM_DELETE_WINDOW is unsupported
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 21 Jun 2020 20:53:36 +0200
+
 qubes-gui-agent (4.1.8-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
