@@ -2,9 +2,6 @@
 
 # This file may be also executed by qubes-change-keyboard-layout
 
-QUBES_KEYMAP="$(/usr/bin/qubesdb-read /keyboard-layout)"
-QUBES_USER_KEYMAP="$(cat "$HOME/.config/qubes-keyboard-layout.rc" 2> /dev/null)"
-
 set_keyboard_layout() {
     KEYMAP="$1"
     # Default value
@@ -30,10 +27,15 @@ set_keyboard_layout() {
     done
 }
 
+QUBES_KEYMAP="$(/usr/bin/qubesdb-read /keyboard-layout)"
+
 if [ -n "$QUBES_KEYMAP" ]; then
-    set_keyboard_layout "$QUBES_KEYMAP"
+  set_keyboard_layout "$QUBES_KEYMAP"
 fi
 
-if [ -n "$QUBES_USER_KEYMAP" ]; then
-    set_keyboard_layout "$QUBES_USER_KEYMAP"
-fi
+while qubesdb-watch /keyboard-layout ; do
+  QUBES_KEYMAP="$(/usr/bin/qubesdb-read /keyboard-layout)"
+  if [ -n "$QUBES_KEYMAP" ]; then
+    set_keyboard_layout "$QUBES_KEYMAP"
+  fi
+done

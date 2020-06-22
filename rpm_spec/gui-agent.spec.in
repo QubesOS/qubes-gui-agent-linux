@@ -164,7 +164,6 @@ rm -f %{name}-%{version}
 %config /etc/pam.d/qubes-gui-agent
 %config /etc/security/limits.d/90-qubes-gui.conf
 %config /etc/xdg/Trolltech.conf
-/etc/X11/xinit/xinitrc.d/qubes-keymap.sh
 /etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh
 /etc/X11/xinit/xinitrc.d/20qt-gnome-desktop-session-id.sh
 /etc/X11/xinit/xinitrc.d/50guivm-windows-prefix.sh
@@ -176,10 +175,12 @@ rm -f %{name}-%{version}
 /usr/lib/tmpfiles.d/qubes-session.conf
 /usr/lib/sysctl.d/30-qubes-gui-agent.conf
 /usr/lib/qubes/qubes-gui-agent-pre.sh
+/usr/lib/qubes/qubes-keymap.sh
 %{_datadir}/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
 /usr/lib/qubes/icon-sender
 /etc/xdg/autostart/qubes-icon-sender.desktop
 /etc/xdg/autostart/qubes-qrexec-fork-server.desktop
+/etc/xdg/autostart/qubes-keymap.desktop
 %dir /var/log/qubes
 
 %files -n pulseaudio-qubes

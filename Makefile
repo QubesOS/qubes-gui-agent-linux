@@ -98,8 +98,6 @@ install-rh-agent: appvm install-common
 		$(DESTDIR)/$(SYSLIBDIR)/systemd/system/qubes-gui-agent.service
 	install -m 0644 -D appvm-scripts/etc/sysconfig/desktop \
 		$(DESTDIR)/etc/sysconfig/desktop
-	install -m 0755 -D appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh \
-		$(DESTDIR)/etc/X11/xinit/xinitrc.d/qubes-keymap.sh
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh \
 		$(DESTDIR)/etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/20qt-gnome-desktop-session-id.sh \
@@ -111,8 +109,6 @@ install-rh-agent: appvm install-common
 
 install-debian: appvm install-common install-pulseaudio
 	install -d $(DESTDIR)/etc/X11/Xsession.d
-	install -m 0755 appvm-scripts/etc/X11/xinit/xinitrc.d/qubes-keymap.sh \
-		$(DESTDIR)/etc/X11/Xsession.d/90qubes-keymap
 	install -m 0644 appvm-scripts/etc/X11/Xsession.d/* $(DESTDIR)/etc/X11/Xsession.d/
 	install -d $(DESTDIR)/etc/xdg
 	install -m 0644 appvm-scripts/etc/xdg-debian/* $(DESTDIR)/etc/xdg
@@ -180,12 +176,16 @@ endif
 		$(DESTDIR)/etc/xdg/autostart/qubes-icon-sender.desktop
 	install -m 0644 -D appvm-scripts/etc/xdgautostart/qubes-qrexec-fork-server.desktop \
 		$(DESTDIR)/etc/xdg/autostart/qubes-qrexec-fork-server.desktop
+	install -m 0644 -D appvm-scripts/etc/xdgautostart/qubes-keymap.desktop \
+		$(DESTDIR)/etc/xdg/autostart/qubes-keymap.desktop
 	install -D -m 0644 appvm-scripts/usr/lib/sysctl.d/30-qubes-gui-agent.conf \
 		$(DESTDIR)/usr/lib/sysctl.d/30-qubes-gui-agent.conf
 	install -D -m 0644 appvm-scripts/lib/udev/rules.d/70-master-of-seat.rules \
 		$(DESTDIR)/$(SYSLIBDIR)/udev/rules.d/70-master-of-seat.rules
 	install -D appvm-scripts/usr/lib/qubes/qubes-gui-agent-pre.sh \
 		$(DESTDIR)/usr/lib/qubes/qubes-gui-agent-pre.sh
+	install -D appvm-scripts/usr/lib/qubes/qubes-keymap.sh \
+		$(DESTDIR)/usr/lib/qubes/qubes-keymap.sh
 ifeq ($(shell lsb_release -is), Debian)
 	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent.debian \
 		$(DESTDIR)/etc/pam.d/qubes-gui-agent
