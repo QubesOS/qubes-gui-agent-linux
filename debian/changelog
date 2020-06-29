@@ -1,3 +1,30 @@
+qubes-gui-agent (4.1.9-1) unstable; urgency=medium
+
+  [ Dmitry Fedorov ]
+  * conditionally use qubesdb dependency in vchan-sink module
+
+  [ Olivier MEDOC ]
+  * archlinux: set dependencies on xorg server ABI version instead of
+    the server version itself
+
+  [ Artur Puzio ]
+  * Disable gui-agent on sys-gui-gpu
+
+  [ deathgrippin ]
+  * Condense conditional
+
+  [ Rusty Bird ]
+  * vmside: use XKillClient() if WM_DELETE_WINDOW is unsupported
+
+  [ Frédéric Pierret (fepitre) ]
+  * qubes-run-xephyr: debian has another path for shmoverride.so
+  * Makefile: add clean of pkgs and debian changelog.*
+  * debian: add xfce subpackage for VM
+  * Check if shmoverride.so exists directly
+  * debian: fix conflict with newer location of pulseaudio conf
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 29 Jun 2020 05:31:38 +0200
+
 qubes-gui-agent (4.1.8-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
