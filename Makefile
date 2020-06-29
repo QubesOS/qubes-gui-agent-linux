@@ -87,6 +87,8 @@ clean:
 	$(MAKE) -C xf86-qubes-common clean
 	(cd xf86-input-mfndev; if [ -e Makefile ] ; then \
 		$(MAKE) distclean; fi; ./bootstrap --clean || echo )
+	rm -rf debian/changelog.*
+	rm -rf pkgs
 
 
 install: install-rh-agent install-pulseaudio
@@ -102,10 +104,10 @@ install-rh-agent: appvm install-common
 		$(DESTDIR)/etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/20qt-gnome-desktop-session-id.sh \
 		$(DESTDIR)/etc/X11/xinit/xinitrc.d/20qt-gnome-desktop-session-id.sh
-
-install-xfce:
-	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/50-xfce-desktop.sh \
-		$(DESTDIR)/etc/X11/xinit/xinitrc.d/50-xfce-desktop.sh
+	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/50guivm-windows-prefix.sh \
+		$(DESTDIR)/etc/X11/xinit/xinitrc.d/50guivm-windows-prefix.sh
+	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/60xfce-desktop.sh \
+		$(DESTDIR)/etc/X11/xinit/xinitrc.d/60xfce-desktop.sh
 
 install-debian: appvm install-common install-pulseaudio
 	install -d $(DESTDIR)/etc/X11/Xsession.d
@@ -163,8 +165,6 @@ install-common:
 		$(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-session.conf
 	install -m 0644 -D appvm-scripts/etc/securitylimits.d/90-qubes-gui.conf \
 		$(DESTDIR)/etc/security/limits.d/90-qubes-gui.conf
-	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/50-guivm-windows-prefix.sh \
-		$(DESTDIR)/etc/X11/xinit/xinitrc.d/50-guivm-windows-prefix.sh
 ifneq ($(shell lsb_release -is), Ubuntu)
 	install -m 0644 -D appvm-scripts/etc/xdg/Trolltech.conf \
 		$(DESTDIR)/etc/xdg/Trolltech.conf

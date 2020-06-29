@@ -1,5 +1,10 @@
 # This file is sourced by Xsession(5), not executed.
 
+# shellcheck disable=SC1091
+. /usr/lib/qubes/init/functions
+
+if ! qsvc guivm-gui-agent; then
+
 installConfigurationFile() {
     file="${1}"
 
@@ -15,4 +20,6 @@ if [ -x /usr/bin/xsettingsd ]; then
     installConfigurationFile "fonts.conf"
     installConfigurationFile "Xresources"
     /usr/bin/xsettingsd &
+fi
+
 fi

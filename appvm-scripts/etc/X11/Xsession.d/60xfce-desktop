@@ -26,5 +26,5 @@ fi
 
 export QT_QPA_PLATFORMTHEME=qt5ct
 
-xfsettingsd &
+xfsettingsd --replace&
 fi

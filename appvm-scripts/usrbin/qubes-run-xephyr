@@ -2,4 +2,10 @@
 DISPLAY_XEPHYR="$1"
 OPTIONS_XEPHYR="-no-host-grab -fullscreen"
 
-LD_PRELOAD=/usr/lib64/qubes-gui-daemon/shmoverride.so /usr/bin/Xephyr $OPTIONS_XEPHYR "$DISPLAY_XEPHYR" > ~/.xephyr-errors 2>&1
+if [ -e /usr/lib/x86_64-linux-gnu/qubes-gui-daemon/shmoverride.so ]; then
+    SHMOVERRIDE=/usr/lib/x86_64-linux-gnu/qubes-gui-daemon/shmoverride.so
+elif [ -e /usr/lib64/qubes-gui-daemon/shmoverride.so ]; then
+    SHMOVERRIDE=/usr/lib64/qubes-gui-daemon/shmoverride.so
+fi
+
+LD_PRELOAD=$SHMOVERRIDE /usr/bin/Xephyr $OPTIONS_XEPHYR "$DISPLAY_XEPHYR" > ~/.xephyr-errors 2>&1
