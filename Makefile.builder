@@ -1,6 +1,7 @@
 RPM_SPEC_FILES := rpm_spec/gui-agent.spec
 ARCH_BUILD_DIRS := archlinux
 DEBIAN_BUILD_DIRS := debian
+EBUILD_FILES := gentoo/qubes-gui-agent.ebuild
 
 ifneq (,$(findstring $(DISTRIBUTION),qubuntu))
   SOURCE_COPY_IN := source-debian-quilt-copy-in
