@@ -1,3 +1,10 @@
+qubes-gui-agent (4.1.10-1) unstable; urgency=medium
+
+  [ Marta Marczykowska-Górecka ]
+  * Modified keyboard layout handling
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 16 Jul 2020 06:12:58 +0200
+
 qubes-gui-agent (4.1.9-1) unstable; urgency=medium
 
   [ Dmitry Fedorov ]
