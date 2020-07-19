@@ -704,6 +704,7 @@ int pa__init(pa_module * m)
     pa_sink_new_data_init(&data_sink);
     data_sink.driver = __FILE__;
     data_sink.module = m;
+    data_sink.card = u->card;
     pa_sink_new_data_set_name(&data_sink,
                   pa_modargs_get_value(ma,
                                "sink_name",
@@ -753,6 +754,7 @@ int pa__init(pa_module * m)
     pa_source_new_data_init(&data_source);
     data_source.driver = __FILE__;
     data_source.module = m;
+    data_sink.card = u->card;
     pa_source_new_data_set_name(&data_source, pa_modargs_get_value(ma, "source_name", DEFAULT_SOURCE_NAME));
     pa_proplist_sets(data_source.proplist, PA_PROP_DEVICE_STRING, DEFAULT_SOURCE_NAME);
     pa_proplist_sets(data_source.proplist, PA_PROP_DEVICE_DESCRIPTION, 
@@ -795,6 +797,8 @@ int pa__init(pa_module * m)
         goto fail;
     }
 
+    pa_card_choose_initial_profile(u->card);
+    pa_card_put(u->card);
     pa_sink_put(u->sink);
     pa_source_put(u->source);
 
