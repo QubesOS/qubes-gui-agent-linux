@@ -139,6 +139,8 @@ install-common:
 		$(DESTDIR)/usr/bin/qubes-run-xorg
 	install -D appvm-scripts/usrbin/qubes-run-xephyr \
 		$(DESTDIR)/usr/bin/qubes-run-xephyr
+	install -D appvm-scripts/usrbin/qubes-start-xephyr \
+		$(DESTDIR)/usr/bin/qubes-start-xephyr
 	install -D appvm-scripts/usrbin/qubes-change-keyboard-layout \
 		$(DESTDIR)/usr/bin/qubes-change-keyboard-layout
 	install -D appvm-scripts/usrbin/qubes-set-monitor-layout \
@@ -170,6 +172,8 @@ endif
 	install -d $(DESTDIR)/etc/qubes-rpc
 	ln -s ../../usr/bin/qubes-set-monitor-layout \
 		$(DESTDIR)/etc/qubes-rpc/qubes.SetMonitorLayout
+	ln -s ../../usr/bin/qubes-start-xephyr \
+		$(DESTDIR)/etc/qubes-rpc/qubes.GuiVMSession
 	install -D window-icon-updater/icon-sender \
 		$(DESTDIR)/usr/lib/qubes/icon-sender
 	install -m 0644 -D window-icon-updater/qubes-icon-sender.desktop \

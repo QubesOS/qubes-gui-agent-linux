@@ -109,15 +109,8 @@ if qsvc guivm-gui-agent; then
     DISPLAY_XORG=:1
     DISPLAY_XEPHYR=:0
 
-    # Create Xorg and Xephyr server (emulated GPU passthrough)
-    runuser -u "$DEFAULT_USER" -- /bin/sh -l -c "exec $XORG $DISPLAY_XORG -terminate -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xorg-errors 2>&1" &
-    # Wait Xorg display available
-    while ! xdpyinfo -display $DISPLAY_XORG > /dev/null 2>&1
-    do
-        sleep 1
-    done
-    # Run xsession into Xephyr
-    /usr/bin/qubes-gui-runuser "$DEFAULT_USER" /bin/sh -l -c "DISPLAY=$DISPLAY_XORG /usr/bin/xinit $XSESSION -- /usr/bin/qubes-run-xephyr $DISPLAY_XEPHYR > ~/.xsession-errors 2>&1"
+    # Create Xorg. Xephyr will be started using qubes-start-xephyr later.
+    exec runuser -u "$DEFAULT_USER" -- /bin/sh -l -c "exec $XORG $DISPLAY_XORG -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xorg-errors 2>&1" &
 else
     # Use sh -l here to load all session startup scripts (/etc/profile, ~/.profile
     # etc) to populate environment. This is the environment that will be used for
