@@ -5,6 +5,15 @@ if [ $(whoami) == "root" ]; then
     exit 1
 fi
 
+# do not let child processes believe they are running as qrexec service
+# directly
+unset QREXEC_REMOTE_DOMAIN
+unset QREXEC_SERVICE_FULL_NAME
+unset QREXEC_SERVICE_ARGUMENT
+unset QREXEC_REQUESTED_TARGET
+unset QREXEC_REQUESTED_TARGET_TYPE
+unset QREXEC_AGENT_PID
+
 DISPLAY_XORG=:1
 DISPLAY_XEPHYR=:0
 
