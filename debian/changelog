@@ -1,3 +1,13 @@
+qubes-gui-agent (4.1.11-1) unstable; urgency=medium
+
+  [ Paweł Marczewski ]
+  * Extract Xephyr to a separate script
+
+  [ Marek Marczykowski-Górecki ]
+  * guivm: clean qrexec-service related environment in GUI session
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 06 Aug 2020 05:34:20 +0200
+
 qubes-gui-agent (4.1.10-1) unstable; urgency=medium
 
   [ Marta Marczykowska-Górecka ]
