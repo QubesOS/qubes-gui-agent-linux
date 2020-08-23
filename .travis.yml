@@ -1,4 +1,20 @@
 import:
-  - source: QubesOS/qubes-continuous-integration:R4.1/travis-base-r4.1.yml
   - source: QubesOS/qubes-continuous-integration:R4.1/travis-dom0-r4.1.yml
   - source: QubesOS/qubes-continuous-integration:R4.1/travis-vms-r4.1.yml
+
+os: linux
+dist: bionic
+language: generic
+install:
+  - git clone -b testonly https://github.com/fepitre/qubes-builder ~/qubes-builder
+script:
+  - ~/qubes-builder/scripts/travis-build
+  - ~/qubes-builder/scripts/travis-install
+addons:
+  apt:
+    packages:
+      - language-pack-en
+branches:
+  except:
+    - /.*_.*/
+    - build
