@@ -97,6 +97,14 @@ load-module module-role-cork
 load-module module-filter-heuristics
 load-module module-filter-apply
 
+### Automatically load driver modules for Bluetooth hardware
+.ifexists module-bluetooth-policy.so
+load-module module-bluetooth-policy
+.endif
+
+.ifexists module-bluetooth-discover.so
+load-module module-bluetooth-discover
+.endif
 
 ### Register ourselves in the X11 session manager
 #load-module module-x11-xsmp
