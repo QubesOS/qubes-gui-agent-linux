@@ -1,3 +1,13 @@
+qubes-gui-agent (4.1.12-1) unstable; urgency=medium
+
+  [ Matt McCutchen ]
+  * module-vchan-sink: link up the card properly
+
+  [ Frédéric Pierret (fepitre) ]
+  * pulseaudio: allow bluetooth devices like headphones
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 10 Oct 2020 04:20:24 +0200
+
 qubes-gui-agent (4.1.11-1) unstable; urgency=medium
 
   [ Paweł Marczewski ]
