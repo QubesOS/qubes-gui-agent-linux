@@ -1,3 +1,14 @@
+qubes-gui-agent (4.1.13-1) unstable; urgency=medium
+
+  [ unman ]
+  * pulseaudio 13.99.2: add internal headers
+  * pulseaudio 13.99.2
+
+  [ Frédéric Pierret (fepitre) ]
+  * Fix archlinux packaging
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 29 Oct 2020 22:06:24 +0100
+
 qubes-gui-agent (4.1.12-1) unstable; urgency=medium
 
   [ Matt McCutchen ]
