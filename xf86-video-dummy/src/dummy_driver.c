@@ -36,6 +36,8 @@
 #include <X11/extensions/Xv.h>
 #endif
 
+#include <errno.h>
+
 /*
  * Driver data structures.
  */
@@ -923,7 +925,7 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
 
     dPtr->xgs = xengntshr_open(NULL, 0);
     if (dPtr->xgs == NULL) {
-        xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Failed to open xengntshr!\n");
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Failed to open xengntshr: %s!\n", strerror(errno));
         return FALSE;
     }
 
