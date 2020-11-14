@@ -9,7 +9,7 @@ Build-Depends:
     automake,
     xserver-xorg-dev,
     xutils-dev,
-    libvchan-xen-dev,
+    libvchan-dev,
     libx11-dev,
     libxcomposite-dev,
     libxdamage-dev,
