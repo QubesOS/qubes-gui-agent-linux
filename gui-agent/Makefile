@@ -20,6 +20,7 @@
 #
 
 CC ?= gcc
+BACKEND_VMM ?= xen
 CFLAGS += -I../include/ `pkg-config --cflags vchan-$(BACKEND_VMM)` -g -Wall -Wextra -Werror -pie -fPIC
 OBJS = vmside.o \
 	../gui-common/txrx-vchan.o ../gui-common/error.o ../common/list.o 

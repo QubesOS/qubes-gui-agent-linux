@@ -1,6 +1,7 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -Werror -O2
 LIBS=-lqubesdb
+BACKEND_VMM ?= xen
 VCHANLIBS=`pkg-config --libs vchan-$(BACKEND_VMM)`
 VCHANCFLAGS=`pkg-config --cflags vchan-$(BACKEND_VMM)`
 GLIBCFLAGS=`pkg-config --cflags glib-2.0` `pkg-config --cflags dbus-glib-1`
