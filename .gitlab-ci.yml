@@ -5,3 +5,6 @@ include:
     file: '/r4.1/gitlab-dom0.yml'
   - project: 'QubesOS/qubes-continuous-integration'
     file: '/r4.1/gitlab-vm.yml'
+
+variables:
+  TRAVIS_INSTALL_EXCLUDE_DOM0: "qubes-gui-agent"
