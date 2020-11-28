@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -Werror -O2
+CFLAGS+=-Wall -Wextra -Werror -O2
 LIBS=-lqubesdb
 VCHANLIBS=`pkg-config --libs vchan`
 VCHANCFLAGS=`pkg-config --cflags vchan`
