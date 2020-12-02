@@ -45,7 +45,7 @@ BuildRequires:	libXcomposite-devel
 BuildRequires:	libXdamage-devel
 BuildRequires:	libXt-devel
 BuildRequires:	libtool-ltdl-devel
-BuildRequires:	pulseaudio-libs-devel >= 0.9.21, pulseaudio-libs-devel <= 13.99.2
+BuildRequires:	pulseaudio-libs-devel >= 0.9.21, pulseaudio-libs-devel <= 14.0
 BuildRequires:	xorg-x11-server-devel
 BuildRequires:	pam-devel
 BuildRequires:	qubes-libvchan-@BACKEND_VMM@-devel
