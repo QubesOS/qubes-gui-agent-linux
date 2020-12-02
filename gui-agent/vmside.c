@@ -49,6 +49,7 @@
 #include "txrx.h"
 #include "list.h"
 #include "error.h"
+#include "encoding.h"
 #include <libvchan.h>
 
 #define SOCKET_ADDRESS  "/var/run/xf86-qubes-socket"
@@ -1041,21 +1042,31 @@ void process_xevent_selection_req(Ghandles * g,
                 tmp, sizeof(tmp) / sizeof(tmp[0]));
         resp.property = req->property;
     }
-    if (req->target == Utf8_string_atom)
-        convert_style = XUTF8StringStyle;
     if (req->target == XA_STRING)
         convert_style = XTextStyle;
-    if (req->target == Compound_text)
+    else if (req->target == Compound_text)
         convert_style = XCompoundTextStyle;
+    else if (req->target == Utf8_string_atom)
+        convert_style = XUTF8StringStyle;
     if (convert_style != XConverterNotFound) {
         XTextProperty ct;
-        Xutf8TextListToTextProperty(g->display,
-                (char **) &g->clipboard_data,
-                1, convert_style, &ct);
+        char **ptr = { NULL };
+        // Workaround for an Xlib bug: Xutf8TextListToTextProperty mangles
+        // certain characters.
+        if (convert_style == XUTF8StringStyle &&
+            !is_valid_clipboard_string_from_vm((unsigned char *)g->clipboard_data))
+            fputs("Invalid clipboard data from VM\n", stderr);
+        else
+            ptr[0] = (char *) g->clipboard_data;
+        if (!XStringListToTextProperty(ptr, 1, &ct)) {
+            fputs("Out of memory in Xutf8TextListToTextProperty()\n", stderr);
+            return;
+	}
+	ct.encoding = req->target;
         XSetTextProperty(g->display, req->requestor, &ct,
                 req->property);
         XFree(ct.value);
-        resp.property = req->property;
+	resp.property = req->property;
     }
 
     if (resp.property == None)
