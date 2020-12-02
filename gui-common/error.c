@@ -34,8 +34,8 @@ int dummy_handler(Display * dpy, XErrorEvent * ev)
     char request[ERROR_BUF_SIZE];
     _XExtension *ext = NULL;
 
-	if (!print_x11_errors)
-		return 0;
+    if (!print_x11_errors)
+        return 0;
 
     XGetErrorText(dpy, ev->error_code, buf, sizeof(buf));
     fprintf(stderr, "ErrorHandler: %s\n", buf);

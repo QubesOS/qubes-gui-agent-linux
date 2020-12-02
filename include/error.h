@@ -19,4 +19,5 @@
  *
  */
 
+extern int print_x11_errors;
 int dummy_handler(Display * dpy, XErrorEvent * ev);
