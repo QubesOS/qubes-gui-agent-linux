@@ -19,11 +19,7 @@
 #
 #
 
-RPMS_DIR=rpm/
 VERSION := $(shell cat version)
-
-DIST_DOM0 ?= fc13
-
 LIBDIR ?= /usr/lib64
 USRLIBDIR ?= /usr/lib
 SYSLIBDIR ?= /lib
@@ -33,15 +29,8 @@ PA_VER_MAJOR_MINOR ?= $(shell echo $(PA_VER_FULL) | cut -d "." -f 1,2)
 
 help:
 	@echo "Qubes GUI main Makefile:" ;\
-	    echo "make rpms                 <--- make all rpms and sign them";\
-	    echo "make rpms-dom0            <--- create binary rpms for dom0"; \
-	    echo "make rpms-vm              <--- create binary rpms for appvm"; \
 	    echo; \
 	    echo "make clean                <--- clean all the binary files";\
-	    echo "make update-repo-current  <-- copy newly generated rpms to qubes yum repo";\
-	    echo "make update-repo-current-testing <-- same, but for -current-testing repo";\
-	    echo "make update-repo-unstable <-- same, but to -testing repo";\
-	    echo "make update-repo-installer -- copy dom0 rpms to installer repo"
 	    @exit 0;
 
 appvm: gui-agent/qubes-gui gui-common/qubes-gui-runuser \
@@ -50,16 +39,18 @@ appvm: gui-agent/qubes-gui gui-common/qubes-gui-runuser \
 	xf86-qubes-common/libxf86-qubes-common.so
 
 gui-agent/qubes-gui:
-	(cd gui-agent; $(MAKE))
+	$(MAKE) -C gui-agent
 
 gui-common/qubes-gui-runuser:
-	(cd gui-common; $(MAKE))
+	$(MAKE) -C gui-common
 
 xf86-input-mfndev/src/.libs/qubes_drv.so: xf86-qubes-common/libxf86-qubes-common.so
-	(cd xf86-input-mfndev && ./autogen.sh && ./configure && make)
+	(cd xf86-input-mfndev && ./autogen.sh && ./configure)
+	$(MAKE) -C xf86-input-mfndev
 
 xf86-video-dummy/src/.libs/dummyqbs_drv.so: xf86-qubes-common/libxf86-qubes-common.so
-	(cd xf86-video-dummy && ./autogen.sh && make)
+	(cd xf86-video-dummy && ./autogen.sh)
+	$(MAKE) -C xf86-video-dummy
 
 pulse/module-vchan-sink.so:
 	rm -f pulse/pulsecore
@@ -68,13 +59,6 @@ pulse/module-vchan-sink.so:
 
 xf86-qubes-common/libxf86-qubes-common.so:
 	$(MAKE) -C xf86-qubes-common libxf86-qubes-common.so
-
-rpms: rpms-dom0 rpms-vm
-	rpm --addsign rpm/x86_64/*$(VERSION)*.rpm
-	(if [ -d rpm/i686 ] ; then rpm --addsign rpm/i686/*$(VERSION)*.rpm; fi)
-
-rpms-vm:
-	rpmbuild --define "_rpmdir rpm/" -bb rpm_spec/gui-vm.spec
 
 tar:
 	git archive --format=tar --prefix=qubes-gui/ HEAD -o qubes-gui.tar
