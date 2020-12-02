@@ -10,7 +10,7 @@ groups=()
 makedepends=(pkg-config make gcc patch git automake autoconf libtool
 			pulseaudio
 			xorg-server-devel xorg-util-macros libxcomposite libxt pixman
-			qubes-vm-gui-common qubes-libvchan-xen qubes-db-vm
+			qubes-vm-gui-common qubes-libvchan qubes-db-vm
 			)
 checkdepends=()
 optdepends=()
@@ -50,7 +50,7 @@ make appvm
 
 package_qubes-vm-gui() {
 
-depends=('xorg-xinit' 'libxcomposite' 'zenity' 'qubes-libvchan-xen' 'python-xcffib'
+depends=('xorg-xinit' 'libxcomposite' 'zenity' 'qubes-libvchan' 'python-xcffib'
 			# Xorg dependencies are on specific ABI versions: https://www.x.org/wiki/XorgModuleABIVersions/
 			# These can also be verified with pacman -Qi xorg-server (Provides)
 			# There is however a discrepency if verifying via pkg-config --variable abi_videodrv xorg-server
