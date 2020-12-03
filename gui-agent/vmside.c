@@ -1052,7 +1052,7 @@ static void process_xevent_selection_req(Ghandles * g,
         convert_style = XUTF8StringStyle;
     if (convert_style != XConverterNotFound) {
         XTextProperty ct;
-        char **ptr = { NULL };
+        char *ptr[] = { NULL };
         // Workaround for an Xlib bug: Xutf8TextListToTextProperty mangles
         // certain characters.
         if (convert_style == XUTF8StringStyle &&
@@ -1063,12 +1063,12 @@ static void process_xevent_selection_req(Ghandles * g,
         if (!XStringListToTextProperty(ptr, 1, &ct)) {
             fputs("Out of memory in Xutf8TextListToTextProperty()\n", stderr);
             return;
-	}
-	ct.encoding = req->target;
+        }
+        ct.encoding = req->target;
         XSetTextProperty(g->display, req->requestor, &ct,
                 req->property);
         XFree(ct.value);
-	resp.property = req->property;
+        resp.property = req->property;
     }
 
     if (resp.property == None)
