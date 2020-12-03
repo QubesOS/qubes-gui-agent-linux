@@ -1,8 +1,8 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -Werror -O2
 LIBS=-lqubesdb
-VCHANLIBS=`pkg-config --libs vchan-$(BACKEND_VMM)`
-VCHANCFLAGS=`pkg-config --cflags vchan-$(BACKEND_VMM)`
+VCHANLIBS=`pkg-config --libs vchan`
+VCHANCFLAGS=`pkg-config --cflags vchan`
 GLIBCFLAGS=`pkg-config --cflags glib-2.0` `pkg-config --cflags dbus-glib-1`
 GLIBLIBS=`pkg-config --libs glib-2.0` `pkg-config --libs dbus-glib-1` `pkg-config --libs gthread-2.0`
 all: module-vchan-sink.so

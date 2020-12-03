@@ -49,7 +49,7 @@ BuildRequires:	libtool-ltdl-devel
 BuildRequires:	pulseaudio-libs-devel >= 0.9.21, pulseaudio-libs-devel <= 13.99.2
 BuildRequires:	xorg-x11-server-devel
 BuildRequires:	pam-devel
-BuildRequires:	qubes-libvchan-@BACKEND_VMM@-devel
+BuildRequires:	qubes-libvchan-devel
 BuildRequires:	qubes-gui-common-devel >= 4.1.0
 BuildRequires:	qubes-db-devel
 BuildRequires:	xen-devel
@@ -58,7 +58,7 @@ Requires:	Xorg %(xserver-sdk-abi-requires videodrv)
 Requires:	libXfixes
 Requires:	qubes-core-vm >= 3.0.14
 Requires:	xorg-x11-xinit
-Requires:	qubes-libvchan-@BACKEND_VMM@
+Requires:	qubes-libvchan
 # qubesdb-read --wait option
 Requires:	qubes-db >= 4.1.4
 Requires:	python%{python3_pkgversion}-xcffib
@@ -102,7 +102,7 @@ ln -s pulsecore-%{pa_ver_full} pulse/pulsecore
 %build
 %{?set_build_flags}
 #make clean
-make BACKEND_VMM=@BACKEND_VMM@ appvm
+make appvm
 
 %install
 rm -rf $RPM_BUILD_ROOT

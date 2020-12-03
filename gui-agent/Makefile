@@ -20,10 +20,10 @@
 #
 
 CC ?= gcc
-CFLAGS += -I../include/ `pkg-config --cflags vchan-$(BACKEND_VMM)` -g -Wall -Wextra -Werror -pie -fPIC
+CFLAGS += -I../include/ `pkg-config --cflags vchan` -g -Wall -Wextra -Werror -pie -fPIC
 OBJS = vmside.o \
-	../gui-common/txrx-vchan.o ../gui-common/error.o ../common/list.o ../gui-common/encoding.o
-LIBS = -lX11 -lXdamage -lXcomposite -lXfixes `pkg-config --libs vchan-$(BACKEND_VMM)` -lqubesdb
+	../gui-common/txrx-vchan.o ../gui-common/error.o ../common/list.o ../gui-common/encoding.o 
+LIBS = -lX11 -lXdamage -lXcomposite -lXfixes `pkg-config --libs vchan` -lqubesdb
 
 
 all: qubes-gui
