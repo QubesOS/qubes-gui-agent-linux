@@ -22,7 +22,7 @@ if [ ! -d "$BUILDERDIR" ]; then
 fi
 
 LATEST_FEDORA_RELEASE="$(git ls-remote --heads https://src.fedoraproject.org/rpms/fedora-release | grep -Po "refs/heads/f[0-9][1-9]*" | sed 's#refs/heads/f##g' | sort -g | tail -1)"
-LATEST_FEDORA_VERREL="$(dnf -q repoquery pulseaudio --disablerepo=* --enablerepo=fedora --enablerepo=updates --releasever="$LATEST_FEDORA_RELEASE" | sort -V | tail -1 | cut -d':' -f2 | sed "s/.fc.*x86_64//")"
+LATEST_FEDORA_VERREL="$(dnf -q repoquery pulseaudio --disablerepo=* --enablerepo=fedora --enablerepo=updates --releasever="$LATEST_FEDORA_RELEASE" | grep -Po "[0-9][1-9]*\.*[0-9]*\.*[0-9]*-[0-9]*" | sort -V | tail -1)"
 
 LATEST_FEDORA_VERSION="$(echo "$LATEST_FEDORA_VERREL" | cut -d'-' -f1)"
 LATEST_QUBES_VERSION="$(find "$LOCALDIR/pulse" -type d -name "pulsecore-*" | sed "s|$LOCALDIR/pulse/pulsecore-||" | sort -g | tail -1)"
@@ -38,7 +38,7 @@ if [ "${LATEST_QUBES_VERSION}" != "${LATEST_FEDORA_VERSION}" ] && [ ! -e "$LOCAL
     # remove unwanted files
     cd "$TMPDIR"
     tar -xf "$LOCALDIR/$SRC_FILE"
-    find "pulseaudio-$LATEST_FEDORA_VERSION/src/pulsecore" -type f ! -regex '.*.h$' -exec rm -f {} \;
+    find "pulseaudio-$LATEST_FEDORA_VERSION/src/pulsecore" -type f ! -regex '.*\.h$' -exec rm -f {} \;
     rm -f "pulseaudio-$LATEST_FEDORA_VERSION/src/Makefile"
 
     # copy to qubes-gui-agent
