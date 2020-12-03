@@ -1,3 +1,40 @@
+qubes-gui-agent (4.1.14-1) unstable; urgency=medium
+
+  [ icequbes1 ]
+  * Link pulsecore 13.99.3 headers to 13.99.2
+
+  [ Marek Marczykowski-Górecki ]
+  * xf86-video-dummy: improve error message on xengntshr_open fail
+
+  [ Frédéric Pierret (fepitre) ]
+  * Add .gitlab-ci.yml
+
+  [ Marek Marczykowski-Górecki ]
+  * gitlab-ci: exclude qubes-gui-agent when installing in dom0
+
+  [ Demi Marie Obenour ]
+  * Fix Unicode handling in Qubes clipboard
+  * Make variables static and add extern declaration
+
+  [ Frédéric Pierret (fepitre) ]
+  * Set default BACKEND_VMM value to xen
+  * Use pkg-config to get BACKEND_VMM
+
+  [ Demi Marie Obenour ]
+  * Fix indentation and segfault
+
+  [ icequbes1 ]
+  * [ubuntu] Perform quilt refresh for ubuntu-only patch
+
+  [ Frédéric Pierret (fepitre) ]
+  * Add script for getting latest pulsecore headers
+  * Add pulseaudio-14.0 headers
+  * Few improvements from Marek's suggestions
+  * Allow to override defined CFLAGS
+  * Refactor main Makefile
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 03 Dec 2020 15:17:10 +0100
+
 qubes-gui-agent (4.1.13-1) unstable; urgency=medium
 
   [ unman ]
