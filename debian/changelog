@@ -1,3 +1,19 @@
+qubes-gui-agent (4.0.32-1) unstable; urgency=medium
+
+  [ icequbes1 ]
+  * Link pulsecore 13.99.3 headers to 13.99.2
+
+  [ Frédéric Pierret (fepitre) ]
+  * Add .gitlab-ci.yml
+
+  [ Demi Marie Obenour ]
+  * Fix Unicode handling in Qubes clipboard
+
+  [ Frédéric Pierret (fepitre) ]
+  * Add pulseaudio-14.0 headers
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 05 Dec 2020 03:40:57 +0100
+
 qubes-gui-agent (4.0.31-1) unstable; urgency=medium
 
   [ unman ]
