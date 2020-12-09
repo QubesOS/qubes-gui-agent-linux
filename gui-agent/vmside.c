@@ -77,6 +77,7 @@ struct _global_handles {
     Atom tray_opcode;      /* Atom: _NET_SYSTEM_TRAY_MESSAGE_OPCODE */
     Atom xembed_info;      /* Atom: _XEMBED_INFO */
     Atom utf8_string_atom; /* Atom: UTF8_STRING */
+    Atom wm_state;         /* Atom: WM_STATE */
     Atom net_wm_state;     /* Atom: _NET_WM_STATE */
     Atom wm_state_fullscreen; /* Atom: _NET_WM_STATE_FULLSCREEN */
     Atom wm_state_demands_attention; /* Atom: _NET_WM_STATE_DEMANDS_ATTENTION */
@@ -593,6 +594,7 @@ void send_window_state(Ghandles * g, XID window)
 void process_xevent_map(Ghandles * g, XID window)
 {
     XWindowAttributes attr;
+    long new_wm_state[2];
     struct msg_hdr hdr;
     struct msg_map_info map_info;
     Window transient;
@@ -616,6 +618,13 @@ void process_xevent_map(Ghandles * g, XID window)
     write_message(g->vchan, hdr, map_info);
     send_wmname(g, window);
     //      process_xevent_damage(g, window, 0, 0, attr.width, attr.height);
+
+    if (!attr.override_redirect) {
+        /* WM_STATE is always set to normal */
+        new_wm_state[0] = NormalState; /* state */
+        new_wm_state[1] = None;        /* icon */
+        XChangeProperty(g->display, window, g->wm_state, g->wm_state, 32, PropModeReplace, (unsigned char *)new_wm_state, 2);
+    }
 }
 
 void process_xevent_unmap(Ghandles * g, XID window)
@@ -629,6 +638,7 @@ void process_xevent_unmap(Ghandles * g, XID window)
     hdr.window = window;
     hdr.untrusted_len = 0;
     write_struct(g->vchan, hdr);
+    XDeleteProperty(g->display, window, g->wm_state);
     XDeleteProperty(g->display, window, g->net_wm_state);
 }
 
@@ -1339,6 +1349,7 @@ void mkghandles(Ghandles * g)
     g->tray_opcode =
         XInternAtom(g->display, "_NET_SYSTEM_TRAY_OPCODE", False);
     g->xembed_info = XInternAtom(g->display, "_XEMBED_INFO", False);
+    g->wm_state = XInternAtom(g->display, "WM_STATE", False);
     g->net_wm_state = XInternAtom(g->display, "_NET_WM_STATE", False);
     g->wm_state_fullscreen = XInternAtom(g->display, "_NET_WM_STATE_FULLSCREEN", False);
     g->wm_state_demands_attention = XInternAtom(g->display, "_NET_WM_STATE_DEMANDS_ATTENTION", False);
