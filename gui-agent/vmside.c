@@ -77,7 +77,7 @@ struct _global_handles {
     Atom tray_opcode;      /* Atom: _NET_SYSTEM_TRAY_MESSAGE_OPCODE */
     Atom xembed_info;      /* Atom: _XEMBED_INFO */
     Atom utf8_string_atom; /* Atom: UTF8_STRING */
-    Atom wm_state;         /* Atom: _NET_WM_STATE */
+    Atom net_wm_state;     /* Atom: _NET_WM_STATE */
     Atom wm_state_fullscreen; /* Atom: _NET_WM_STATE_FULLSCREEN */
     Atom wm_state_demands_attention; /* Atom: _NET_WM_STATE_DEMANDS_ATTENTION */
     Atom wm_take_focus;    /* Atom: WM_TAKE_FOCUS */
@@ -574,7 +574,7 @@ void send_window_state(Ghandles * g, XID window)
     struct msg_window_flags flags;
 
     /* FIXME: only first 10 elements are parsed */
-    ret = XGetWindowProperty(g->display, window, g->wm_state, 0, 10,
+    ret = XGetWindowProperty(g->display, window, g->net_wm_state, 0, 10,
             False, XA_ATOM, &act_type, &act_fmt, &nitems, &bytesleft, (unsigned char**)&state_list);
     if (ret != Success)
         return;
@@ -629,7 +629,7 @@ void process_xevent_unmap(Ghandles * g, XID window)
     hdr.window = window;
     hdr.untrusted_len = 0;
     write_struct(g->vchan, hdr);
-    XDeleteProperty(g->display, window, g->wm_state);
+    XDeleteProperty(g->display, window, g->net_wm_state);
 }
 
 void process_xevent_destroy(Ghandles * g, XID window)
@@ -1040,7 +1040,7 @@ void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
                 fprintf(stderr, "unhandled tray opcode: %ld\n",
                         ev->data.l[1]);
         }
-    } else if (ev->message_type == g->wm_state) {
+    } else if (ev->message_type == g->net_wm_state) {
         struct msg_hdr hdr;
         struct msg_window_flags msg;
 
@@ -1339,7 +1339,7 @@ void mkghandles(Ghandles * g)
     g->tray_opcode =
         XInternAtom(g->display, "_NET_SYSTEM_TRAY_OPCODE", False);
     g->xembed_info = XInternAtom(g->display, "_XEMBED_INFO", False);
-    g->wm_state = XInternAtom(g->display, "_NET_WM_STATE", False);
+    g->net_wm_state = XInternAtom(g->display, "_NET_WM_STATE", False);
     g->wm_state_fullscreen = XInternAtom(g->display, "_NET_WM_STATE_FULLSCREEN", False);
     g->wm_state_demands_attention = XInternAtom(g->display, "_NET_WM_STATE_DEMANDS_ATTENTION", False);
     g->wm_take_focus = XInternAtom(g->display, "WM_TAKE_FOCUS", False);
@@ -1867,7 +1867,7 @@ void handle_window_flags(Ghandles *g, XID winid)
     read_data(g->vchan, (char *) &msg_flags, sizeof(msg_flags));
 
     /* FIXME: only first 10 elements are parsed */
-    ret = XGetWindowProperty(g->display, winid, g->wm_state, 0, 10,
+    ret = XGetWindowProperty(g->display, winid, g->net_wm_state, 0, 10,
             False, XA_ATOM, &act_type, &act_fmt, &nitems, &bytesleft, (unsigned char**)&state_list);
     if (ret != Success)
         return;
@@ -1900,7 +1900,7 @@ void handle_window_flags(Ghandles *g, XID winid)
     if (!changed)
         return;
 
-    XChangeProperty(g->display, winid, g->wm_state, XA_ATOM, 32, PropModeReplace, (unsigned char *)new_state_list, j);
+    XChangeProperty(g->display, winid, g->net_wm_state, XA_ATOM, 32, PropModeReplace, (unsigned char *)new_state_list, j);
 }
 
 void handle_message(Ghandles * g)
