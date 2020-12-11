@@ -1862,14 +1862,14 @@ static void handle_focus(Ghandles * g, XID winid)
             use_take_focus = False;
         }
 
-        // Give input focus only to window that set the input hint
-        if (input_hint)
-            XSetInputFocus(g->display, winid, RevertToParent,
-                    CurrentTime);
-
         // Do not send take focus if the window doesn't support it
         if (use_take_focus)
             take_focus(g, winid);
+        else if (input_hint) {
+            // Give input focus only to window that set the input hint
+            XSetInputFocus(g->display, winid, RevertToParent,
+                    CurrentTime);
+        }
 
         if (g->log_level > 1)
             fprintf(stderr, "0x%x raised\n", (int) winid);
