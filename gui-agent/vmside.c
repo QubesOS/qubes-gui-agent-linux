@@ -827,8 +827,6 @@ void process_xevent_selection_req(Ghandles * g,
     Atom Targets = XInternAtom(g->display, "TARGETS", False);
     Atom Compound_text =
         XInternAtom(g->display, "COMPOUND_TEXT", False);
-    Atom Utf8_string_atom =
-        XInternAtom(g->display, "UTF8_STRING", False);
     int convert_style = XConverterNotFound;
 
     if (g->log_level > 0)
@@ -836,7 +834,7 @@ void process_xevent_selection_req(Ghandles * g,
                 XGetAtomName(g->display, req->target));
     resp.property = None;
     if (req->target == Targets) {
-        Atom tmp[4] = { XA_STRING, Targets, Utf8_string_atom,
+        Atom tmp[4] = { XA_STRING, Targets, g->utf8_string_atom,
             Compound_text
         };
         XChangeProperty(g->display, req->requestor, req->property,
@@ -849,7 +847,7 @@ void process_xevent_selection_req(Ghandles * g,
         convert_style = XTextStyle;
     else if (req->target == Compound_text)
         convert_style = XCompoundTextStyle;
-    else if (req->target == Utf8_string_atom)
+    else if (req->target == g->utf8_string_atom)
         convert_style = XUTF8StringStyle;
     if (convert_style != XConverterNotFound) {
         XTextProperty ct;
