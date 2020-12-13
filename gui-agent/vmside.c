@@ -83,8 +83,10 @@ struct _global_handles {
     int screen;           /* shortcut to the default screen */
     Window root_win;      /* root attributes */
     GC context;
-    Atom wmDeleteMessage;
-    Atom wmProtocols;
+    Atom wmDeleteMessage;  /* Atom: WM_DELETE_MESSAGE */
+    Atom wmProtocols;      /* Atom: WM_PROTOCOLS */
+    Atom wm_hints;         /* Atom: WM_HINTS */
+    Atom wm_class;         /* Atom: WM_CLASS */
     Atom tray_selection;   /* Atom: _NET_SYSTEM_TRAY_SELECTION_S<creen number> */
     Atom tray_opcode;      /* Atom: _NET_SYSTEM_TRAY_MESSAGE_OPCODE */
     Atom xembed_info;      /* Atom: _XEMBED_INFO */
@@ -94,6 +96,11 @@ struct _global_handles {
     Atom wm_state_demands_attention; /* Atom: _NET_WM_STATE_DEMANDS_ATTENTION */
     Atom wm_take_focus;    /* Atom: WM_TAKE_FOCUS */
     Atom net_wm_name;      /* Atom: _NET_WM_NAME */
+    Atom wm_normal_hints;  /* Atom: WM_NORMAL_HINTS */
+    Atom clipboard;        /* Atom: CLIPBOARD */
+    Atom targets;          /* Atom: TARGETS */
+    Atom qprop;            /* Atom: QUBES_SELECTION */
+    Atom compound_text;    /* Atom: COMPOUND_TEXT */
     int xserver_fd;
     int xserver_listen_fd;
     libvchan_t *vchan;
@@ -947,10 +954,9 @@ static void send_clipboard_data(libvchan_t *vchan, XID window, char *data, uint3
     write_data(vchan, (char *) data, len);
 }
 
-static void handle_targets_list(Ghandles * g, Atom Qprop, unsigned char *data,
+static void handle_targets_list(Ghandles * g, unsigned char *data,
         int len)
 {
-    Atom Clp = XInternAtom(g->display, "CLIPBOARD", False);
     Atom *atoms = (Atom *) data;
     int i;
     int have_utf8 = 0;
@@ -964,8 +970,8 @@ static void handle_targets_list(Ghandles * g, Atom Qprop, unsigned char *data,
                     (int) atoms[i], XGetAtomName(g->display,
                         atoms[i]));
     }
-    XConvertSelection(g->display, Clp,
-            have_utf8 ? g->utf8_string_atom : XA_STRING, Qprop,
+    XConvertSelection(g->display, g->clipboard,
+            have_utf8 ? g->utf8_string_atom : XA_STRING, g->qprop,
             g->stub_win, CurrentTime);
 }
 
@@ -976,40 +982,35 @@ static void process_xevent_selection(Ghandles * g, XSelectionEvent * ev)
     Atom type;
     unsigned long len, bytes_left, dummy;
     unsigned char *data;
-    Atom Clp = XInternAtom(g->display, "CLIPBOARD", False);
-    Atom Qprop = XInternAtom(g->display, "QUBES_SELECTION", False);
-    Atom Targets = XInternAtom(g->display, "TARGETS", False);
-    Atom Utf8_string_atom =
-        XInternAtom(g->display, "UTF8_STRING", False);
 
     if (g->log_level > 0)
         fprintf(stderr, "selection event, target=%s\n",
                 XGetAtomName(g->display, ev->target));
-    if (ev->requestor != g->stub_win || ev->property != Qprop)
+    if (ev->requestor != g->stub_win || ev->property != g->qprop)
         return;
-    XGetWindowProperty(g->display, ev->requestor, Qprop, 0, 0, 0,
+    XGetWindowProperty(g->display, ev->requestor, g->qprop, 0, 0, 0,
             AnyPropertyType, &type, &format, &len,
             &bytes_left, &data);
     if (bytes_left <= 0)
         return;
     result =
-        XGetWindowProperty(g->display, ev->requestor, Qprop, 0,
+        XGetWindowProperty(g->display, ev->requestor, g->qprop, 0,
                 bytes_left, 0,
                 AnyPropertyType, &type,
                 &format, &len, &dummy, &data);
     if (result != Success)
         return;
 
-    if (ev->target == Targets)
-        handle_targets_list(g, Qprop, data, len);
+    if (ev->target == g->targets)
+        handle_targets_list(g, data, len);
     // If we receive TARGETS atom in response for TARGETS query, let's assume
     // that UTF8 is supported.
     // this is workaround for Opera web browser...
     else if (ev->target == XA_ATOM && len >= 4 && len <= 8 &&
             // compare only first 4 bytes
-            *((unsigned *) data) == Targets)
-        XConvertSelection(g->display, Clp,
-                Utf8_string_atom, Qprop,
+            *((unsigned *) data) == g->targets)
+        XConvertSelection(g->display, g->clipboard,
+                g->utf8_string_atom, g->qprop,
                 g->stub_win, CurrentTime);
     else
         send_clipboard_data(g->vchan, g->stub_win, (char *) data, len);
@@ -1023,19 +1024,14 @@ static void process_xevent_selection_req(Ghandles * g,
         XSelectionRequestEvent * req)
 {
     XSelectionEvent resp;
-    Atom Targets = XInternAtom(g->display, "TARGETS", False);
-    Atom Compound_text =
-        XInternAtom(g->display, "COMPOUND_TEXT", False);
     int convert_style = XConverterNotFound;
 
     if (g->log_level > 0)
         fprintf(stderr, "selection req event, target=%s\n",
                 XGetAtomName(g->display, req->target));
     resp.property = None;
-    if (req->target == Targets) {
-        Atom tmp[4] = { XA_STRING, Targets, g->utf8_string_atom,
-            Compound_text
-        };
+    if (req->target == g->targets) {
+        Atom tmp[4] = { XA_STRING, g->targets, g->utf8_string_atom, g->compound_text };
         XChangeProperty(g->display, req->requestor, req->property,
                 XA_ATOM, 32, PropModeReplace,
                 (unsigned char *)
@@ -1044,7 +1040,7 @@ static void process_xevent_selection_req(Ghandles * g,
     }
     if (req->target == XA_STRING)
         convert_style = XTextStyle;
-    else if (req->target == Compound_text)
+    else if (req->target == g->compound_text)
         convert_style = XCompoundTextStyle;
     else if (req->target == g->utf8_string_atom)
         convert_style = XUTF8StringStyle;
@@ -1094,17 +1090,13 @@ static void process_xevent_property(Ghandles * g, XID window, XPropertyEvent * e
         send_wmname(g, window);
     else if (ev->atom == g->net_wm_name)
         send_wmname(g, window);
-    else if (ev->atom ==
-            XInternAtom(g->display, "WM_NORMAL_HINTS", False))
+    else if (ev->atom == g->wm_normal_hints)
         send_wmnormalhints(g, window, 0);
-    else if (ev->atom ==
-            XInternAtom(g->display, "WM_CLASS", False))
+    else if (ev->atom == g->wm_class)
         send_wmclass(g, window, 0);
-    else if (ev->atom ==
-            XInternAtom(g->display, "WM_HINTS", False))
+    else if (ev->atom == g->wm_hints)
         retrieve_wmhints(g,window, 0);
-    else if (ev->atom ==
-            XInternAtom(g->display, "WM_PROTOCOLS", False))
+    else if (ev->atom == g->wmProtocols)
         retrieve_wmprotocols(g,window, 0);
     else if (ev->atom == g->xembed_info) {
         struct genlist *l = list_lookup(windows_list, window);
@@ -1511,9 +1503,10 @@ static void mkghandles(Ghandles * g)
     g->screen = DefaultScreen(g->display);	/* get CRT id number */
     g->root_win = RootWindow(g->display, g->screen);	/* get default attributes */
     g->context = XCreateGC(g->display, g->root_win, 0, NULL);
-    g->wmDeleteMessage =
-        XInternAtom(g->display, "WM_DELETE_WINDOW", False);
+    g->wmDeleteMessage = XInternAtom(g->display, "WM_DELETE_WINDOW", False);
     g->wmProtocols = XInternAtom(g->display, "WM_PROTOCOLS", False);
+    g->wm_hints = XInternAtom(g->display, "WM_HINTS", False);
+    g->wm_class = XInternAtom(g->display, "WM_CLASS", False);
     g->utf8_string_atom = XInternAtom(g->display, "UTF8_STRING", False);
     g->stub_win = XCreateSimpleWindow(g->display, g->root_win,
             0, 0, 1, 1,
@@ -1545,15 +1538,18 @@ static void mkghandles(Ghandles * g)
     g->clipboard_data_len = 0;
     snprintf(tray_sel_atom_name, sizeof(tray_sel_atom_name),
             "_NET_SYSTEM_TRAY_S%u", DefaultScreen(g->display));
-    g->tray_selection =
-        XInternAtom(g->display, tray_sel_atom_name, False);
-    g->tray_opcode =
-        XInternAtom(g->display, "_NET_SYSTEM_TRAY_OPCODE", False);
+    g->tray_selection = XInternAtom(g->display, tray_sel_atom_name, False);
+    g->tray_opcode = XInternAtom(g->display, "_NET_SYSTEM_TRAY_OPCODE", False);
     g->xembed_info = XInternAtom(g->display, "_XEMBED_INFO", False);
     g->wm_state = XInternAtom(g->display, "_NET_WM_STATE", False);
     g->wm_state_fullscreen = XInternAtom(g->display, "_NET_WM_STATE_FULLSCREEN", False);
     g->wm_state_demands_attention = XInternAtom(g->display, "_NET_WM_STATE_DEMANDS_ATTENTION", False);
     g->wm_take_focus = XInternAtom(g->display, "WM_TAKE_FOCUS", False);
+    g->wm_normal_hints = XInternAtom(g->display, "WM_NORMAL_HINTS", False);
+    g->clipboard = XInternAtom(g->display, "CLIPBOARD", False);
+    g->targets = XInternAtom(g->display, "TARGETS", False);
+    g->qprop = XInternAtom(g->display, "QUBES_SELECTION", False);
+    g->compound_text = XInternAtom(g->display, "COMPOUND_TEXT", False);
 }
 
 static void handle_keypress(Ghandles * g, XID UNUSED(winid))
@@ -2021,11 +2017,9 @@ static void terminate_and_cleanup_xorg(Ghandles *g) {
 static void handle_clipboard_req(Ghandles * g, XID winid)
 {
     Atom Clp;
-    Atom QProp = XInternAtom(g->display, "QUBES_SELECTION", False);
-    Atom Targets = XInternAtom(g->display, "TARGETS", False);
     Window owner;
 #ifdef CLIPBOARD_4WAY
-    Clp = XInternAtom(g->display, "CLIPBOARD", False);
+    Clp = g->clipboard;
 #else
     Clp = XA_PRIMARY;
 #endif
@@ -2037,14 +2031,12 @@ static void handle_clipboard_req(Ghandles * g, XID winid)
         send_clipboard_data(g->vchan, winid, NULL, 0);
         return;
     }
-    XConvertSelection(g->display, Clp, Targets, QProp,
+    XConvertSelection(g->display, Clp, g->targets, g->qprop,
             g->stub_win, CurrentTime);
 }
 
 static void handle_clipboard_data(Ghandles * g, XID UNUSED(winid), unsigned int len)
 {
-    Atom Clp = XInternAtom(g->display, "CLIPBOARD", False);
-
     if (g->clipboard_data)
         free(g->clipboard_data);
     // qubes_guid will not bother to send len==-1, really
@@ -2058,7 +2050,7 @@ static void handle_clipboard_data(Ghandles * g, XID UNUSED(winid), unsigned int 
     g->clipboard_data[len] = 0;
     XSetSelectionOwner(g->display, XA_PRIMARY, g->stub_win,
             CurrentTime);
-    XSetSelectionOwner(g->display, Clp, g->stub_win, CurrentTime);
+    XSetSelectionOwner(g->display, g->clipboard, g->stub_win, CurrentTime);
 #ifndef CLIPBOARD_4WAY
     XSync(g->display, False);
     feed_xdriver(g, 'B', 2, 1);
