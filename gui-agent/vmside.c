@@ -465,30 +465,6 @@ static void feed_xdriver(Ghandles * g, int type, int arg1, int arg2)
     }
 }
 
-#if 0
-static void read_discarding(int fd, int size)
-{
-    char buf[1024];
-    int n, count, total = 0;
-    while (total < size) {
-        if (size > (int)sizeof(buf))
-            count = sizeof(buf);
-        else
-            count = size;
-        n = read(fd, buf, count);
-        if (n < 0) {
-            perror("read_discarding");
-            exit(1);
-        }
-        if (n == 0) {
-            fprintf(stderr, "EOF in read_discarding\n");
-            exit(1);
-        }
-        total += n;
-    }
-}
-#endif
-
 void send_pixmap_grant_refs(Ghandles * g, XID window)
 {
     struct msg_hdr hdr;
@@ -838,7 +814,6 @@ static void process_xevent_map(Ghandles * g, XID window)
     hdr.window = window;
     write_message(g->vchan, hdr, map_info);
     send_wmname(g, window);
-    //      process_xevent_damage(g, window, 0, 0, attr.width, attr.height);
 }
 
 static void process_xevent_unmap(Ghandles * g, XID window)
@@ -1563,32 +1538,7 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
 {
     struct msg_keypress key;
     XkbStateRec state;
-    //      XKeyEvent event;
-    //        char buf[256];
     read_data(g->vchan, (char *) &key, sizeof(key));
-#if 0
-    //XGetInputFocus(g->display, &focus_return, &revert_to_return);
-    //      fprintf(stderr, "vmside: type=%d keycode=%d currfoc=0x%x\n", key.type,
-    //              key.keycode, (int)focus_return);
-
-    //      XSetInputFocus(g->display, winid, RevertToParent, CurrentTime);
-    event.display = g->display;
-    event.window = winid;
-    event.root = g->root_win;
-    event.subwindow = None;
-    event.time = CurrentTime;
-    event.x = key.x;
-    event.y = key.y;
-    event.x_root = 1;
-    event.y_root = 1;
-    event.same_screen = TRUE;
-    event.type = key.type;
-    event.keycode = key.keycode;
-    event.state = key.state;
-    XSendEvent(event.display, event.window, TRUE,
-            //                 event.type==KeyPress?KeyPressMask:KeyReleaseMask, 
-            KeyPressMask, (XEvent *) & event);
-#else
     // sync modifiers state
     if (XkbGetState(g->display, XkbUseCoreKbd, &state) != Success) {
         if (g->log_level > 0)
@@ -1645,18 +1595,11 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
     }
 
     feed_xdriver(g, 'K', key.keycode, key.type == KeyPress ? 1 : 0);
-#endif
-    //      fprintf(stderr, "win 0x%x type %d keycode %d\n",
-    //              (int) winid, key.type, key.keycode);
-    //      XSync(g->display, 0);
 }
 
 static void handle_button(Ghandles * g, XID winid)
 {
     struct msg_button key;
-    //      XButtonEvent event;
-    //	XWindowAttributes attr;
-    //	int ret;
     struct genlist *l = list_lookup(windows_list, winid);
 
 
@@ -1666,35 +1609,7 @@ static void handle_button(Ghandles * g, XID winid)
         winid = ((struct window_data*)l->data)->embeder;
         XRaiseWindow(g->display, winid);
     }
-#if 0
-    ret = XGetWindowAttributes(g->display, winid, &attr);
-    if (ret != 1) {
-        fprintf(stderr,
-                "XGetWindowAttributes for 0x%x failed in "
-                "do_button, ret=0x%x\n", (int) winid, ret);
-        return;
-    };
 
-    XSetInputFocus(g->display, winid, RevertToParent, CurrentTime);
-    //      XRaiseWindow(g->display, winid);
-    event.display = g->display;
-    event.window = winid;
-    event.root = g->root_win;
-    event.subwindow = None;
-    event.time = CurrentTime;
-    event.x = key.x;
-    event.y = key.y;
-    event.x_root = attr.x + key.x;
-    event.y_root = attr.y + key.y;
-    event.same_screen = TRUE;
-    event.type = key.type;
-    event.button = key.button;
-    event.state = key.state;
-    XSendEvent(event.display, event.window, TRUE,
-            //                 event.type==KeyPress?KeyPressMask:KeyReleaseMask, 
-            ButtonPressMask, (XEvent *) & event);
-    //      XSync(g->display, 0);
-#endif
     if (g->log_level > 1)
         fprintf(stderr,
                 "send buttonevent, win 0x%x type=%d button=%d\n",
@@ -1723,26 +1638,6 @@ static void handle_motion(Ghandles * g, XID winid)
         return;
     };
 
-#if 0
-    event.display = g->display;
-    event.window = winid;
-    event.root = g->root_win;
-    event.subwindow = None;
-    event.time = CurrentTime;
-    event.x = key.x;
-    event.y = key.y;
-    event.x_root = attr.x + key.x;
-    event.y_root = attr.y + key.y;
-    event.same_screen = TRUE;
-    event.is_hint = key.is_hint;
-    event.state = key.state;
-    event.type = MotionNotify;
-    //      fprintf(stderr, "motion notify for 0x%x\n", (int)winid);
-    XSendEvent(event.display, event.window, TRUE,
-            //                 event.type==KeyPress?KeyPressMask:KeyReleaseMask, 
-            0, (XEvent *) & event);
-    //      XSync(g->display, 0);
-#endif
     feed_xdriver(g, 'M', attr.x + key.x, attr.y + key.y);
 }
 
@@ -1832,21 +1727,8 @@ static void handle_focus(Ghandles * g, XID winid)
     struct genlist *l;
     int input_hint;
     int use_take_focus;
-    //      XFocusChangeEvent event;
 
     read_data(g->vchan, (char *) &key, sizeof(key));
-#if 0
-    event.display = g->display;
-    event.window = winid;
-    event.type = key.type;
-    event.mode = key.mode;
-    event.detail = key.detail;
-
-    fprintf(stderr, "send focuschange for 0x%x type %d\n",
-            (int) winid, key.type);
-    XSendEvent(event.display, event.window, TRUE,
-            0, (XEvent *) & event);
-#endif
     if (key.type == FocusIn
             && (key.mode == NotifyNormal || key.mode == NotifyUngrab)) {
 
@@ -1966,7 +1848,6 @@ static void handle_close(Ghandles * g, XID winid)
         ev.format = 32;
         ev.message_type = g->wmProtocols;
         ev.data.l[0] = g->wmDeleteMessage;
-        //        XSetInputFocus(g->display, winid, RevertToParent, CurrentTime);
         XSendEvent(ev.display, ev.window, TRUE, 0, (XEvent *) & ev);
         if (g->log_level > 0)
             fprintf(stderr, "wmDeleteMessage sent for 0x%x\n",
