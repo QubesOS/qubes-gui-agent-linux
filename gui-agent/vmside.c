@@ -132,7 +132,14 @@ struct genlist *embeder_list;
 typedef struct _global_handles Ghandles;
 Ghandles *ghandles_for_vchan_reinitialize;
 
-#define SKIP_NONMANAGED_WINDOW if (!list_lookup(windows_list, window)) return
+#define SKIP_NONMANAGED_WINDOW do {                                    \
+    if (!list_lookup(windows_list, window)) {                          \
+        if (g->log_level > 0)                                          \
+            fprintf(stderr, "Skipping unmanaged window 0x%x",          \
+                    (int) window);                                     \
+        return;                                                        \
+    }                                                                  \
+} while (0)
 
 /* Cursor name translation. See X11/cursorfont.h. */
 
