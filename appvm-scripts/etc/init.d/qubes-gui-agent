@@ -9,7 +9,6 @@
 start()
 {
 	echo -n $"Starting Qubes GUI agent:"
-	rm -f /tmp/qubes-session-env /tmp/qubes-session-waiter
 	# start console-kit-daemon
 	/usr/bin/ck-list-sessions > /dev/null 2>&1
 	# pretend tha user is at local console
