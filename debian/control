@@ -3,6 +3,7 @@ Section: admin
 Priority: extra
 Maintainer: Davíð Steinn Geirsson <david@dsg.is>
 Build-Depends:
+    debhelper,
     libpam0g-dev,
     libpulse-dev,
     libtool,
@@ -19,12 +20,10 @@ Build-Depends:
     libxen-dev,
     lsb-release,
     quilt,
-    debhelper (>= 8.0.0),
     qubes-gui-common (>= 4.1.0),
     qubesdb-dev,
-    dh-systemd (>= 1.5),
     libltdl-dev
-Standards-Version: 3.9.8
+Standards-Version: 4.4.0.1
 Homepage: http://www.qubes-os.org/
 #Vcs-Git: git://git.debian.org/collab-maint/qubes-gui-agent.git
 #Vcs-Browser: http://git.debian.org/?p=collab-maint/qubes-gui-agent.git;a=summary
