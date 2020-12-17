@@ -937,8 +937,7 @@ static void send_clipboard_data(libvchan_t *vchan, XID window, char *data, uint3
     write_data(vchan, (char *) data, len);
 }
 
-static void handle_targets_list(Ghandles * g, unsigned char *data,
-        int len, Time time)
+static void handle_targets_list(Ghandles * g, unsigned char *data, int len)
 {
     Atom *atoms = (Atom *) data;
     int i;
@@ -955,7 +954,7 @@ static void handle_targets_list(Ghandles * g, unsigned char *data,
     }
     XConvertSelection(g->display, g->clipboard,
             have_utf8 ? g->utf8_string_atom : XA_STRING, g->qprop,
-            g->stub_win, time);
+            g->stub_win, g->time);
 }
 
 static void process_xevent_selection(Ghandles * g, XSelectionEvent * ev)
@@ -985,7 +984,7 @@ static void process_xevent_selection(Ghandles * g, XSelectionEvent * ev)
         return;
 
     if (ev->target == g->targets)
-        handle_targets_list(g, data, len, ev->time);
+        handle_targets_list(g, data, len);
     // If we receive TARGETS atom in response for TARGETS query, let's assume
     // that UTF8 is supported.
     // this is workaround for Opera web browser...
@@ -1706,7 +1705,7 @@ static void handle_crossing(Ghandles * g, XID winid)
 
 }
 
-static void take_focus(Ghandles * g, XID winid, Time time)
+static void take_focus(Ghandles * g, XID winid)
 {
     // Send
     XClientMessageEvent ev;
@@ -1717,7 +1716,7 @@ static void take_focus(Ghandles * g, XID winid, Time time)
     ev.format = 32;
     ev.message_type = g->wmProtocols;
     ev.data.l[0] = g->wm_take_focus;
-    ev.data.l[1] = time;
+    ev.data.l[1] = g->time;
     XSendEvent(ev.display, ev.window, TRUE, 0, (XEvent *) & ev);
     if (g->log_level > 0)
         fprintf(stderr, "WM_TAKE_FOCUS sent for 0x%x\n",
@@ -1725,7 +1724,7 @@ static void take_focus(Ghandles * g, XID winid, Time time)
 
 }
 
-static void handle_focus(Ghandles * g, XID winid, Time time)
+static void handle_focus(Ghandles * g, XID winid)
 {
     struct msg_focus key;
     struct genlist *l;
@@ -1751,11 +1750,11 @@ static void handle_focus(Ghandles * g, XID winid, Time time)
 
         // Give input focus only to window that set the input hint
         if (input_hint)
-            XSetInputFocus(g->display, winid, RevertToParent, time);
+            XSetInputFocus(g->display, winid, RevertToParent, g->time);
 
         // Do not send take focus if the window doesn't support it
         if (use_take_focus)
-            take_focus(g, winid, time);
+            take_focus(g, winid);
 
         if (g->log_level > 1)
             fprintf(stderr, "0x%x raised\n", (int) winid);
@@ -1769,7 +1768,7 @@ static void handle_focus(Ghandles * g, XID winid, Time time)
             input_hint = True;
         }
         if (input_hint)
-            XSetInputFocus(g->display, None, RevertToParent, time);
+            XSetInputFocus(g->display, None, RevertToParent, g->time);
 
         if (g->log_level > 1)
             fprintf(stderr, "0x%x lost focus\n", (int) winid);
@@ -1910,7 +1909,7 @@ static void terminate_and_cleanup_xorg(Ghandles *g) {
 }
 
 #define CLIPBOARD_4WAY
-static void handle_clipboard_req(Ghandles * g, XID winid, Time time)
+static void handle_clipboard_req(Ghandles * g, XID winid)
 {
     Atom Clp;
     Window owner;
@@ -1927,11 +1926,11 @@ static void handle_clipboard_req(Ghandles * g, XID winid, Time time)
         send_clipboard_data(g->vchan, winid, NULL, 0);
         return;
     }
-    XConvertSelection(g->display, Clp, g->targets, g->qprop, g->stub_win, time);
+    XConvertSelection(g->display, Clp, g->targets, g->qprop, g->stub_win, g->time);
 }
 
 static void handle_clipboard_data(Ghandles * g, XID UNUSED(winid),
-        unsigned int len, Time time)
+        unsigned int len)
 {
     if (g->clipboard_data)
         free(g->clipboard_data);
@@ -1944,8 +1943,8 @@ static void handle_clipboard_data(Ghandles * g, XID UNUSED(winid),
     g->clipboard_data_len = len;
     read_data(g->vchan, (char *) g->clipboard_data, len);
     g->clipboard_data[len] = 0;
-    XSetSelectionOwner(g->display, XA_PRIMARY, g->stub_win, time);
-    XSetSelectionOwner(g->display, g->clipboard, g->stub_win, time);
+    XSetSelectionOwner(g->display, XA_PRIMARY, g->stub_win, g->time);
+    XSetSelectionOwner(g->display, g->clipboard, g->stub_win, g->time);
 #ifndef CLIPBOARD_4WAY
     XSync(g->display, False);
     feed_xdriver(g, 'B', 2, 1);
@@ -2033,13 +2032,13 @@ static void handle_message(Ghandles * g)
             handle_crossing(g, hdr.window);
             break;
         case MSG_FOCUS:
-            handle_focus(g, hdr.window, g->time);
+            handle_focus(g, hdr.window);
             break;
         case MSG_CLIPBOARD_REQ:
-            handle_clipboard_req(g, hdr.window, g->time);
+            handle_clipboard_req(g, hdr.window);
             break;
         case MSG_CLIPBOARD_DATA:
-            handle_clipboard_data(g, hdr.window, hdr.untrusted_len, g->time);
+            handle_clipboard_data(g, hdr.window, hdr.untrusted_len);
             break;
         case MSG_KEYMAP_NOTIFY:
             handle_keymap_notify(g);
