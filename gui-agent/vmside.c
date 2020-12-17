@@ -1762,8 +1762,14 @@ static void handle_focus(Ghandles * g, XID winid, Time time)
     } else if (key.type == FocusOut
             && (key.mode == NotifyNormal
                 || key.mode == NotifyUngrab)) {
-
-        XSetInputFocus(g->display, None, RevertToParent, time);
+        if ( (l=list_lookup(windows_list, winid)) && (l->data) )
+            input_hint = ((struct window_data*)l->data)->input_hint;
+        else {
+            fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
+            input_hint = True;
+        }
+        if (input_hint)
+            XSetInputFocus(g->display, None, RevertToParent, time);
 
         if (g->log_level > 1)
             fprintf(stderr, "0x%x lost focus\n", (int) winid);
