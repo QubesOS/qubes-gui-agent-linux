@@ -1039,9 +1039,16 @@ static void process_xevent_selection_req(Ghandles * g,
         convert_style = XUTF8StringStyle;
     if (convert_style != XConverterNotFound) {
         XTextProperty ct;
-        char *ptr[] = { NULL };
+        char empty_string[1] = { '\0' };
+        char *ptr[] = { empty_string };
         // Workaround for an Xlib bug: Xutf8TextListToTextProperty mangles
-        // certain characters.
+        // certain characters, so we check for UTF-8 validity ourselves and use
+        // XStringListToTextProperty.  If we fail a UTF-8 validity check, ptr[0]
+        // is left pointing to an empty string, which is safe.
+        //
+        // We don’t return immediately because users might (reasonably)
+        // assume that any sensitive data previously on the clipboard
+        // (such as passwords) has been overwritten.
         if (convert_style == XUTF8StringStyle &&
             !is_valid_clipboard_string_from_vm((unsigned char *)g->clipboard_data))
             fputs("Invalid clipboard data from VM\n", stderr);
