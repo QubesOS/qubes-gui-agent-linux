@@ -161,7 +161,6 @@ rm -f %{name}-%{version}
 %attr(0644,root,root) /etc/X11/xorg-qubes.conf.template
 /etc/profile.d/qubes-gui.sh
 /etc/profile.d/qubes-gui.csh
-/etc/profile.d/qubes-session.sh
 %config /etc/pam.d/qubes-gui-agent
 %config /etc/security/limits.d/90-qubes-gui.conf
 %config /etc/xdg/Trolltech.conf
@@ -174,7 +173,6 @@ rm -f %{name}-%{version}
 %config /etc/sysconfig/desktop
 /lib/systemd/system/qubes-gui-agent.service
 /lib/udev/rules.d/70-master-of-seat.rules
-/usr/lib/tmpfiles.d/qubes-session.conf
 /usr/lib/sysctl.d/30-qubes-gui-agent.conf
 /usr/lib/qubes/qubes-gui-agent-pre.sh
 /usr/lib/qubes/qubes-keymap.sh

@@ -141,10 +141,6 @@ install-common:
 		$(DESTDIR)/etc/profile.d/qubes-gui.sh
 	install -m 0644 -D appvm-scripts/etc/profile.d/qubes-gui.csh \
 		$(DESTDIR)/etc/profile.d/qubes-gui.csh
-	install -m 0644 -D appvm-scripts/etc/profile.d/qubes-session.sh \
-		$(DESTDIR)/etc/profile.d/qubes-session.sh
-	install -m 0644 -D appvm-scripts/etc/tmpfiles.d/qubes-session.conf \
-		$(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-session.conf
 	install -m 0644 -D appvm-scripts/etc/securitylimits.d/90-qubes-gui.conf \
 		$(DESTDIR)/etc/security/limits.d/90-qubes-gui.conf
 ifneq ($(shell lsb_release -is), Ubuntu)

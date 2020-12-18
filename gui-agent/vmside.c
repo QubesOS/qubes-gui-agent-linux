@@ -83,8 +83,10 @@ struct _global_handles {
     int screen;           /* shortcut to the default screen */
     Window root_win;      /* root attributes */
     GC context;
-    Atom wmDeleteMessage;
-    Atom wmProtocols;
+    Atom wmDeleteMessage;  /* Atom: WM_DELETE_MESSAGE */
+    Atom wmProtocols;      /* Atom: WM_PROTOCOLS */
+    Atom wm_hints;         /* Atom: WM_HINTS */
+    Atom wm_class;         /* Atom: WM_CLASS */
     Atom tray_selection;   /* Atom: _NET_SYSTEM_TRAY_SELECTION_S<creen number> */
     Atom tray_opcode;      /* Atom: _NET_SYSTEM_TRAY_MESSAGE_OPCODE */
     Atom xembed_info;      /* Atom: _XEMBED_INFO */
@@ -95,6 +97,11 @@ struct _global_handles {
     Atom wm_state_demands_attention; /* Atom: _NET_WM_STATE_DEMANDS_ATTENTION */
     Atom wm_take_focus;    /* Atom: WM_TAKE_FOCUS */
     Atom net_wm_name;      /* Atom: _NET_WM_NAME */
+    Atom wm_normal_hints;  /* Atom: WM_NORMAL_HINTS */
+    Atom clipboard;        /* Atom: CLIPBOARD */
+    Atom targets;          /* Atom: TARGETS */
+    Atom qprop;            /* Atom: QUBES_SELECTION */
+    Atom compound_text;    /* Atom: COMPOUND_TEXT */
     int xserver_fd;
     int xserver_listen_fd;
     libvchan_t *vchan;
@@ -106,6 +113,7 @@ struct _global_handles {
     int composite_redirect_automatic;
     pid_t x_pid;
     uint32_t domid;
+    Time time;
 };
 
 struct window_data {
@@ -126,7 +134,14 @@ struct genlist *embeder_list;
 typedef struct _global_handles Ghandles;
 Ghandles *ghandles_for_vchan_reinitialize;
 
-#define SKIP_NONMANAGED_WINDOW if (!list_lookup(windows_list, window)) return
+#define SKIP_NONMANAGED_WINDOW do {                                    \
+    if (!list_lookup(windows_list, window)) {                          \
+        if (g->log_level > 0)                                          \
+            fprintf(stderr, "Skipping unmanaged window 0x%x",          \
+                    (int) window);                                     \
+        return;                                                        \
+    }                                                                  \
+} while (0)
 
 /* Cursor name translation. See X11/cursorfont.h. */
 
@@ -451,30 +466,6 @@ static void feed_xdriver(Ghandles * g, int type, int arg1, int arg2)
         exit(1);
     }
 }
-
-#if 0
-static void read_discarding(int fd, int size)
-{
-    char buf[1024];
-    int n, count, total = 0;
-    while (total < size) {
-        if (size > (int)sizeof(buf))
-            count = sizeof(buf);
-        else
-            count = size;
-        n = read(fd, buf, count);
-        if (n < 0) {
-            perror("read_discarding");
-            exit(1);
-        }
-        if (n == 0) {
-            fprintf(stderr, "EOF in read_discarding\n");
-            exit(1);
-        }
-        total += n;
-    }
-}
-#endif
 
 void send_pixmap_grant_refs(Ghandles * g, XID window)
 {
@@ -826,7 +817,6 @@ static void process_xevent_map(Ghandles * g, XID window)
     hdr.window = window;
     write_message(g->vchan, hdr, map_info);
     send_wmname(g, window);
-    //      process_xevent_damage(g, window, 0, 0, attr.width, attr.height);
 
     if (!attr.override_redirect) {
         /* WM_STATE is always set to normal */
@@ -957,10 +947,8 @@ static void send_clipboard_data(libvchan_t *vchan, XID window, char *data, uint3
     write_data(vchan, (char *) data, len);
 }
 
-static void handle_targets_list(Ghandles * g, Atom Qprop, unsigned char *data,
-        int len)
+static void handle_targets_list(Ghandles * g, unsigned char *data, int len)
 {
-    Atom Clp = XInternAtom(g->display, "CLIPBOARD", False);
     Atom *atoms = (Atom *) data;
     int i;
     int have_utf8 = 0;
@@ -974,11 +962,10 @@ static void handle_targets_list(Ghandles * g, Atom Qprop, unsigned char *data,
                     (int) atoms[i], XGetAtomName(g->display,
                         atoms[i]));
     }
-    XConvertSelection(g->display, Clp,
-            have_utf8 ? g->utf8_string_atom : XA_STRING, Qprop,
-            g->stub_win, CurrentTime);
+    XConvertSelection(g->display, g->clipboard,
+            have_utf8 ? g->utf8_string_atom : XA_STRING, g->qprop,
+            g->stub_win, g->time);
 }
-
 
 static void process_xevent_selection(Ghandles * g, XSelectionEvent * ev)
 {
@@ -986,41 +973,37 @@ static void process_xevent_selection(Ghandles * g, XSelectionEvent * ev)
     Atom type;
     unsigned long len, bytes_left, dummy;
     unsigned char *data;
-    Atom Clp = XInternAtom(g->display, "CLIPBOARD", False);
-    Atom Qprop = XInternAtom(g->display, "QUBES_SELECTION", False);
-    Atom Targets = XInternAtom(g->display, "TARGETS", False);
-    Atom Utf8_string_atom =
-        XInternAtom(g->display, "UTF8_STRING", False);
+    g->time = ev->time;
 
     if (g->log_level > 0)
         fprintf(stderr, "selection event, target=%s\n",
                 XGetAtomName(g->display, ev->target));
-    if (ev->requestor != g->stub_win || ev->property != Qprop)
+    if (ev->requestor != g->stub_win || ev->property != g->qprop)
         return;
-    XGetWindowProperty(g->display, ev->requestor, Qprop, 0, 0, 0,
+    XGetWindowProperty(g->display, ev->requestor, g->qprop, 0, 0, 0,
             AnyPropertyType, &type, &format, &len,
             &bytes_left, &data);
     if (bytes_left <= 0)
         return;
     result =
-        XGetWindowProperty(g->display, ev->requestor, Qprop, 0,
+        XGetWindowProperty(g->display, ev->requestor, g->qprop, 0,
                 bytes_left, 0,
                 AnyPropertyType, &type,
                 &format, &len, &dummy, &data);
     if (result != Success)
         return;
 
-    if (ev->target == Targets)
-        handle_targets_list(g, Qprop, data, len);
+    if (ev->target == g->targets)
+        handle_targets_list(g, data, len);
     // If we receive TARGETS atom in response for TARGETS query, let's assume
     // that UTF8 is supported.
     // this is workaround for Opera web browser...
     else if (ev->target == XA_ATOM && len >= 4 && len <= 8 &&
             // compare only first 4 bytes
-            *((unsigned *) data) == Targets)
-        XConvertSelection(g->display, Clp,
-                Utf8_string_atom, Qprop,
-                g->stub_win, CurrentTime);
+            *((unsigned *) data) == g->targets)
+        XConvertSelection(g->display, g->clipboard,
+                g->utf8_string_atom, g->qprop,
+                g->stub_win, ev->time);
     else
         send_clipboard_data(g->vchan, g->stub_win, (char *) data, len);
     /* even if the clipboard owner does not support UTF8 and we requested
@@ -1033,21 +1016,15 @@ static void process_xevent_selection_req(Ghandles * g,
         XSelectionRequestEvent * req)
 {
     XSelectionEvent resp;
-    Atom Targets = XInternAtom(g->display, "TARGETS", False);
-    Atom Compound_text =
-        XInternAtom(g->display, "COMPOUND_TEXT", False);
-    Atom Utf8_string_atom =
-        XInternAtom(g->display, "UTF8_STRING", False);
     int convert_style = XConverterNotFound;
+    g->time = req->time;
 
     if (g->log_level > 0)
         fprintf(stderr, "selection req event, target=%s\n",
                 XGetAtomName(g->display, req->target));
     resp.property = None;
-    if (req->target == Targets) {
-        Atom tmp[4] = { XA_STRING, Targets, Utf8_string_atom,
-            Compound_text
-        };
+    if (req->target == g->targets) {
+        Atom tmp[4] = { XA_STRING, g->targets, g->utf8_string_atom, g->compound_text };
         XChangeProperty(g->display, req->requestor, req->property,
                 XA_ATOM, 32, PropModeReplace,
                 (unsigned char *)
@@ -1056,9 +1033,9 @@ static void process_xevent_selection_req(Ghandles * g,
     }
     if (req->target == XA_STRING)
         convert_style = XTextStyle;
-    else if (req->target == Compound_text)
+    else if (req->target == g->compound_text)
         convert_style = XCompoundTextStyle;
-    else if (req->target == Utf8_string_atom)
+    else if (req->target == g->utf8_string_atom)
         convert_style = XUTF8StringStyle;
     if (convert_style != XConverterNotFound) {
         XTextProperty ct;
@@ -1097,6 +1074,7 @@ static void process_xevent_selection_req(Ghandles * g,
 
 static void process_xevent_property(Ghandles * g, XID window, XPropertyEvent * ev)
 {
+    g->time = ev->time;
     SKIP_NONMANAGED_WINDOW;
     if (g->log_level > 1)
         fprintf(stderr, "handle property %s for window 0x%x\n",
@@ -1106,17 +1084,13 @@ static void process_xevent_property(Ghandles * g, XID window, XPropertyEvent * e
         send_wmname(g, window);
     else if (ev->atom == g->net_wm_name)
         send_wmname(g, window);
-    else if (ev->atom ==
-            XInternAtom(g->display, "WM_NORMAL_HINTS", False))
+    else if (ev->atom == g->wm_normal_hints)
         send_wmnormalhints(g, window, 0);
-    else if (ev->atom ==
-            XInternAtom(g->display, "WM_CLASS", False))
+    else if (ev->atom == g->wm_class)
         send_wmclass(g, window, 0);
-    else if (ev->atom ==
-            XInternAtom(g->display, "WM_HINTS", False))
+    else if (ev->atom == g->wm_hints)
         retrieve_wmhints(g,window, 0);
-    else if (ev->atom ==
-            XInternAtom(g->display, "WM_PROTOCOLS", False))
+    else if (ev->atom == g->wmProtocols)
         retrieve_wmprotocols(g,window, 0);
     else if (ev->atom == g->xembed_info) {
         struct genlist *l = list_lookup(windows_list, window);
@@ -1336,6 +1310,7 @@ static void process_xevent(Ghandles * g)
         default:
             if (event_buffer.type == (damage_event + XDamageNotify)) {
                 dev = (XDamageNotifyEvent *) & event_buffer;
+                g->time = dev->timestamp;
                 //      fprintf(stderr, "x=%hd y=%hd gx=%hd gy=%hd w=%hd h=%hd\n",
                 //        dev->area.x, dev->area.y, dev->geometry.x, dev->geometry.y, dev->area.width, dev->area.height); 
                 process_xevent_damage(g, dev->drawable,
@@ -1523,9 +1498,10 @@ static void mkghandles(Ghandles * g)
     g->screen = DefaultScreen(g->display);	/* get CRT id number */
     g->root_win = RootWindow(g->display, g->screen);	/* get default attributes */
     g->context = XCreateGC(g->display, g->root_win, 0, NULL);
-    g->wmDeleteMessage =
-        XInternAtom(g->display, "WM_DELETE_WINDOW", False);
+    g->wmDeleteMessage = XInternAtom(g->display, "WM_DELETE_WINDOW", False);
     g->wmProtocols = XInternAtom(g->display, "WM_PROTOCOLS", False);
+    g->wm_hints = XInternAtom(g->display, "WM_HINTS", False);
+    g->wm_class = XInternAtom(g->display, "WM_CLASS", False);
     g->utf8_string_atom = XInternAtom(g->display, "UTF8_STRING", False);
     g->stub_win = XCreateSimpleWindow(g->display, g->root_win,
             0, 0, 1, 1,
@@ -1557,48 +1533,26 @@ static void mkghandles(Ghandles * g)
     g->clipboard_data_len = 0;
     snprintf(tray_sel_atom_name, sizeof(tray_sel_atom_name),
             "_NET_SYSTEM_TRAY_S%u", DefaultScreen(g->display));
-    g->tray_selection =
-        XInternAtom(g->display, tray_sel_atom_name, False);
-    g->tray_opcode =
-        XInternAtom(g->display, "_NET_SYSTEM_TRAY_OPCODE", False);
+    g->tray_selection = XInternAtom(g->display, tray_sel_atom_name, False);
+    g->tray_opcode = XInternAtom(g->display, "_NET_SYSTEM_TRAY_OPCODE", False);
     g->xembed_info = XInternAtom(g->display, "_XEMBED_INFO", False);
     g->wm_state = XInternAtom(g->display, "WM_STATE", False);
     g->net_wm_state = XInternAtom(g->display, "_NET_WM_STATE", False);
     g->wm_state_fullscreen = XInternAtom(g->display, "_NET_WM_STATE_FULLSCREEN", False);
     g->wm_state_demands_attention = XInternAtom(g->display, "_NET_WM_STATE_DEMANDS_ATTENTION", False);
     g->wm_take_focus = XInternAtom(g->display, "WM_TAKE_FOCUS", False);
+    g->wm_normal_hints = XInternAtom(g->display, "WM_NORMAL_HINTS", False);
+    g->clipboard = XInternAtom(g->display, "CLIPBOARD", False);
+    g->targets = XInternAtom(g->display, "TARGETS", False);
+    g->qprop = XInternAtom(g->display, "QUBES_SELECTION", False);
+    g->compound_text = XInternAtom(g->display, "COMPOUND_TEXT", False);
 }
 
 static void handle_keypress(Ghandles * g, XID UNUSED(winid))
 {
     struct msg_keypress key;
     XkbStateRec state;
-    //      XKeyEvent event;
-    //        char buf[256];
     read_data(g->vchan, (char *) &key, sizeof(key));
-#if 0
-    //XGetInputFocus(g->display, &focus_return, &revert_to_return);
-    //      fprintf(stderr, "vmside: type=%d keycode=%d currfoc=0x%x\n", key.type,
-    //              key.keycode, (int)focus_return);
-
-    //      XSetInputFocus(g->display, winid, RevertToParent, CurrentTime);
-    event.display = g->display;
-    event.window = winid;
-    event.root = g->root_win;
-    event.subwindow = None;
-    event.time = CurrentTime;
-    event.x = key.x;
-    event.y = key.y;
-    event.x_root = 1;
-    event.y_root = 1;
-    event.same_screen = TRUE;
-    event.type = key.type;
-    event.keycode = key.keycode;
-    event.state = key.state;
-    XSendEvent(event.display, event.window, TRUE,
-            //                 event.type==KeyPress?KeyPressMask:KeyReleaseMask, 
-            KeyPressMask, (XEvent *) & event);
-#else
     // sync modifiers state
     if (XkbGetState(g->display, XkbUseCoreKbd, &state) != Success) {
         if (g->log_level > 0)
@@ -1655,18 +1609,11 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
     }
 
     feed_xdriver(g, 'K', key.keycode, key.type == KeyPress ? 1 : 0);
-#endif
-    //      fprintf(stderr, "win 0x%x type %d keycode %d\n",
-    //              (int) winid, key.type, key.keycode);
-    //      XSync(g->display, 0);
 }
 
 static void handle_button(Ghandles * g, XID winid)
 {
     struct msg_button key;
-    //      XButtonEvent event;
-    //	XWindowAttributes attr;
-    //	int ret;
     struct genlist *l = list_lookup(windows_list, winid);
 
 
@@ -1676,35 +1623,7 @@ static void handle_button(Ghandles * g, XID winid)
         winid = ((struct window_data*)l->data)->embeder;
         XRaiseWindow(g->display, winid);
     }
-#if 0
-    ret = XGetWindowAttributes(g->display, winid, &attr);
-    if (ret != 1) {
-        fprintf(stderr,
-                "XGetWindowAttributes for 0x%x failed in "
-                "do_button, ret=0x%x\n", (int) winid, ret);
-        return;
-    };
 
-    XSetInputFocus(g->display, winid, RevertToParent, CurrentTime);
-    //      XRaiseWindow(g->display, winid);
-    event.display = g->display;
-    event.window = winid;
-    event.root = g->root_win;
-    event.subwindow = None;
-    event.time = CurrentTime;
-    event.x = key.x;
-    event.y = key.y;
-    event.x_root = attr.x + key.x;
-    event.y_root = attr.y + key.y;
-    event.same_screen = TRUE;
-    event.type = key.type;
-    event.button = key.button;
-    event.state = key.state;
-    XSendEvent(event.display, event.window, TRUE,
-            //                 event.type==KeyPress?KeyPressMask:KeyReleaseMask, 
-            ButtonPressMask, (XEvent *) & event);
-    //      XSync(g->display, 0);
-#endif
     if (g->log_level > 1)
         fprintf(stderr,
                 "send buttonevent, win 0x%x type=%d button=%d\n",
@@ -1733,26 +1652,6 @@ static void handle_motion(Ghandles * g, XID winid)
         return;
     };
 
-#if 0
-    event.display = g->display;
-    event.window = winid;
-    event.root = g->root_win;
-    event.subwindow = None;
-    event.time = CurrentTime;
-    event.x = key.x;
-    event.y = key.y;
-    event.x_root = attr.x + key.x;
-    event.y_root = attr.y + key.y;
-    event.same_screen = TRUE;
-    event.is_hint = key.is_hint;
-    event.state = key.state;
-    event.type = MotionNotify;
-    //      fprintf(stderr, "motion notify for 0x%x\n", (int)winid);
-    XSendEvent(event.display, event.window, TRUE,
-            //                 event.type==KeyPress?KeyPressMask:KeyReleaseMask, 
-            0, (XEvent *) & event);
-    //      XSync(g->display, 0);
-#endif
     feed_xdriver(g, 'M', attr.x + key.x, attr.y + key.y);
 }
 
@@ -1828,7 +1727,7 @@ static void take_focus(Ghandles * g, XID winid)
     ev.format = 32;
     ev.message_type = g->wmProtocols;
     ev.data.l[0] = g->wm_take_focus;
-    ev.data.l[1] = CurrentTime;
+    ev.data.l[1] = g->time;
     XSendEvent(ev.display, ev.window, TRUE, 0, (XEvent *) & ev);
     if (g->log_level > 0)
         fprintf(stderr, "WM_TAKE_FOCUS sent for 0x%x\n",
@@ -1842,21 +1741,8 @@ static void handle_focus(Ghandles * g, XID winid)
     struct genlist *l;
     int input_hint;
     int use_take_focus;
-    //      XFocusChangeEvent event;
 
     read_data(g->vchan, (char *) &key, sizeof(key));
-#if 0
-    event.display = g->display;
-    event.window = winid;
-    event.type = key.type;
-    event.mode = key.mode;
-    event.detail = key.detail;
-
-    fprintf(stderr, "send focuschange for 0x%x type %d\n",
-            (int) winid, key.type);
-    XSendEvent(event.display, event.window, TRUE,
-            0, (XEvent *) & event);
-#endif
     if (key.type == FocusIn
             && (key.mode == NotifyNormal || key.mode == NotifyUngrab)) {
 
@@ -1875,8 +1761,7 @@ static void handle_focus(Ghandles * g, XID winid)
 
         // Give input focus only to window that set the input hint
         if (input_hint)
-            XSetInputFocus(g->display, winid, RevertToParent,
-                    CurrentTime);
+            XSetInputFocus(g->display, winid, RevertToParent, g->time);
 
         // Do not send take focus if the window doesn't support it
         if (use_take_focus)
@@ -1887,9 +1772,14 @@ static void handle_focus(Ghandles * g, XID winid)
     } else if (key.type == FocusOut
             && (key.mode == NotifyNormal
                 || key.mode == NotifyUngrab)) {
-
-        XSetInputFocus(g->display, None, RevertToParent,
-                CurrentTime);
+        if ( (l=list_lookup(windows_list, winid)) && (l->data) )
+            input_hint = ((struct window_data*)l->data)->input_hint;
+        else {
+            fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
+            input_hint = True;
+        }
+        if (input_hint)
+            XSetInputFocus(g->display, None, RevertToParent, g->time);
 
         if (g->log_level > 1)
             fprintf(stderr, "0x%x lost focus\n", (int) winid);
@@ -1976,7 +1866,6 @@ static void handle_close(Ghandles * g, XID winid)
         ev.format = 32;
         ev.message_type = g->wmProtocols;
         ev.data.l[0] = g->wmDeleteMessage;
-        //        XSetInputFocus(g->display, winid, RevertToParent, CurrentTime);
         XSendEvent(ev.display, ev.window, TRUE, 0, (XEvent *) & ev);
         if (g->log_level > 0)
             fprintf(stderr, "wmDeleteMessage sent for 0x%x\n",
@@ -2034,11 +1923,9 @@ static void terminate_and_cleanup_xorg(Ghandles *g) {
 static void handle_clipboard_req(Ghandles * g, XID winid)
 {
     Atom Clp;
-    Atom QProp = XInternAtom(g->display, "QUBES_SELECTION", False);
-    Atom Targets = XInternAtom(g->display, "TARGETS", False);
     Window owner;
 #ifdef CLIPBOARD_4WAY
-    Clp = XInternAtom(g->display, "CLIPBOARD", False);
+    Clp = g->clipboard;
 #else
     Clp = XA_PRIMARY;
 #endif
@@ -2050,14 +1937,12 @@ static void handle_clipboard_req(Ghandles * g, XID winid)
         send_clipboard_data(g->vchan, winid, NULL, 0);
         return;
     }
-    XConvertSelection(g->display, Clp, Targets, QProp,
-            g->stub_win, CurrentTime);
+    XConvertSelection(g->display, Clp, g->targets, g->qprop, g->stub_win, g->time);
 }
 
-static void handle_clipboard_data(Ghandles * g, XID UNUSED(winid), unsigned int len)
+static void handle_clipboard_data(Ghandles * g, XID UNUSED(winid),
+        unsigned int len)
 {
-    Atom Clp = XInternAtom(g->display, "CLIPBOARD", False);
-
     if (g->clipboard_data)
         free(g->clipboard_data);
     // qubes_guid will not bother to send len==-1, really
@@ -2069,9 +1954,8 @@ static void handle_clipboard_data(Ghandles * g, XID UNUSED(winid), unsigned int 
     g->clipboard_data_len = len;
     read_data(g->vchan, (char *) g->clipboard_data, len);
     g->clipboard_data[len] = 0;
-    XSetSelectionOwner(g->display, XA_PRIMARY, g->stub_win,
-            CurrentTime);
-    XSetSelectionOwner(g->display, Clp, g->stub_win, CurrentTime);
+    XSetSelectionOwner(g->display, XA_PRIMARY, g->stub_win, g->time);
+    XSetSelectionOwner(g->display, g->clipboard, g->stub_win, g->time);
 #ifndef CLIPBOARD_4WAY
     XSync(g->display, False);
     feed_xdriver(g, 'B', 2, 1);
@@ -2429,3 +2313,5 @@ int main(int argc, char **argv)
     }
     return 0;
 }
+
+/* vim: set sw=4 ts=4 sts=4 et eol ff=unix fenc=utf-8: */

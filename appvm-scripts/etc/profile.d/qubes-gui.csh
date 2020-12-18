@@ -1,1 +1,2 @@
 setenv DISPLAY ":0"
+setenv _JAVA_AWT_WM_NONREPARENTING "1"
