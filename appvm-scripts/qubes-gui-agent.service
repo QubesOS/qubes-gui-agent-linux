@@ -1,7 +1,7 @@
 [Unit]
 Description=Qubes GUI Agent
 After=qubes-meminfo-writer.service qubes-mount-dirs.service
-ConditionPathExists=!/var/run/qubes-service/lightdm
+ConditionPathExists=!/run/qubes-service/lightdm
 
 [Service]
 StandardInput=tty
@@ -14,7 +14,7 @@ ExecStart=/usr/bin/qubes-gui $GUI_OPTS
 # clean env
 StandardOutput=syslog
 Environment=DISPLAY=:0
-EnvironmentFile=-/var/run/qubes-service-environment
+EnvironmentFile=-/run/qubes-service-environment
 
 [Install]
 WantedBy=multi-user.target
