@@ -1,3 +1,22 @@
+qubes-gui-agent (4.0.33-1) unstable; urgency=medium
+
+  [ Benjamin Moody ]
+  * vmside: Rename wm_state to net_wm_state.
+  * vmside: Implement the WM_STATE property.
+
+  [ Frédéric Pierret (fepitre) ]
+  * debian: update control
+  * debian: update compat
+
+  [ Demi Marie Obenour ]
+  * Remove unnecessary XInternAtom
+  * Log when an unmanaged window is skipped
+  * Only set focus on windows that want it
+  * Tell Java we are a non-reparenting window manager
+  * Avoid passing NULL as an X11 string
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 08 Jan 2021 06:16:47 +0100
+
 qubes-gui-agent (4.0.32-1) unstable; urgency=medium
 
   [ icequbes1 ]
