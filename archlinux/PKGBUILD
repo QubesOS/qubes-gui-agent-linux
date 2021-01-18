@@ -8,7 +8,7 @@ url="http://qubes-os.org/"
 license=('GPL')
 groups=()
 makedepends=(pkg-config make gcc patch git automake autoconf libtool
-			pulseaudio
+			'pulseaudio<14.3'
 			xorg-server-devel xorg-util-macros libxcomposite libxt pixman
 			qubes-vm-gui-common qubes-libvchan qubes-db-vm
 			)
@@ -71,7 +71,7 @@ install -D $srcdir/PKGBUILD-z-qubes-session.sh $pkgdir/etc/X11/xinit/xinitrc.d/z
 package_qubes-vm-pulseaudio() {
 
 pkgdesc="Pulseaudio support for Qubes VM"
-depends=('alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'pulseaudio<14.1')
+depends=('alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'pulseaudio<14.3')
 install=PKGBUILD-pulseaudio.install
 pa_ver=$((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-")
 
