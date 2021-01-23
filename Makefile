@@ -104,8 +104,13 @@ install-pulseaudio:
 		$(DESTDIR)/usr/bin/start-pulseaudio-with-vchan
 	install -m 0644 -D pulse/qubes-default.pa \
 		$(DESTDIR)/etc/pulse/qubes-default.pa
+ifneq ($(shell lsb_release -is), Ubuntu)
 	install -D pulse/module-vchan-sink.so \
 		$(DESTDIR)$(LIBDIR)/pulse-$(PA_VER_MAJOR_MINOR)/modules/module-vchan-sink.so
+else
+	install -D pulse/module-vchan-sink.so \
+		$(DESTDIR)$(LIBDIR)/pulse-$(PA_VER_FULL)/modules/module-vchan-sink.so
+endif
 	install -m 0644 -D appvm-scripts/etc/tmpfiles.d/qubes-pulseaudio.conf \
 		$(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-pulseaudio.conf
 	install -m 0644 -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop \
