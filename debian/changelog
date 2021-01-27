@@ -1,3 +1,14 @@
+qubes-gui-agent (4.0.35-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * Add pulseaudio-14.1 headers
+  * Add pulseaudio 14.2 headers
+
+  [ unman ]
+  * Fix pulseaudio in Ubuntu templates
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 27 Jan 2021 06:26:25 +0100
+
 qubes-gui-agent (4.0.34-1) unstable; urgency=medium
 
   * debian: prevent restart on update
