@@ -38,6 +38,7 @@ URL:		http://www.qubes-os.org
 
 %define pa_ver_full %((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -d "-" -f 1)
 %define pa_ver_major_minor %((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -d "-" -f 1 | cut -d "." -f 1,2)
+%define backend_vmm @BACKEND_VMM@
 
 BuildRequires:	gcc
 BuildRequires:	libX11-devel
@@ -52,7 +53,9 @@ BuildRequires:	pam-devel
 BuildRequires:	qubes-libvchan-devel
 BuildRequires:	qubes-gui-common-devel >= 4.1.0
 BuildRequires:	qubes-db-devel
+%if x%{?backend_vmm} == xxen
 BuildRequires:	xen-devel
+%endif
 Requires:	Xorg %(xserver-sdk-abi-requires ansic)
 Requires:	Xorg %(xserver-sdk-abi-requires videodrv)
 Requires:	libXfixes
