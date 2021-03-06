@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/bash
 echo "Starting qubes-session..."
 
 exec /usr/bin/qubes-session 

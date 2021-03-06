@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/bash
 
 # This may be called before qubes-session is fully initialized, so do not rely
 # on having DISPLAY set from there

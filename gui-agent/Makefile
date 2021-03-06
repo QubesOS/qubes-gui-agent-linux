@@ -19,16 +19,16 @@
 #
 #
 
-CC ?= gcc
-CFLAGS += -I../include/ `pkg-config --cflags vchan` -g -Wall -Wextra -Werror -pie -fPIC
-OBJS = vmside.o \
-	../gui-common/txrx-vchan.o ../gui-common/error.o ../common/list.o ../gui-common/encoding.o 
-LIBS = -lX11 -lXdamage -lXcomposite -lXfixes `pkg-config --libs vchan` -lqubesdb
+ROOT_DIR := $(patsubst %/gui-agent/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+GUI_COMMON_DIR = $(realpath $(ROOT_DIR)/gui-common)
 
+CC ?= gcc
+CFLAGS += -I$(ROOT_DIR)/include/ `pkg-config --cflags vchan` -g -Wall -Wextra -Werror -pie -fPIC -ffile-prefix-map=$(ROOT_DIR)=.
+OBJS = vmside.o $(GUI_COMMON_DIR)/txrx-vchan.o $(GUI_COMMON_DIR)/error.o $(ROOT_DIR)/common/list.o $(GUI_COMMON_DIR)/encoding.o
+LIBS = -lX11 -lXdamage -lXcomposite -lXfixes `pkg-config --libs vchan` -lqubesdb
 
 all: qubes-gui
 qubes-gui: $(OBJS)
-	$(CC) $(LDFLAGS) -pie -g -o qubes-gui $(OBJS) \
-		$(LIBS)
+	$(CC) $(LDFLAGS) -pie -g -o qubes-gui $(OBJS) $(LIBS)
 clean:
-	rm -f qubes-gui *.o *~
+	rm -f qubes-gui *.o *~ $(ROOT_DIR)/common/list.o

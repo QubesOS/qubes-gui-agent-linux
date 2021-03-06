@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/sh
 
 # This file may be also executed by qubes-change-keyboard-layout
 

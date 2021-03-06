@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/sh
 
 . /usr/lib/qubes/init/functions
 

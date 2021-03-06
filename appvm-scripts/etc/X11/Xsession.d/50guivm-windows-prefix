@@ -1,5 +1,3 @@
-#!/bin/sh
-
 # Source Qubes library.
 # shellcheck disable=SC1091
 . /usr/lib/qubes/init/functions

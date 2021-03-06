@@ -29,9 +29,8 @@ PA_VER_MAJOR_MINOR ?= $(shell echo $(PA_VER_FULL) | cut -d "." -f 1,2)
 
 help:
 	@echo "Qubes GUI main Makefile:" ;\
-	    echo; \
-	    echo "make clean                <--- clean all the binary files";\
-	    @exit 0;
+	echo; \
+	echo "make clean                <--- clean all the binary files";\
 
 appvm: gui-agent/qubes-gui gui-common/qubes-gui-runuser \
 	xf86-input-mfndev/src/.libs/qubes_drv.so \
@@ -104,7 +103,7 @@ install-pulseaudio:
 		$(DESTDIR)/usr/bin/start-pulseaudio-with-vchan
 	install -m 0644 -D pulse/qubes-default.pa \
 		$(DESTDIR)/etc/pulse/qubes-default.pa
-ifneq ($(shell lsb_release -is), Ubuntu)
+ifneq ($(shell lsb_release -is 2>/dev/null), Ubuntu)
 	install -D pulse/module-vchan-sink.so \
 		$(DESTDIR)$(LIBDIR)/pulse-$(PA_VER_MAJOR_MINOR)/modules/module-vchan-sink.so
 else
@@ -148,7 +147,7 @@ install-common:
 		$(DESTDIR)/etc/profile.d/qubes-gui.csh
 	install -m 0644 -D appvm-scripts/etc/securitylimits.d/90-qubes-gui.conf \
 		$(DESTDIR)/etc/security/limits.d/90-qubes-gui.conf
-ifneq ($(shell lsb_release -is), Ubuntu)
+ifneq ($(shell lsb_release -is 2>/dev/null), Ubuntu)
 	install -m 0644 -D appvm-scripts/etc/xdg/Trolltech.conf \
 		$(DESTDIR)/etc/xdg/Trolltech.conf
 endif
@@ -175,13 +174,13 @@ endif
 		$(DESTDIR)/usr/lib/qubes/qubes-gui-agent-pre.sh
 	install -D appvm-scripts/usr/lib/qubes/qubes-keymap.sh \
 		$(DESTDIR)/usr/lib/qubes/qubes-keymap.sh
-ifeq ($(shell lsb_release -is), Debian)
+ifeq ($(shell lsb_release -is 2>/dev/null), Debian)
 	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent.debian \
 		$(DESTDIR)/etc/pam.d/qubes-gui-agent
-else ifeq ($(shell lsb_release -is), Ubuntu)
+else ifeq ($(shell lsb_release -is 2>/dev/null), Ubuntu)
 	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent.debian \
 		$(DESTDIR)/etc/pam.d/qubes-gui-agent
-else ifeq ($(shell lsb_release -is), Arch)
+else ifeq ($(shell lsb_release -is 2>/dev/null), Arch)
 	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent.archlinux \
 		$(DESTDIR)/etc/pam.d/qubes-gui-agent
 else
