@@ -587,7 +587,7 @@ static int getwmname_tochar(Ghandles * g, XID window, char *outbuf, int bufsize)
         XFree(text_prop_return.value);
         return 0;
     }
-    strncat(outbuf, list[0], bufsize);
+    strncat(outbuf, list[0], bufsize - 1);
     XFree(text_prop_return.value);
     XFreeStringList(list);
     if (g->log_level > 0)
@@ -602,7 +602,7 @@ void send_wmname(Ghandles * g, XID window)
     memset(&msg, 0, sizeof(msg));
     /* try _NET_WM_NAME, then fallback to WM_NAME */
     if (!get_net_wmname(g, window, msg.data, sizeof(msg.data)))
-        if (!getwmname_tochar(g, window, msg.data, sizeof(msg.data) - 1))
+        if (!getwmname_tochar(g, window, msg.data, sizeof(msg.data)))
             return;
     hdr.window = window;
     hdr.type = MSG_WMNAME;
