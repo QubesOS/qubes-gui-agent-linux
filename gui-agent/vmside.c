@@ -394,7 +394,7 @@ int getwmname_tochar(Ghandles * g, XID window, char *outbuf, int bufsize)
         XFree(text_prop_return.value);
         return 0;
     }
-    strncat(outbuf, list[0], bufsize);
+    strncat(outbuf, list[0], bufsize - 1);
     XFree(text_prop_return.value);
     XFreeStringList(list);
     if (g->log_level > 0)
