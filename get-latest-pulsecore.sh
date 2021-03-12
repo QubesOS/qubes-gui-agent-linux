@@ -21,7 +21,9 @@ if [ ! -d "$BUILDERDIR" ]; then
     exit 1
 fi
 
-LATEST_FEDORA_RELEASE="$(git ls-remote --heads https://src.fedoraproject.org/rpms/fedora-release | grep -Po "refs/heads/f[0-9][1-9]*" | sed 's#refs/heads/f##g' | sort -g | tail -1)"
+if [ -z "$LATEST_FEDORA_RELEASE" ]; then
+    LATEST_FEDORA_RELEASE="$(git ls-remote --heads https://src.fedoraproject.org/rpms/fedora-release | grep -Po "refs/heads/f[0-9][1-9]*" | sed 's#refs/heads/f##g' | sort -g | tail -1)"
+fi
 LATEST_FEDORA_VERREL="$(dnf -q repoquery pulseaudio --disablerepo=* --enablerepo=fedora --enablerepo=updates --releasever="$LATEST_FEDORA_RELEASE" | grep -Po "[0-9][1-9]*\.*[0-9]*\.*[0-9]*-[0-9]*" | sort -V | tail -1)"
 
 LATEST_FEDORA_VERSION="$(echo "$LATEST_FEDORA_VERREL" | cut -d'-' -f1)"
