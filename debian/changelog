@@ -1,3 +1,10 @@
+qubes-gui-agent (4.0.36-1) unstable; urgency=medium
+
+  [ Rusty Bird ]
+  * vmside: fix strncat() buffer overflow in getwmname_tochar()
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 15 Mar 2021 23:23:22 +0100
+
 qubes-gui-agent (4.0.35-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
