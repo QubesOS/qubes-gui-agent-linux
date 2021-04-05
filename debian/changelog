@@ -1,3 +1,13 @@
+qubes-gui-agent (4.1.17-1) unstable; urgency=medium
+
+  [ Rusty Bird ]
+  * vmside: make strncat() length more obvious
+
+  [ Frédéric Pierret (fepitre) ]
+  * get-latest-pulsecore: default value for latest Fedora release
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 05 Apr 2021 16:38:49 +0200
+
 qubes-gui-agent (4.1.16-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
