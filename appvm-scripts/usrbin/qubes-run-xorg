@@ -82,6 +82,10 @@ if [ -f /etc/X11/Xsession ]; then
         XORG="/usr/bin/Xorg"
     fi
 fi
+if [ -f /etc/X11/xinit/xinitrc ]; then
+    # openSUSE
+    XSESSION="/etc/X11/xinit/xinitrc.common"
+fi
 
 # Defaults value in case default-user value is not available
 DEFAULT_USER="$(qubesdb-read /default-user 2>/dev/null)"

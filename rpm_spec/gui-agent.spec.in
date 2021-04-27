@@ -46,25 +46,48 @@ BuildRequires:	libXdamage-devel
 BuildRequires:	libXfixes-devel
 BuildRequires:	libXt-devel
 BuildRequires:	libtool-ltdl-devel
-BuildRequires:	pulseaudio-libs-devel >= 0.9.21, pulseaudio-libs-devel <= 14.2
-BuildRequires:	xorg-x11-server-devel
+%if 0%{?suse_version} > 0
+%define pulseaudio_libs_pkgname libpulse0
+BuildRequires:	libpulse-devel <= 14.2
+BuildRequires:	xorg-x11-server-sdk
+%else
+%define pulseaudio_libs_pkgname pulseaudio-libs
+BuildRequires:  pulseaudio-libs-devel >= 0.9.21, pulseaudio-libs-devel <= 14.2
+BuildRequires:  xorg-x11-server-devel
+%endif
 BuildRequires:	pam-devel
 BuildRequires:	qubes-libvchan-devel
 BuildRequires:	qubes-gui-common-devel >= 4.1.0
 BuildRequires:	qubes-db-devel
 BuildRequires:	xen-devel
+
+%if 0%{?suse_version} > 0
+%x11_abi_ansic_req
+%x11_abi_videodrv_req
+Requires:	xorg-x11-server
+Requires:	xorg-x11-server-extra
+Requires:	xinit
+Requires:	xdpyinfo
+Requires:	xev
+Requires:	xprop
+Requires:	xrandr
+Requires:	libXfixes3
+Requires:	%{python3_default}-xcffib
+%else
 Requires:	Xorg %(xserver-sdk-abi-requires ansic)
 Requires:	Xorg %(xserver-sdk-abi-requires videodrv)
-Requires:	libXfixes
-Requires:	qubes-core-vm >= 3.0.14
+Requires:	xorg-x11-server-Xorg
+Requires:	xorg-x11-server-Xephyr
 Requires:	xorg-x11-xinit
+Requires:	xorg-x11-utils
+Requires:	libXfixes
+Requires:	python%{python3_pkgversion}-xcffib
+%endif
+
+Requires:	qubes-core-vm >= 3.0.14
 Requires:	qubes-libvchan
 # qubesdb-read --wait option
 Requires:	qubes-db >= 4.1.4
-Requires:	python%{python3_pkgversion}-xcffib
-Requires:   xorg-x11-utils
-Requires:   xorg-x11-server-Xorg
-Requires:   xorg-x11-server-Xephyr
 Provides:   qubes-gui-vm = %{version}-%{release}
 Obsoletes:  qubes-gui-vm < 4.0.0
 
@@ -108,6 +131,7 @@ make appvm
 rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT \
                      LIBDIR=%{_libdir} \
+                     UNITDIR=%{_unitdir} \
                      DATADIR=%{_datadir} \
                      PA_VER_FULL=%{pa_ver_full}
 
@@ -116,10 +140,21 @@ if [ -x /bin/systemctl ] && readlink /sbin/init | grep -q systemd; then
     /bin/systemctl enable qubes-gui-agent.service 2> /dev/null
 fi
 
+%if 0%{?suse_version} > 0
+%{_sbindir}/update-alternatives --install %{_datadir}/xsessions/default.desktop \
+  default-xsession.desktop %{_datadir}/xsessions/qubes.desktop 25
+%endif
+
 %post -n pulseaudio-qubes
 
 sed -i '/^autospawn/d' /etc/pulse/client.conf
 echo autospawn=no >> /etc/pulse/client.conf
+
+%if 0%{?suse_version} > 0
+%postun
+[ -f %{_datadir}/xsessions/qubes.desktop ] || %{_sbindir}/update-alternatives \
+  --remove default-xsession.desktop %{_datadir}/xsessions/qubes.desktop
+%endif
 
 %preun
 if [ "$1" = 0 ] ; then
@@ -135,7 +170,7 @@ if [ -d '/etc/init.d' ] && ! [ "$(ls -A /etc/init.d/ 2> /dev/null)" ]; then
     rmdir /etc/init.d
 fi
 
-%triggerin -n pulseaudio-qubes -- pulseaudio-libs
+%triggerin -n pulseaudio-qubes -- %{pulseaudio_libs_pkgname}
 
 sed -i '/^autospawn/d' /etc/pulse/client.conf
 echo autospawn=no >> /etc/pulse/client.conf
@@ -170,8 +205,12 @@ rm -f %{name}-%{version}
 /etc/qubes-rpc/qubes.SetMonitorLayout
 /etc/qubes-rpc/qubes.GuiVMSession
 /etc/qubes/post-install.d/20-qubes-guivm-gui-agent.sh
+%if 0%{?suse_version} > 0
+/usr/share/xsessions/qubes.desktop
+%else
 %config /etc/sysconfig/desktop
-/lib/systemd/system/qubes-gui-agent.service
+%endif
+%{_unitdir}/qubes-gui-agent.service
 /lib/udev/rules.d/70-master-of-seat.rules
 /usr/lib/sysctl.d/30-qubes-gui-agent.conf
 /usr/lib/qubes/qubes-gui-agent-pre.sh

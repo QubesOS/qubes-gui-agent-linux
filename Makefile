@@ -23,6 +23,7 @@ VERSION := $(shell cat version)
 LIBDIR ?= /usr/lib64
 USRLIBDIR ?= /usr/lib
 SYSLIBDIR ?= /lib
+UNITDIR ?= $(SYSLIBDIR)/systemd/system
 DATADIR ?= /usr/share
 PA_VER_FULL ?= $(shell pkg-config --modversion libpulse | cut -d "-" -f 1 || echo 0.0)
 PA_VER_MAJOR_MINOR ?= $(shell echo $(PA_VER_FULL) | cut -d "." -f 1,2)
@@ -79,9 +80,14 @@ install: install-rh-agent install-pulseaudio
 
 install-rh-agent: appvm install-common
 	install -m 0644 -D appvm-scripts/qubes-gui-agent.service \
-		$(DESTDIR)/$(SYSLIBDIR)/systemd/system/qubes-gui-agent.service
+		$(DESTDIR)/$(UNITDIR)/qubes-gui-agent.service
+ifeq (openSUSE, $(shell lsb_release -is))
+	install -m 0644 -D appvm-scripts/usr/share/xsessions/qubes.desktop \
+		$(DESTDIR)/usr/share/xsessions/qubes.desktop
+else
 	install -m 0644 -D appvm-scripts/etc/sysconfig/desktop \
 		$(DESTDIR)/etc/sysconfig/desktop
+endif
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh \
 		$(DESTDIR)/etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/20qt-gnome-desktop-session-id.sh \
@@ -183,6 +189,9 @@ else ifeq ($(shell lsb_release -is), Ubuntu)
 		$(DESTDIR)/etc/pam.d/qubes-gui-agent
 else ifeq ($(shell lsb_release -is), Arch)
 	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent.archlinux \
+		$(DESTDIR)/etc/pam.d/qubes-gui-agent
+else ifeq ($(shell lsb_release -is), openSUSE)
+	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent.opensuse \
 		$(DESTDIR)/etc/pam.d/qubes-gui-agent
 else
 	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent \

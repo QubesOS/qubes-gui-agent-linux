@@ -1,0 +1,5 @@
+[Desktop Entry]
+Encoding=UTF-8
+Type=XSession
+Exec=qubes-session
+Name=QubesOS
