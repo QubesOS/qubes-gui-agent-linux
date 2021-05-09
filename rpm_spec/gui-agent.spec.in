@@ -58,6 +58,11 @@ Requires:	xorg-x11-xinit
 Requires:	qubes-libvchan-@BACKEND_VMM@
 Requires:	python%{python3_pkgversion}-xcffib
 Requires:   xorg-x11-server-Xorg
+Requires:   setxkbmap
+Requires:   xsetroot
+Requires:   xrdb
+Requires:   xmodmap
+
 Provides:   qubes-gui-vm = %{version}-%{release}
 Obsoletes:  qubes-gui-vm < 4.0.0
 
