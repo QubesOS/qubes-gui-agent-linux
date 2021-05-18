@@ -65,6 +65,11 @@ Requires:	python%{python3_pkgversion}-xcffib
 Requires:   xorg-x11-utils
 Requires:   xorg-x11-server-Xorg
 Requires:   xorg-x11-server-Xephyr
+Requires:   setxkbmap
+Requires:   xsetroot
+Requires:   xrdb
+Requires:   xmodmap
+
 Provides:   qubes-gui-vm = %{version}-%{release}
 Obsoletes:  qubes-gui-vm < 4.0.0
 
