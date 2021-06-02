@@ -102,6 +102,7 @@ struct _global_handles {
     Atom targets;          /* Atom: TARGETS */
     Atom qprop;            /* Atom: QUBES_SELECTION */
     Atom compound_text;    /* Atom: COMPOUND_TEXT */
+    Atom xembed;           /* Atom: _XEMBED */
     int xserver_fd;
     int xserver_listen_fd;
     libvchan_t *vchan;
@@ -1210,8 +1211,7 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
                 memset(&resp, 0, sizeof(resp));
                 resp.type = ClientMessage;
                 resp.window = w;
-                resp.message_type =
-                    XInternAtom(g->display, "_XEMBED", False);
+                resp.message_type = g->xembed;
                 resp.format = 32;
                 resp.data.l[0] = ev->data.l[0];
                 resp.data.l[1] = XEMBED_EMBEDDED_NOTIFY;
@@ -1505,6 +1505,7 @@ static void mkghandles(Ghandles * g)
     g->screen = DefaultScreen(g->display);	/* get CRT id number */
     g->root_win = RootWindow(g->display, g->screen);	/* get default attributes */
     g->context = XCreateGC(g->display, g->root_win, 0, NULL);
+    g->xembed = XInternAtom(g->display, "_XEMBED", False);
     g->wmDeleteMessage = XInternAtom(g->display, "WM_DELETE_WINDOW", False);
     g->wmProtocols = XInternAtom(g->display, "WM_PROTOCOLS", False);
     g->wm_hints = XInternAtom(g->display, "WM_HINTS", False);
