@@ -1352,20 +1352,15 @@ static int send_full_window_info(Ghandles *g, XID w, struct window_data *wd)
     Window transient;
     unsigned int children_count;
 
-    if (wd->is_docked)
-        ret = XGetWindowAttributes(g->display, wd->embeder, &attr);
-    else
-        ret = XGetWindowAttributes(g->display, w, &attr);
+    const Window window_to_query = wd->is_docked ? wd->embeder : w;
+    ret = XGetWindowAttributes(g->display, window_to_query, &attr);
     if (ret != 1) {
         fprintf(stderr, "XGetWindowAttributes for 0x%x failed in "
                 "send_window_state, ret=0x%x\n", (int) w,
                 ret);
         return 0;
     };
-    if (wd->is_docked)
-        ret = XQueryTree(g->display, wd->embeder, &root, &parent, &children_list, &children_count);
-    else
-        ret = XQueryTree(g->display, w, &root, &parent, &children_list, &children_count);
+    ret = XQueryTree(g->display, window_to_query, &root, &parent, &children_list, &children_count);
     if (ret != 1) {
         fprintf(stderr, "XQueryTree for 0x%x failed in "
                 "send_window_state, ret=0x%x\n", (int) w,
