@@ -1512,6 +1512,10 @@ static void mkghandles(Ghandles * g)
                 g->screen),
             WhitePixel(g->display,
                 g->screen));
+    if ((unsigned)snprintf(tray_sel_atom_name, sizeof(tray_sel_atom_name),
+            "_NET_SYSTEM_TRAY_S%u", DefaultScreen(g->display)) >=
+        sizeof tray_sel_atom_name)
+        abort();
     /* pretend that GUI agent is window manager */
     g->net_wm_name = XInternAtom(g->display, "_NET_WM_NAME", False);
     net_supporting_wm_check = XInternAtom(g->display, "_NET_SUPPORTING_WM_CHECK", False);
@@ -1534,8 +1538,6 @@ static void mkghandles(Ghandles * g)
 
     g->clipboard_data = NULL;
     g->clipboard_data_len = 0;
-    snprintf(tray_sel_atom_name, sizeof(tray_sel_atom_name),
-            "_NET_SYSTEM_TRAY_S%u", DefaultScreen(g->display));
     g->tray_selection = XInternAtom(g->display, tray_sel_atom_name, False);
     g->tray_opcode = XInternAtom(g->display, "_NET_SYSTEM_TRAY_OPCODE", False);
     g->xembed_info = XInternAtom(g->display, "_XEMBED_INFO", False);
