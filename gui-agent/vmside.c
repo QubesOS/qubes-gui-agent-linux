@@ -2255,7 +2255,10 @@ int main(int argc, char **argv)
         memset(&ev, 0, sizeof(ev));
         ev.type = ClientMessage;
         ev.send_event = True;
-        ev.message_type = XInternAtom(g.display, "MANAGER", False);
+        if ((ev.message_type = XInternAtom(g.display, "MANAGER", False)) == None) {
+            fputs("Cannot intern MANAGER atom\n", stderr);
+            exit(1);
+        }
         ev.window = DefaultRootWindow(g.display);
         ev.format = 32;
         ev.data.l[0] = CurrentTime;
