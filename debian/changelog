@@ -1,3 +1,10 @@
+qubes-gui-agent (4.1.18-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * spec: ensure R for few x11 tools
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 12 Jun 2021 17:57:09 +0200
+
 qubes-gui-agent (4.1.17-1) unstable; urgency=medium
 
   [ Rusty Bird ]
