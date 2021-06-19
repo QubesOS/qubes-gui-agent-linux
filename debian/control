@@ -111,3 +111,12 @@ Depends:
     ${misc:Depends}
 Description: XFCE desktop support for Qubes VM
  XFCE desktop support for Qubes VM
+
+Package: qubes-gui-vnc
+Architecture: any
+Depends:
+    x11vnc
+    ${shlibs:Depends},
+    ${misc:Depends}
+Description: Remote GuiVM support using VNC
+ Remote GuiVM support using VNC

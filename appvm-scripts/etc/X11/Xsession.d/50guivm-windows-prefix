@@ -7,6 +7,6 @@
 QUBES_VMNAME="$(qubesdb-read /guivm-windows-prefix)"
 
 # Set _QUBES_VMNAME atom for a window manager (e.g. xfwm4)
-if qsvc guivm-gui-agent; then
+if qsvc guivm; then
     xprop -root -f _QUBES_VMNAME 8s -set _QUBES_VMNAME "${QUBES_VMNAME:-GuiVM}"
 fi

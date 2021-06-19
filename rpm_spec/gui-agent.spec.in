@@ -94,6 +94,13 @@ Summary: XFCE desktop support for Qubes VM
 %description xfce
 XFCE desktop support for Qubes VM
 
+%package -n qubes-gui-vnc
+Summary: Remote GuiVM support using VNC
+Requires: x11vnc
+
+%description -n qubes-gui-vnc
+Remote GuiVM support using VNC
+
 %description
 The Qubes GUI agent that needs to be installed in VM in order to provide the
 Qubes fancy GUI.
@@ -197,6 +204,13 @@ rm -f %{name}-%{version}
 
 %files xfce
 /etc/X11/xinit/xinitrc.d/60xfce-desktop.sh
+
+%files -n qubes-gui-vnc
+#/lib/systemd/system/qubes-gui-vncserver.service
+%attr(0644,root,root) /etc/X11/xorg-qubes-x11vnc.conf.template
+%attr(0644,root,root) /etc/systemd/system/lightdm.service.d/qubes-guivm-vnc.conf
+/usr/bin/qubes-run-x11vnc-pre
+/usr/bin/qubes-run-x11vnc
 
 %changelog
 @CHANGELOG@

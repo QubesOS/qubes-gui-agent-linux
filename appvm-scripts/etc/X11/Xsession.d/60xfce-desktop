@@ -3,7 +3,7 @@
 # shellcheck disable=SC1091
 . /usr/lib/qubes/init/functions
 
-if ! qsvc guivm-gui-agent; then
+if ! qsvc guivm; then
 
 XDG_MENU_PREFIX="xfce-"
 export XDG_MENU_PREFIX

@@ -24,6 +24,8 @@
 # shellcheck disable=SC1091
 . /usr/lib/qubes/init/functions
 
+## This script is triggered by qubes-gui-agent systemd service.
+
 #expects W, H, MEM and DEPTH env vars to be set by invoker
 DUMMY_MAX_CLOCK=300 #hardcoded in dummy_drv
 PREFERRED_HSYNC=50
@@ -107,7 +109,6 @@ fi
 
 if qsvc guivm-gui-agent; then
     DISPLAY_XORG=:1
-    DISPLAY_XEPHYR=:0
 
     # Create Xorg. Xephyr will be started using qubes-start-xephyr later.
     exec runuser -u "$DEFAULT_USER" -- /bin/sh -l -c "exec $XORG $DISPLAY_XORG -nolisten tcp vt07 -wr -config xorg-qubes.conf > ~/.xorg-errors 2>&1" &

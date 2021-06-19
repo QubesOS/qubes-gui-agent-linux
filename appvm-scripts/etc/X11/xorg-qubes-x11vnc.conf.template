@@ -1,0 +1,34 @@
+Section "Module"
+    Load "fb"
+EndSection
+
+Section "ServerLayout"
+    Identifier      "Default Layout"
+    Screen          0 "Screen0" 0 0
+EndSection
+
+Section "Device"
+    Identifier      "Videocard0"
+    Driver          "dummyqbs"
+    VideoRam        %MEM%
+    Option          "GUIDomID" "%GUI_DOMID%"
+EndSection
+
+Section "Monitor"
+    Identifier      "Monitor0"
+    HorizSync       %MIN_MAX_HSYNC%
+    VertRefresh     %MIN_MAX_VSYNC%
+%MODELINES%
+    Option          "PreferredMode" "QB1024x768"
+EndSection
+
+Section "Screen"
+    Identifier      "Screen0"
+    Device          "Videocard0"
+	Monitor         "Monitor0"
+    DefaultDepth    %DEPTH%
+    SubSection "Display"
+        Viewport        0 0
+        Depth           %DEPTH%
+    EndSubSection
+EndSection
