@@ -21,6 +21,6 @@
 #
 X11VNC=/usr/bin/x11vnc
 # WIP: Ensure to have the good set of x11vnc options.
-OPTIONS_VNC="-display :0 -auth /var/run/lightdm/root/\:0 -noxrecord -noxfixes -noxdamage -loop"
+OPTIONS_VNC="-display :0 -auth /var/run/lightdm/root/:0 -forever"
 
 $X11VNC $OPTIONS_VNC &
