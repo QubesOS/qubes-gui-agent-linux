@@ -37,6 +37,7 @@ array_min_max() {
 }
 
 if qsvc guivm-vnc; then
+    # Common part from qubes-run-xorg to setup dummyqbs xorg.org
     GUI_DOMID="$(qubesdb-read /qubes-gui-domain-xid 2>/dev/null)"
     MEM_MIN="$(qubesdb-read /qubes-gui-videoram-min 2>/dev/null)"
     MEM_OVERHEAD="$(qubesdb-read /qubes-gui-videoram-overhead 2>/dev/null)"
@@ -55,6 +56,7 @@ if qsvc guivm-vnc; then
     HSYNC=()
     VSYNC=()
     MODELINES=()
+    # Set of common resolutions (VGA, VGA wide and HD)
     RESOLUTIONS="320x240
     640x480
     800x600
@@ -76,6 +78,7 @@ if qsvc guivm-vnc; then
 
     for RES in ${RESOLUTIONS[*]};
     do
+        # Defines every modeline like qubes.SetMonitorLayout
         W=${RES%x*}
         H=${RES#*x}
         HTOTAL=$((W+3))
@@ -90,6 +93,7 @@ if qsvc guivm-vnc; then
         VREFR_START=$((CLOCK*1000000/HTOTAL/VTOTAL))
         VREFR_END=$((VREFR_START+1))
 
+        # Store computed h/v sync and Xorg Modeline entry
         HSYNC+=("$HSYNC_START" "$HSYNC_END")
         VSYNC+=("$VREFR_START" "$VREFR_END")
         MODELINES+=("    Modeline \"QB$RES\" $MODELINE")
@@ -99,6 +103,7 @@ if qsvc guivm-vnc; then
     MIN_MAX_HSYNC="$(array_min_max "${HSYNC[@]}")"
     MIN_MAX_VSYNC="$(array_min_max "${VSYNC[@]}")"
 
+    # Render the template
     sed -e s/%MEM%/$MEM/ \
         -e s/%GUI_DOMID%/"$GUI_DOMID"/ \
         -e s/%DEPTH%/$DEPTH/ \
