@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # The Qubes OS Project, http://www.qubes-os.org
 #
@@ -19,8 +19,133 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 #
-X11VNC=/usr/bin/x11vnc
-# WIP: Ensure to have the good set of x11vnc options.
-OPTIONS_VNC="-display :0 -auth /var/run/lightdm/root/:0 -forever"
 
-$X11VNC $OPTIONS_VNC &
+# Source Qubes library.
+# shellcheck disable=SC1091
+. /usr/lib/qubes/init/functions
+
+array_min_max() {
+    read -r -a array <<< "$@"
+    max=${array[0]}
+    min=${array[0]}
+
+    for i in ${array[*]}; do
+      (( i > max )) && max=$i
+      (( i < min )) && min=$i
+    done
+    echo "$min"-"$max"
+}
+
+
+guivm_vnc_pre () {
+    # Common part from qubes-run-xorg to setup dummyqbs xorg.org
+    GUI_DOMID="$(qubesdb-read /qubes-gui-domain-xid 2>/dev/null)"
+    MEM_MIN="$(qubesdb-read /qubes-gui-videoram-min 2>/dev/null)"
+    MEM_OVERHEAD="$(qubesdb-read /qubes-gui-videoram-overhead 2>/dev/null)"
+    : "${MEM_MIN:=0}"
+    : "${MEM_OVERHEAD:=$((2560 * 1600 * 4 / 1024))}"
+
+    MEM=$((MEM + MEM_OVERHEAD))
+    if [ $MEM -lt $MEM_MIN ]; then
+        MEM=$MEM_MIN
+    fi
+
+    DUMMY_MAX_CLOCK=300
+    PREFERRED_HSYNC=50
+    DEPTH=24
+
+    HSYNC=()
+    VSYNC=()
+    MODELINES=()
+    # Set of common resolutions (VGA, VGA wide and HD)
+    RESOLUTIONS="320x240
+    640x480
+    800x600
+    1024x768
+    1152x864
+    1280x1024
+    1400x1050
+    1600x1200
+    2048x1536
+    800x480
+    1366x768
+    1440x900
+    1600x1024
+    1680x1050
+    1920x1200
+    2560x1600
+    1280x720
+    1920x1080"
+
+    for RES in ${RESOLUTIONS[*]};
+    do
+        # Defines every modeline like qubes.SetMonitorLayout
+        W=${RES%x*}
+        H=${RES#*x}
+        HTOTAL=$((W+3))
+        VTOTAL=$((H+3))
+        CLOCK=$((PREFERRED_HSYNC*HTOTAL/1000))
+        if [ $CLOCK -gt $DUMMY_MAX_CLOCK ]; then CLOCK=$DUMMY_MAX_CLOCK ; fi
+        MODELINE="$CLOCK $W $((W+1)) $((W+2)) $HTOTAL $H $((H+1)) $((H+2)) $VTOTAL"
+
+        HSYNC_START=$((CLOCK*1000/HTOTAL))
+        HSYNC_END=$((HSYNC_START+1))
+
+        VREFR_START=$((CLOCK*1000000/HTOTAL/VTOTAL))
+        VREFR_END=$((VREFR_START+1))
+
+        # Store computed h/v sync and Xorg Modeline entry
+        HSYNC+=("$HSYNC_START" "$HSYNC_END")
+        VSYNC+=("$VREFR_START" "$VREFR_END")
+        MODELINES+=("    Modeline \"QB$RES\" $MODELINE")
+    done
+
+    ALL_MODELINES="$(printf '%s\\n' "${MODELINES[@]}")"
+    MIN_MAX_HSYNC="$(array_min_max "${HSYNC[@]}")"
+    MIN_MAX_VSYNC="$(array_min_max "${VSYNC[@]}")"
+
+    # Backup xorg.conf if user has created custom one
+    if [ -e /etc/X11/xorg.conf ]; then
+        cp /etc/X11/xorg.conf /etc/X11/xorg.conf.backup_guivm_vnc
+    fi
+
+    # Render the template
+    sed -e s/%MEM%/$MEM/ \
+        -e s/%GUI_DOMID%/"${GUI_DOMID:-0}"/ \
+        -e s/%DEPTH%/$DEPTH/ \
+        -e s/%MODELINES%/"$ALL_MODELINES"/ \
+        -e s/%MIN_MAX_HSYNC%/"$MIN_MAX_HSYNC"/ \
+        -e s/%MIN_MAX_VSYNC%/"$MIN_MAX_VSYNC"/ \
+        < /etc/X11/xorg-qubes-x11vnc.conf.template > /etc/X11/xorg.conf
+
+    # 2**30
+    echo 1073741824 > /sys/module/xen_gntalloc/parameters/limit
+}
+
+guivm_vnc() {
+    X11VNC=/usr/bin/x11vnc
+
+    # WIP: Ensure to have the good set of x11vnc options.
+    OPTIONS_VNC="-display :0 -auth /var/run/lightdm/root/:0 -forever"
+
+    $X11VNC $OPTIONS_VNC &
+}
+
+guivm_vnc_post() {
+    # Remove temporary xorg.conf
+    rm -f /etc/X11/xorg.conf
+    # Restore original xorg.conf
+    if [ -e /etc/X11/xorg.conf.backup_guivm_vnc ]; then
+        mv /etc/X11/xorg.conf.backup_guivm_vnc /etc/X11/xorg.conf
+    fi
+}
+
+if qsvc guivm-vnc; then
+    if [ "$1" == "pre" ]; then
+        guivm_vnc_pre
+    elif [ "$1" == "post" ]; then
+        guivm_vnc_post
+    elif [ -z "$1" ]; then
+        guivm_vnc
+    fi
+fi

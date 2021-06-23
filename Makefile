@@ -130,8 +130,6 @@ install-common:
 		$(DESTDIR)/usr/bin/qubes-run-xephyr
 	install -D appvm-scripts/usrbin/qubes-start-xephyr \
 		$(DESTDIR)/usr/bin/qubes-start-xephyr
-	install -D appvm-scripts/usrbin/qubes-run-x11vnc-pre \
-		$(DESTDIR)/usr/bin/qubes-run-x11vnc-pre
 	install -D appvm-scripts/usrbin/qubes-run-x11vnc \
 		$(DESTDIR)/usr/bin/qubes-run-x11vnc
 	install -D appvm-scripts/usrbin/qubes-change-keyboard-layout \
