@@ -62,13 +62,15 @@ Requires:	qubes-libvchan
 # qubesdb-read --wait option
 Requires:	qubes-db >= 4.1.4
 Requires:	python%{python3_pkgversion}-xcffib
-Requires:   xorg-x11-utils
 Requires:   xorg-x11-server-Xorg
 Requires:   xorg-x11-server-Xephyr
 Requires:   setxkbmap
 Requires:   xsetroot
 Requires:   xrdb
 Requires:   xmodmap
+Requires:   xev
+Requires:   xdpyinfo
+Requires:   xprop
 
 Provides:   qubes-gui-vm = %{version}-%{release}
 Obsoletes:  qubes-gui-vm < 4.0.0
