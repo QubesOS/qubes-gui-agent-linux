@@ -21,6 +21,7 @@
  */
 
 #include <assert.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -52,6 +53,11 @@
 #include "encoding.h"
 #include <libvchan.h>
 
+/* Get the size of an array.  Error out on pointers. */
+#define QUBES_ARRAY_SIZE(x) (0 * sizeof(struct { \
+    int tried_to_compute_number_of_array_elements_in_a_pointer: \
+        1 - 2*__builtin_types_compatible_p(__typeof__(x), __typeof__(&((x)[0]))); \
+    }) + sizeof(x)/sizeof((x)[0]))
 #define SOCKET_ADDRESS  "/var/run/xf86-qubes-socket"
 
 /* Supported protocol version */
@@ -102,6 +108,7 @@ struct _global_handles {
     Atom targets;          /* Atom: TARGETS */
     Atom qprop;            /* Atom: QUBES_SELECTION */
     Atom compound_text;    /* Atom: COMPOUND_TEXT */
+    Atom xembed;           /* Atom: _XEMBED */
     int xserver_fd;
     int xserver_listen_fd;
     libvchan_t *vchan;
@@ -150,7 +157,7 @@ struct supported_cursor {
     uint32_t cursor_id;
 };
 
-struct supported_cursor supported_cursors[] = {
+static struct supported_cursor supported_cursors[] = {
     /* Names as defined by Xlib. Most programs will use these. */
     { "X_cursor",            XC_X_cursor },
     { "arrow",               XC_arrow },
@@ -264,7 +271,7 @@ struct supported_cursor supported_cursors[] = {
     { "dnd-link",   XC_hand2 },
 };
 
-#define NUM_SUPPORTED_CURSORS (sizeof(supported_cursors) / sizeof(supported_cursors[0]))
+#define NUM_SUPPORTED_CURSORS (QUBES_ARRAY_SIZE(supported_cursors))
 
 static int compare_supported_cursors(const void *a,
                               const void *b) {
@@ -1210,8 +1217,7 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
                 memset(&resp, 0, sizeof(resp));
                 resp.type = ClientMessage;
                 resp.window = w;
-                resp.message_type =
-                    XInternAtom(g->display, "_XEMBED", False);
+                resp.message_type = g->xembed;
                 resp.format = 32;
                 resp.data.l[0] = ev->data.l[0];
                 resp.data.l[1] = XEMBED_EMBEDDED_NOTIFY;
@@ -1352,20 +1358,15 @@ static int send_full_window_info(Ghandles *g, XID w, struct window_data *wd)
     Window transient;
     unsigned int children_count;
 
-    if (wd->is_docked)
-        ret = XGetWindowAttributes(g->display, wd->embeder, &attr);
-    else
-        ret = XGetWindowAttributes(g->display, w, &attr);
+    const Window window_to_query = wd->is_docked ? wd->embeder : w;
+    ret = XGetWindowAttributes(g->display, window_to_query, &attr);
     if (ret != 1) {
         fprintf(stderr, "XGetWindowAttributes for 0x%x failed in "
                 "send_window_state, ret=0x%x\n", (int) w,
                 ret);
         return 0;
     };
-    if (wd->is_docked)
-        ret = XQueryTree(g->display, wd->embeder, &root, &parent, &children_list, &children_count);
-    else
-        ret = XQueryTree(g->display, w, &root, &parent, &children_list, &children_count);
+    ret = XQueryTree(g->display, window_to_query, &root, &parent, &children_list, &children_count);
     if (ret != 1) {
         fprintf(stderr, "XQueryTree for 0x%x failed in "
                 "send_window_state, ret=0x%x\n", (int) w,
@@ -1486,8 +1487,6 @@ static void wait_for_unix_socket(Ghandles *g)
 static void mkghandles(Ghandles * g)
 {
     char tray_sel_atom_name[64];
-    Atom net_supporting_wm_check, net_supported;
-    Atom supported[6];
 
     g->xserver_listen_fd = -1;
     g->xserver_fd = -1;
@@ -1505,28 +1504,63 @@ static void mkghandles(Ghandles * g)
     g->screen = DefaultScreen(g->display);	/* get CRT id number */
     g->root_win = RootWindow(g->display, g->screen);	/* get default attributes */
     g->context = XCreateGC(g->display, g->root_win, 0, NULL);
-    g->wmDeleteMessage = XInternAtom(g->display, "WM_DELETE_WINDOW", False);
-    g->wmProtocols = XInternAtom(g->display, "WM_PROTOCOLS", False);
-    g->wm_hints = XInternAtom(g->display, "WM_HINTS", False);
-    g->wm_class = XInternAtom(g->display, "WM_CLASS", False);
-    g->utf8_string_atom = XInternAtom(g->display, "UTF8_STRING", False);
     g->stub_win = XCreateSimpleWindow(g->display, g->root_win,
             0, 0, 1, 1,
             0, BlackPixel(g->display,
                 g->screen),
             WhitePixel(g->display,
                 g->screen));
+    if ((unsigned)snprintf(tray_sel_atom_name, sizeof(tray_sel_atom_name),
+            "_NET_SYSTEM_TRAY_S%u", DefaultScreen(g->display)) >=
+        sizeof tray_sel_atom_name)
+        abort();
+#define SUPPORTED_ATOMS 6
+    const struct {
+        Atom *const dest;
+        const char *const name;
+    } atoms_to_intern[] = {
+        { &g->wmDeleteMessage,  "WM_DELETE_MESSAGE" },
+        { &g->wmProtocols,      "WM_PROTOCOLS" },
+        { &g->wm_hints,         "WM_HINTS" },
+        { &g->wm_class,         "WM_CLASS" },
+        { &g->tray_selection,   tray_sel_atom_name },
+        { &g->tray_opcode,      "_NET_SYSTEM_TRAY_MESSAGE_OPCODE" },
+        { &g->xembed_info,      "_XEMBED_INFO" },
+        { &g->utf8_string_atom, "UTF8_STRING" },
+        { &g->wm_state,         "WM_STATE" },
+        { &g->net_wm_state,     "_NET_WM_STATE" },
+        { &g->wm_state_fullscreen, "_NET_WM_STATE_FULLSCREEN" },
+        { &g->wm_state_demands_attention, "_NET_WM_STATE_DEMANDS_ATTENTION" },
+        { &g->wm_take_focus,    "WM_TAKE_FOCUS" },
+        { &g->net_wm_name,      "_NET_WM_NAME" },
+        { &g->wm_normal_hints,  "WM_NORMAL_HINTS" },
+        { &g->clipboard,        "CLIPBOARD" },
+        { &g->targets,          "TARGETS" },
+        { &g->qprop,            "QUBES_SELECTION" },
+        { &g->compound_text,    "COMPOUND_TEXT" },
+        { &g->xembed,           "_XEMBED" },
+    };
+    Atom supported[SUPPORTED_ATOMS + QUBES_ARRAY_SIZE(atoms_to_intern)];
     /* pretend that GUI agent is window manager */
-    g->net_wm_name = XInternAtom(g->display, "_NET_WM_NAME", False);
-    net_supporting_wm_check = XInternAtom(g->display, "_NET_SUPPORTING_WM_CHECK", False);
-    net_supported = XInternAtom(g->display, "_NET_SUPPORTED", False);
-    supported[0] = net_supported;
-    supported[1] = net_supporting_wm_check;
-    /* _NET_WM_MOVERESIZE required to disable broken GTK+ move/resize fallback */
-    supported[2] = XInternAtom(g->display, "_NET_WM_MOVERESIZE", False);
-    supported[3] = XInternAtom(g->display, "_NET_WM_STATE", False);
-    supported[4] = XInternAtom(g->display, "_NET_WM_STATE_FULLSCREEN", False);
-    supported[5] = XInternAtom(g->display, "_NET_WM_STATE_DEMANDS_ATTENTION", False);
+    const char *names[SUPPORTED_ATOMS + QUBES_ARRAY_SIZE(atoms_to_intern)] = {
+        "_NET_SUPPORTED",
+        "_NET_SUPPORTING_WM_CHECK",
+        /* _NET_WM_MOVERESIZE required to disable broken GTK+ move/resize fallback */
+        "_NET_WM_MOVERESIZE",
+        "_NET_WM_STATE",
+        "_NET_WM_STATE_FULLSCREEN",
+        "_NET_WM_STATE_DEMANDS_ATTENTION",
+    };
+    for (size_t i = 0; i < QUBES_ARRAY_SIZE(atoms_to_intern); ++i)
+        names[SUPPORTED_ATOMS + i] = atoms_to_intern[i].name;
+    if (!XInternAtoms(g->display, (char **)names,
+                      QUBES_ARRAY_SIZE(atoms_to_intern), False, supported)) {
+        fputs("Could not intern global atoms\n", stderr);
+        exit(1);
+    }
+    for (size_t i = 0; i < QUBES_ARRAY_SIZE(atoms_to_intern); ++i)
+        *atoms_to_intern[i].dest = supported[SUPPORTED_ATOMS + i];
+    const Atom net_supported = supported[0], net_supporting_wm_check = supported[1];
     XChangeProperty(g->display, g->stub_win, g->net_wm_name, g->utf8_string_atom,
             8, PropModeReplace, (unsigned char*)"Qubes", 5);
     XChangeProperty(g->display, g->stub_win, net_supporting_wm_check, XA_WINDOW,
@@ -1534,25 +1568,10 @@ static void mkghandles(Ghandles * g)
     XChangeProperty(g->display, g->root_win, net_supporting_wm_check, XA_WINDOW,
             32, PropModeReplace, (unsigned char*)&g->stub_win, 1);
     XChangeProperty(g->display, g->root_win, net_supported, XA_ATOM,
-            32, PropModeReplace, (unsigned char*)supported, sizeof(supported)/sizeof(supported[0]));
+            32, PropModeReplace, (unsigned char*)supported, SUPPORTED_ATOMS);
 
     g->clipboard_data = NULL;
     g->clipboard_data_len = 0;
-    snprintf(tray_sel_atom_name, sizeof(tray_sel_atom_name),
-            "_NET_SYSTEM_TRAY_S%u", DefaultScreen(g->display));
-    g->tray_selection = XInternAtom(g->display, tray_sel_atom_name, False);
-    g->tray_opcode = XInternAtom(g->display, "_NET_SYSTEM_TRAY_OPCODE", False);
-    g->xembed_info = XInternAtom(g->display, "_XEMBED_INFO", False);
-    g->wm_state = XInternAtom(g->display, "WM_STATE", False);
-    g->net_wm_state = XInternAtom(g->display, "_NET_WM_STATE", False);
-    g->wm_state_fullscreen = XInternAtom(g->display, "_NET_WM_STATE_FULLSCREEN", False);
-    g->wm_state_demands_attention = XInternAtom(g->display, "_NET_WM_STATE_DEMANDS_ATTENTION", False);
-    g->wm_take_focus = XInternAtom(g->display, "WM_TAKE_FOCUS", False);
-    g->wm_normal_hints = XInternAtom(g->display, "WM_NORMAL_HINTS", False);
-    g->clipboard = XInternAtom(g->display, "CLIPBOARD", False);
-    g->targets = XInternAtom(g->display, "TARGETS", False);
-    g->qprop = XInternAtom(g->display, "QUBES_SELECTION", False);
-    g->compound_text = XInternAtom(g->display, "COMPOUND_TEXT", False);
 }
 
 static void handle_keypress(Ghandles * g, XID UNUSED(winid))
@@ -2259,7 +2278,10 @@ int main(int argc, char **argv)
         memset(&ev, 0, sizeof(ev));
         ev.type = ClientMessage;
         ev.send_event = True;
-        ev.message_type = XInternAtom(g.display, "MANAGER", False);
+        if ((ev.message_type = XInternAtom(g.display, "MANAGER", False)) == None) {
+            fputs("Cannot intern MANAGER atom\n", stderr);
+            exit(1);
+        }
         ev.window = DefaultRootWindow(g.display);
         ev.format = 32;
         ev.data.l[0] = CurrentTime;
