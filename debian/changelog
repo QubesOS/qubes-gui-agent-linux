@@ -1,3 +1,15 @@
+qubes-gui-agent (4.1.19-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * Implement VNC GuiVM
+  * guivm-vnc: use /run directly in lightdm preset conf
+  * guivm-vnc: simplify options set
+  * guivm-vnc: add few comments for pre script
+  * Use only one script for pre and post
+  * spec: remove xorg-x11-utils and replace by dependencies
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 01 Jul 2021 05:45:06 +0200
+
 qubes-gui-agent (4.1.18-1) unstable; urgency=medium
 
   [ Frédéric Pierret (fepitre) ]
