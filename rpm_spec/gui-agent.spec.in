@@ -62,6 +62,7 @@ Requires:   setxkbmap
 Requires:   xsetroot
 Requires:   xrdb
 Requires:   xmodmap
+Requires:   xrandr
 
 Provides:   qubes-gui-vm = %{version}-%{release}
 Obsoletes:  qubes-gui-vm < 4.0.0
