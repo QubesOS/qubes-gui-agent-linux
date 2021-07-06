@@ -11,6 +11,10 @@ set_keyboard_layout() {
     KEYMAP_LAYOUT="$(echo "$KEYMAP"+ | cut -f 1 -d +)"
     KEYMAP_VARIANT="$(echo "$KEYMAP"+ | cut -f 2 -d +)"
     KEYMAP_OPTIONS="$(echo "$KEYMAP"+ | cut -f 3 -d +)"
+    if [ "$KEYMAP_LAYOUT" != "us" ]; then
+        KEYMAP_LAYOUT="$KEYMAP_LAYOUT,us"
+    fi
+
     if [ -n "$KEYMAP_VARIANT" ]; then
         KEYMAP_VARIANT="-variant $KEYMAP_VARIANT"
     fi
