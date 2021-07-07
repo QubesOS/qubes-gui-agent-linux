@@ -1554,7 +1554,7 @@ static void mkghandles(Ghandles * g)
     for (size_t i = 0; i < QUBES_ARRAY_SIZE(atoms_to_intern); ++i)
         names[SUPPORTED_ATOMS + i] = atoms_to_intern[i].name;
     if (!XInternAtoms(g->display, (char **)names,
-                      QUBES_ARRAY_SIZE(atoms_to_intern), False, supported)) {
+                      QUBES_ARRAY_SIZE(names), False, supported)) {
         fputs("Could not intern global atoms\n", stderr);
         exit(1);
     }
