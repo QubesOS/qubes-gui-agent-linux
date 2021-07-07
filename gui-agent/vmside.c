@@ -94,7 +94,7 @@ struct _global_handles {
     Atom wm_hints;         /* Atom: WM_HINTS */
     Atom wm_class;         /* Atom: WM_CLASS */
     Atom tray_selection;   /* Atom: _NET_SYSTEM_TRAY_SELECTION_S<creen number> */
-    Atom tray_opcode;      /* Atom: _NET_SYSTEM_TRAY_MESSAGE_OPCODE */
+    Atom tray_opcode;      /* Atom: _NET_SYSTEM_TRAY_OPCODE */
     Atom xembed_info;      /* Atom: _XEMBED_INFO */
     Atom utf8_string_atom; /* Atom: UTF8_STRING */
     Atom wm_state;         /* Atom: WM_STATE */
@@ -1524,7 +1524,7 @@ static void mkghandles(Ghandles * g)
         { &g->wm_hints,         "WM_HINTS" },
         { &g->wm_class,         "WM_CLASS" },
         { &g->tray_selection,   tray_sel_atom_name },
-        { &g->tray_opcode,      "_NET_SYSTEM_TRAY_MESSAGE_OPCODE" },
+        { &g->tray_opcode,      "_NET_SYSTEM_TRAY_OPCODE" },
         { &g->xembed_info,      "_XEMBED_INFO" },
         { &g->utf8_string_atom, "UTF8_STRING" },
         { &g->wm_state,         "WM_STATE" },
