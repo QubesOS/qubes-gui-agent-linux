@@ -86,10 +86,10 @@ char **saved_argv;
 
 struct _global_handles {
     Display *display;
-    int screen;           /* shortcut to the default screen */
-    Window root_win;      /* root attributes */
+    int screen;            /* shortcut to the default screen */
+    Window root_win;       /* root attributes */
     GC context;
-    Atom wmDeleteMessage;  /* Atom: WM_DELETE_MESSAGE */
+    Atom wmDeleteWindow;   /* Atom: WM_DELETE_WINDOW */
     Atom wmProtocols;      /* Atom: WM_PROTOCOLS */
     Atom wm_hints;         /* Atom: WM_HINTS */
     Atom wm_class;         /* Atom: WM_CLASS */
@@ -638,7 +638,7 @@ void retrieve_wmprotocols(Ghandles * g, XID window, int ignore_fail)
                     fprintf(stderr, "Protocol take_focus supported for Window 0x%x\n", (int)window);
 
                 ((struct window_data*)l->data)->support_take_focus = True;
-            } else if (supported_protocols[i] == g->wmDeleteMessage) {
+            } else if (supported_protocols[i] == g->wmDeleteWindow) {
                 if (g->log_level > 1)
                     fprintf(stderr, "Protocol delete_window supported for Window 0x%x\n", (int)window);
 
@@ -1519,7 +1519,7 @@ static void mkghandles(Ghandles * g)
         Atom *const dest;
         const char *const name;
     } atoms_to_intern[] = {
-        { &g->wmDeleteMessage,  "WM_DELETE_MESSAGE" },
+        { &g->wmDeleteWindow,   "WM_DELETE_WINDOW" },
         { &g->wmProtocols,      "WM_PROTOCOLS" },
         { &g->wm_hints,         "WM_HINTS" },
         { &g->wm_class,         "WM_CLASS" },
@@ -1891,10 +1891,10 @@ static void handle_close(Ghandles * g, XID winid)
         ev.window = winid;
         ev.format = 32;
         ev.message_type = g->wmProtocols;
-        ev.data.l[0] = g->wmDeleteMessage;
+        ev.data.l[0] = g->wmDeleteWindow;
         XSendEvent(ev.display, ev.window, TRUE, 0, (XEvent *) & ev);
         if (g->log_level > 0)
-            fprintf(stderr, "wmDeleteMessage sent for 0x%x\n",
+            fprintf(stderr, "wmDeleteWindow sent for 0x%x\n",
                     (int) winid);
     } else {
         XKillClient(g->display, winid);
