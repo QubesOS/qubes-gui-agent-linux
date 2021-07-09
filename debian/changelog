@@ -1,3 +1,27 @@
+qubes-gui-agent (4.1.20-1) unstable; urgency=medium
+
+  [ Demi Marie Obenour ]
+  * Remove the last XInternAtom call after startup
+  * Use ternary operator to simplify some code
+  * Failure to intern MANAGER atom is fatal
+  * Crash if snprintf() fails
+  * Use XInternAtoms() more
+
+  [ Marek Marczykowski-Górecki ]
+  * Fix tray message opcode
+  * Fix getting all the required atoms
+
+  [ Demi Marie Obenour ]
+  * Fix the name of WM_DELETE_WINDOW
+
+  [ Marek Marczykowski-Górecki ]
+  * rpm: add xrandr dependency
+
+  [ Ivan Kardykov ]
+  * Always keep latin keyboard layout
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 09 Jul 2021 05:02:15 +0200
+
 qubes-gui-agent (4.1.19-1) unstable; urgency=medium
 
   [ Frédéric Pierret (fepitre) ]
