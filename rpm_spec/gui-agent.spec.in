@@ -71,6 +71,7 @@ Requires:   xmodmap
 Requires:   xev
 Requires:   xdpyinfo
 Requires:   xprop
+Requires:   xrandr
 
 Provides:   qubes-gui-vm = %{version}-%{release}
 Obsoletes:  qubes-gui-vm < 4.0.0
