@@ -1,3 +1,10 @@
+qubes-gui-agent (4.1.21-1) unstable; urgency=medium
+
+  [ Nedyalko Andreev ]
+  * Fix support for non-latin variants when we append the us layout
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 10 Jul 2021 13:54:45 +0200
+
 qubes-gui-agent (4.1.20-1) unstable; urgency=medium
 
   [ Demi Marie Obenour ]
