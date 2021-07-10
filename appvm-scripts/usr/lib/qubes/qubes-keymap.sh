@@ -13,6 +13,7 @@ set_keyboard_layout() {
     KEYMAP_OPTIONS="$(echo "$KEYMAP"+ | cut -f 3 -d +)"
     if [ "$KEYMAP_LAYOUT" != "us" ]; then
         KEYMAP_LAYOUT="$KEYMAP_LAYOUT,us"
+        KEYMAP_VARIANT="$KEYMAP_VARIANT,"
     fi
 
     if [ -n "$KEYMAP_VARIANT" ]; then
