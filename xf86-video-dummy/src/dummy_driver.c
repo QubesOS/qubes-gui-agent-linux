@@ -53,6 +53,13 @@
 #include <X11/extensions/xf86dgaproto.h>
 #endif
 
+/* glamor support */
+#define GLAMOR_FOR_XORG
+#include <glamor.h>
+#include <gbm.h>
+#include <unistd.h>
+#include <fcntl.h>
+
 /* Mandatory functions */
 static const OptionInfoRec *DUMMYAvailableOptions(int chipid, int busid);
 static void     DUMMYIdentify(int flags);
@@ -129,11 +136,13 @@ static SymTabRec DUMMYChipsets[] = {
 
 typedef enum {
     OPTION_SW_CURSOR,
+    OPTION_RENDER,
     OPTION_GUI_DOMID
 } DUMMYOpts;
 
 static const OptionInfoRec DUMMYOptions[] = {
     { OPTION_SW_CURSOR,	"SWcursor",	OPTV_BOOLEAN,	{0}, FALSE },
+    { OPTION_RENDER,	"Render",	OPTV_STRING,	{0}, FALSE },
     { OPTION_GUI_DOMID, "GUIDomID",     OPTV_INTEGER,   {0}, FALSE },
     { -1,                  NULL,           OPTV_NONE,	{0}, FALSE }
 };
@@ -560,6 +569,7 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
     DUMMYPtr dPtr;
     int maxClock = 300000;
     GDevPtr device = xf86GetEntityInfo(pScrn->entityList[0])->device;
+    const char *render, *defaultRender = "/dev/dri/renderD128";
 
     if (flags & PROBE_DETECT) 
         return TRUE;
@@ -731,6 +741,27 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
     pScrn->memPhysBase = 0;
     pScrn->fbOffset = 0;
 
+    render = xf86GetOptValString(dPtr->Options, OPTION_RENDER);
+    dPtr->glamor = FALSE;
+
+    if (!render)
+        render = defaultRender;
+ 
+    dPtr->fd = open(render, O_RDWR);
+    if (dPtr->fd < 0)
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Open render %s fail\n", render);
+    else {
+        xf86LoadSubModule(pScrn, GLAMOR_EGL_MODULE_NAME);
+        if (glamor_egl_init(pScrn, dPtr->fd)) {
+            xf86DrvMsg(pScrn->scrnIndex, X_INFO, "glamor initialized\n");
+                dPtr->glamor = TRUE;
+        } else {
+            xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                   "glamor initialization failed\n");
+            close(dPtr->fd);
+        }
+    }
+
     return TRUE;
 }
 #undef RETURN
@@ -876,7 +907,10 @@ qubes_create_screen_resources(ScreenPtr pScreen) {
     Bool ret = dPtr->CreateScreenResources(pScreen);
 
     if (ret) {
-        xf86_qubes_pixmap_set_private(pScreen->GetScreenPixmap(pScreen),
+        PixmapPtr pixmap = pScreen->GetScreenPixmap(pScreen);
+        if (dPtr->glamor)
+           glamor_egl_create_textured_pixmap_from_gbm_bo(pixmap, dPtr->front_bo, FALSE);
+        xf86_qubes_pixmap_set_private(pixmap,
                                       dPtr->FBBasePriv);
     }
 
@@ -982,16 +1016,56 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
             }
         }
     }
-    
-    pScreen->CreatePixmap = qubes_create_pixmap;
-    pScreen->DestroyPixmap = qubes_destroy_pixmap;
-    dPtr->CreateScreenResources = pScreen->CreateScreenResources;
-    pScreen->CreateScreenResources = qubes_create_screen_resources;
 
     /* must be after RGB ordering fixed */
     fbPictureInit(pScreen, 0, 0);
 
     xf86SetBlackWhitePixels(pScreen);
+
+    if (dPtr->glamor) {
+       uint32_t format;
+       if (pScrn->depth == 30)
+            format = GBM_FORMAT_ARGB2101010;
+        else
+            format = GBM_FORMAT_ARGB8888;
+
+       dPtr->gbm = glamor_egl_get_gbm_device(pScreen);
+       if (!dPtr->gbm)
+            xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                    "Failed to get gbm device.\n");
+       dPtr->front_bo = gbm_bo_create(dPtr->gbm,
+                    pScrn->virtualX, pScrn->virtualY,
+                    format,
+                    GBM_BO_USE_RENDERING | GBM_BO_USE_SCANOUT);
+       if (!dPtr->front_bo)
+            xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                    "Failed to create front buffer.\n");
+
+       if (!glamor_init(pScreen, GLAMOR_USE_EGL_SCREEN)) {
+            xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                   "Failed to initialize glamor at ScreenInit() time.\n");
+           dPtr->glamor = FALSE;
+       }
+       else {
+
+           XF86VideoAdaptorPtr     glamor_adaptor;
+
+           glamor_adaptor = glamor_xv_init(pScreen, 16);
+           if (glamor_adaptor != NULL)
+               xf86XVScreenInit(pScreen, &glamor_adaptor, 1);
+           else
+               xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                       "Failed to initialize XV support.\n");
+
+       }
+    }
+
+    pScreen->CreatePixmap = qubes_create_pixmap;
+    pScreen->DestroyPixmap = qubes_destroy_pixmap;
+    PictureScreenPtr ps = GetPictureScreenIfSet(pScreen);
+    ps->Glyphs = fbGlyphs;
+    dPtr->CreateScreenResources = pScreen->CreateScreenResources;
+    pScreen->CreateScreenResources = qubes_create_screen_resources;
 
 #ifdef USE_DGA
     DUMMYDGAInit(pScreen);
@@ -1155,6 +1229,10 @@ DUMMYCloseScreen(CLOSE_SCREEN_ARGS_DECL)
     ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     DUMMYPtr dPtr = DUMMYPTR(pScrn);
 
+    if (dPtr->front_bo) {
+        gbm_bo_destroy(dPtr->front_bo);
+        dPtr->front_bo = NULL;
+    }
     if(pScrn->vtSema){
         dummyRestore(pScrn, TRUE);
         if (dPtr->FBBasePriv) {
