@@ -1,3 +1,13 @@
+qubes-gui-agent (4.0.38-1) unstable; urgency=medium
+
+  [ fepitre-bot ]
+  * Add pulseaudio-15.0 headers
+
+  [ Marek Marczykowski-Górecki ]
+  * pulse: set module version to the PA version
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 24 Aug 2021 04:17:10 +0200
+
 qubes-gui-agent (4.0.37-1) unstable; urgency=medium
 
   [ Frédéric Pierret (fepitre) ]
