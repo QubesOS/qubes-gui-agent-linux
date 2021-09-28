@@ -1221,7 +1221,7 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
                 resp.format = 32;
                 resp.data.l[0] = ev->data.l[0];
                 resp.data.l[1] = XEMBED_EMBEDDED_NOTIFY;
-                resp.data.l[3] = ev->window;
+                resp.data.l[3] = wd->embeder;
                 resp.data.l[4] = 0; /* TODO: handle version; GTK+ uses version 1, but spec says the latest is 0 */
                 resp.display = g->display;
                 XSendEvent(resp.display, resp.window, False,
