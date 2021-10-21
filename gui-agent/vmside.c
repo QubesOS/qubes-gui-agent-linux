@@ -21,6 +21,7 @@
  */
 
 #include <assert.h>
+#include <errno.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,12 +37,10 @@
 #include <grp.h>
 #include <err.h>
 #include <X11/Xlib.h>
-#include <X11/Intrinsic.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/Xcomposite.h>
 #include <X11/extensions/Xdamage.h>
 #include <X11/XKBlib.h>
-#include <X11/Xlibint.h>
 #include <X11/Xatom.h>
 #include <X11/cursorfont.h>
 #include <qubes-gui-protocol.h>
@@ -556,7 +555,7 @@ static int get_net_wmname(Ghandles * g, XID window, char *outbuf, size_t bufsize
             if (g->log_level > 0)
                 fprintf(stderr, "get_net_wmname(0x%lx): unexpected format: %d\n",
                         window, format_return);
-            Xfree(property_data);
+            XFree(property_data);
             return 0;
         }
         if (bytes_after_return > 0) {
@@ -569,13 +568,13 @@ static int get_net_wmname(Ghandles * g, XID window, char *outbuf, size_t bufsize
             if (g->log_level > 0)
                 fprintf(stderr, "get_net_wmname(0x%lx): too much data returned (%ld), bug?\n",
                         window, items_return);
-            Xfree(property_data);
+            XFree(property_data);
             return 0;
         }
         memcpy(outbuf, property_data, items_return);
         /* make sure there is trailing \0 */
         outbuf[bufsize-1] = 0;
-        Xfree(property_data);
+        XFree(property_data);
         if (g->log_level > 0)
             fprintf(stderr, "got net_wm_name=%s\n", outbuf);
         return 1;
@@ -1186,7 +1185,7 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
                     /* TODO: handle version */
                 }
                 if (ret == Success && nitems > 0)
-                    Xfree(data);
+                    XFree(data);
 
                 if (!(l->data)) {
                     fprintf(stderr, "ERROR process_xevent_message: Window 0x%x data not initialized", (int)w);
@@ -1781,7 +1780,7 @@ static void take_focus(Ghandles * g, XID winid)
     ev.message_type = g->wmProtocols;
     ev.data.l[0] = g->wm_take_focus;
     ev.data.l[1] = g->time;
-    XSendEvent(ev.display, ev.window, TRUE, 0, (XEvent *) & ev);
+    XSendEvent(ev.display, ev.window, 1, 0, (XEvent *) & ev);
     if (g->log_level > 0)
         fprintf(stderr, "WM_TAKE_FOCUS sent for 0x%x\n",
                 (int) winid);
@@ -1919,7 +1918,7 @@ static void handle_close(Ghandles * g, XID winid)
         ev.format = 32;
         ev.message_type = g->wmProtocols;
         ev.data.l[0] = g->wmDeleteWindow;
-        XSendEvent(ev.display, ev.window, TRUE, 0, (XEvent *) & ev);
+        XSendEvent(ev.display, ev.window, 1, 0, (XEvent *) & ev);
         if (g->log_level > 0)
             fprintf(stderr, "wmDeleteWindow sent for 0x%x\n",
                     (int) winid);
@@ -2113,7 +2112,9 @@ static void handle_message(Ghandles * g)
         default:
             fprintf(stderr, "got unknown msg type %d, ignoring\n", hdr.type);
             while (hdr.untrusted_len > 0) {
+#define min(x,y) ((x)>(y)?(y):(x))
                 hdr.untrusted_len -= read_data(g->vchan, discard, min(hdr.untrusted_len, sizeof(discard)));
+#undef min
             }
     }
 }
