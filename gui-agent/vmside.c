@@ -402,6 +402,15 @@ static void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
                 (int) ev->window);
         return;
     }
+
+    if (ev->parent != g->root_win) {
+        /* GUI daemon won’t support this much longer */
+        fprintf(stderr,
+                "CREATE with non-root parent window 0x%x\n",
+                (unsigned int)ev->parent);
+        return;
+    }
+
     if (list_lookup(embeder_list, ev->window)) {
         /* ignore CreateNotify for embeder window */
         if (g->log_level > 1)
@@ -1352,7 +1361,7 @@ static int send_full_window_info(Ghandles *g, XID w, struct window_data *wd)
 
     XWindowAttributes attr;
     int ret;
-    Window *children_list;
+    Window *children_list = NULL;
     Window root;
     Window parent;
     Window transient;
@@ -1375,6 +1384,24 @@ static int send_full_window_info(Ghandles *g, XID w, struct window_data *wd)
     };
     if (children_list)
         XFree(children_list);
+    if (parent != g->root_win) {
+        fprintf(stderr, "Window 0x%x has parent 0x%x, which isn't root 0x%x.\n"
+                " Presumably window has been reparented at some point.\n"
+                " Skipping it.\n",
+                (unsigned int)window_to_query,
+                (unsigned int)parent,
+                (unsigned int)g->root_win);
+        return 0;
+    }
+    if (root != g->root_win) {
+        fprintf(stderr, "Window 0x%x has root 0x%x, which isn't expected root 0x%x.\n"
+                " This is rather strange and probably indicates a bug somewhere.\n"
+                " Skipping it.\n",
+                (unsigned int)window_to_query,
+                (unsigned int)root,
+                (unsigned int)g->root_win);
+        return 0;
+    }
     if (!XGetTransientForHint(g->display, w, &transient))
         transient = 0;
 
