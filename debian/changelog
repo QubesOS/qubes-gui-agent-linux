@@ -1,3 +1,14 @@
+qubes-gui-agent (4.1.23-1) unstable; urgency=medium
+
+  [ Demi Marie Obenour ]
+  * Ensure that no subwindows are created
+  * Fix minor problems
+
+  [ Marek Marczykowski-Górecki ]
+  * Fix XEMBED_EMBEDDED_NOTIFY parameters
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 09 Nov 2021 05:31:28 +0100
+
 qubes-gui-agent (4.1.22-1) unstable; urgency=medium
 
   [ fepitre-bot ]
