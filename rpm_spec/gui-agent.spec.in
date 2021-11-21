@@ -53,7 +53,7 @@ BuildRequires:	pam-devel
 BuildRequires:	qubes-libvchan-devel
 BuildRequires:	qubes-gui-common-devel >= 4.1.0
 BuildRequires:	qubes-db-devel
-%if x%{?backend_vmm} == xxen
+%if "%{?backend_vmm}" == "xen"
 BuildRequires:	xen-devel
 %endif
 Requires:	Xorg %(xserver-sdk-abi-requires ansic)
