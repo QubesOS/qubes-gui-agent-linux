@@ -79,6 +79,8 @@ Obsoletes:  qubes-gui-vm < 4.0.0
 
 Source0: %{name}-%{version}.tar.gz
 
+Requires: (%{name}-selinux if selinux-policy)
+
 %package -n pulseaudio-qubes
 Summary: Audio support for Qubes VM
 # The vchan sink needs .h files from pulseaudio sources
@@ -120,14 +122,15 @@ ln -s pulsecore-%{pa_ver_full} pulse/pulsecore
 %build
 %{?set_build_flags}
 #make clean
-make appvm
+make appvm selinux
 
 %install
 rm -rf $RPM_BUILD_ROOT
-make install DESTDIR=$RPM_BUILD_ROOT \
+make install install-selinux DESTDIR=$RPM_BUILD_ROOT \
                      LIBDIR=%{_libdir} \
                      DATADIR=%{_datadir} \
-                     PA_VER_FULL=%{pa_ver_full}
+                     PA_VER_FULL=%{pa_ver_full} \
+                     ENABLE_SELINUX=%{with selinux}
 
 %post
 if [ -x /bin/systemctl ] && readlink /sbin/init | grep -q systemd; then
@@ -188,6 +191,38 @@ echo autospawn=no >> /etc/pulse/client.conf
 rm -rf $RPM_BUILD_ROOT
 rm -f %{name}-%{version}
 
+%package selinux
+Summary: SELinux policy for the Qubes GUI Agent
+License: GPLv2+
+
+BuildRequires: selinux-policy
+BuildRequires: selinux-policy-devel
+BuildRequires: qubes-core-agent-selinux
+Requires(post): qubes-core-agent-selinux
+BuildRequires: qubes-core-qrexec-vm-selinux
+Requires(post): qubes-core-qrexec-vm-selinux
+%{?selinux_requires}
+
+%description selinux
+SELinux policy for the Qubes GUI Agent.  This allows the Qubes GUI Agent to run
+in a VM with SELinux enforcing, as is the default on Red Hat-family
+distributions.
+
+%files selinux
+%_datadir/selinux/packages/qubes-gui-agent.pp
+
+%post selinux
+
+%selinux_modules_install %{_datadir}/selinux/packages/qubes-gui-agent.pp
+
+%postun selinux
+if [ "$1" -eq 0 ]; then
+    %selinux_modules_uninstall %{_datadir}/selinux/packages/qubes-gui-agent.pp
+fi || :
+
+%posttrans selinux
+%selinux_relabel_post
+exit 0
 
 %files
 %defattr(-,root,root,-)
@@ -220,6 +255,7 @@ rm -f %{name}-%{version}
 /usr/lib/sysctl.d/30-qubes-gui-agent.conf
 /usr/lib/qubes/qubes-gui-agent-pre.sh
 /usr/lib/qubes/qubes-keymap.sh
+/usr/lib/qubes/qubes-xorg-wrapper
 %{_datadir}/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
 /usr/lib/qubes/icon-sender
 /etc/xdg/autostart/qubes-icon-sender.desktop

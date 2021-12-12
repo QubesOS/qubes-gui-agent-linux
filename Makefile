@@ -40,6 +40,15 @@ appvm: gui-agent/qubes-gui gui-common/qubes-gui-runuser \
 	xf86-video-dummy/src/.libs/dummyqbs_drv.so pulse/module-vchan-sink.so \
 	xf86-qubes-common/libxf86-qubes-common.so
 
+selinux_policies ::= qubes-gui-agent.pp
+selinux: selinux/$(selinux_policies)
+selinux/$(selinux_policies):
+	$(MAKE) -C selinux -f /usr/share/selinux/devel/Makefile
+
+.PHONY: install-selinux
+install-selinux:
+	install -D -t $(DESTDIR)/usr/share/selinux/packages selinux/$(selinux_policies)
+
 gui-agent/qubes-gui:
 	$(MAKE) -C gui-agent
 
@@ -183,6 +192,8 @@ endif
 		$(DESTDIR)/usr/lib/qubes/qubes-gui-agent-pre.sh
 	install -D appvm-scripts/usr/lib/qubes/qubes-keymap.sh \
 		$(DESTDIR)/usr/lib/qubes/qubes-keymap.sh
+	install -D appvm-scripts/usr/lib/qubes/qubes-xorg-wrapper \
+		$(DESTDIR)/usr/lib/qubes/qubes-xorg-wrapper
 ifeq ($(shell lsb_release -is), Debian)
 	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent.debian \
 		$(DESTDIR)/etc/pam.d/qubes-gui-agent

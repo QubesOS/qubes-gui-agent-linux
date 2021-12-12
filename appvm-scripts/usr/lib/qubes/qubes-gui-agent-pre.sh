@@ -24,3 +24,6 @@ if [ -n "$debug_mode" ] && [ "$debug_mode" -gt 0 ]; then
 fi
 
 echo "GUI_OPTS=$gui_opts" >> /var/run/qubes-service-environment
+
+# 2**30
+echo 1073741824 > /sys/module/xen_gntalloc/parameters/limit

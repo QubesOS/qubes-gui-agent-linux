@@ -1,0 +1,25 @@
+policy_module(qubes-gui-agent, 0.0.1)
+
+require {
+	type xdm_t, etc_t, local_login_t, qubes_qrexec_socket_t, qubes_var_run_t, domain;
+	type xserver_port_t;
+	class passwd rootok;
+	class tcp_socket name_connect;
+}
+
+allow xdm_t etc_t:file { create write };
+allow xdm_t self:passwd rootok;
+allow domain local_login_t:unix_stream_socket { rw_inherited_sock_file_perms ioctl };
+ipp_qubes_qrexec(xdm_t)
+udev_exec(xdm_t)
+init_domtrans_script(xdm_t)
+type_transition xdm_t qubes_var_run_t:sock_file qubes_qrexec_socket_t;
+manage_sock_files_pattern(xdm_t, qubes_var_run_t, qubes_qrexec_socket_t)
+write_sock_files_pattern(xdm_t, qubes_var_run_t, qubes_var_run_t)
+optional {
+    pulseaudio_domtrans(xdm_t)
+    dev_rw_xen(pulseaudio_t)
+}
+xserver_stream_connect_xdm(local_login_t)
+# the TCP connection is harmful; do not allow it
+dontaudit local_login_t xserver_port_t:tcp_socket name_connect;
