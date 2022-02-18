@@ -12,6 +12,7 @@ Build-Depends:
     xutils-dev,
     libvchan-dev,
     libx11-dev,
+    libgbm-dev,
     libxcomposite-dev,
     libxdamage-dev,
     libxfixes-dev,
