@@ -40,6 +40,7 @@
 #include <X11/Xutil.h>
 #include <X11/extensions/Xcomposite.h>
 #include <X11/extensions/Xdamage.h>
+#include <X11/extensions/XInput2.h>
 #include <X11/XKBlib.h>
 #include <X11/Xatom.h>
 #include <X11/cursorfont.h>
@@ -1611,9 +1612,13 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
             fprintf(stderr, "failed to get modifier state\n");
         state.mods = key.state;
     }
-    // ignore all but CapsLock
-    state.mods &= LockMask;
-    key.state &= LockMask;
+    if (!g->sync_all_modifiers) {
+        // ignore all but CapsLock
+        state.mods &= LockMask;
+        key.state &= LockMask;
+    }
+    bool is_press = key.type == KeyPress;
+    bool duplicate = false;
     if (state.mods != key.state) {
         XModifierKeymap *modmap;
         int mod_index;
@@ -1634,7 +1639,8 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
             // #define Mod4MapIndex            6
             // #define Mod5MapIndex            7
             for (mod_index = 0; mod_index < 8; mod_index++) {
-                if (modmap->modifiermap[mod_index*modmap->max_keypermod] == 0x00) {
+                uint32_t keycode = modmap->modifiermap[mod_index*modmap->max_keypermod];
+                if (keycode == 0x00) {
                     if (g->log_level > 1)
                         fprintf(stderr, "ignoring disabled modifier %d\n", mod_index);
                     // no key set for this modifier, ignore
@@ -1644,22 +1650,24 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
                 // special case for caps lock switch by press+release
                 if (mod_index == LockMapIndex) {
                     if ((state.mods & mod_mask) ^ (key.state & mod_mask)) {
-                        feed_xdriver(g, 'K', modmap->modifiermap[mod_index*modmap->max_keypermod], 1);
-                        feed_xdriver(g, 'K', modmap->modifiermap[mod_index*modmap->max_keypermod], 0);
+                        feed_xdriver(g, 'K', keycode, 1);
+                        feed_xdriver(g, 'K', keycode, 0);
                     }
                 } else {
-                    if ((state.mods & mod_mask) && !(key.state & mod_mask))
-                        feed_xdriver(g, 'K', modmap->modifiermap[mod_index*modmap->max_keypermod], 0);
-                    else if (!(state.mods & mod_mask) && (key.state & mod_mask))
-                        feed_xdriver(g, 'K', modmap->modifiermap[mod_index*modmap->max_keypermod], 1);
+                    if ((state.mods & mod_mask) && !(key.state & mod_mask)) {
+                        feed_xdriver(g, 'K', keycode, 0);
+                        if (keycode == key.keycode && is_press == 0) duplicate = true;
+                    }
+                    else if (!(state.mods & mod_mask) && (key.state & mod_mask)) {
+                        feed_xdriver(g, 'K', keycode, 1);
+                        if (keycode == key.keycode && is_press == 1) duplicate = true;
+                    }
                 }
             }
             XFreeModifiermap(modmap);
         }
     }
-
-    if (key.keycode == 66) return; // caplocks
-    feed_xdriver(g, 'K', key.keycode, key.type == KeyPress ? 1 : 0);
+    if (!duplicate) feed_xdriver(g, 'K', key.keycode, is_press);
 }
 
 static void handle_button(Ghandles * g, XID winid)
