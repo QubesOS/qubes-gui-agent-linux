@@ -3,3 +3,14 @@ tags
 deb/
 pkgs
 debian/changelog.*
+/PKGBUILD*
+/gui-agent/qubes-gui
+/gui-common/qubes-gui-runuser
+/pkg/
+*.tar.zst
+/src/
+/xf86-input-mfndev/compile
+/xf86-input-mfndev/config.h.in
+/xf86-input-mfndev/depcomp
+/xf86-input-mfndev/ltmain.sh
+/xf86-qubes-common/libxf86-qubes-common.so
