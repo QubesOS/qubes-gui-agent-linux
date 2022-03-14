@@ -1611,11 +1611,9 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
             fprintf(stderr, "failed to get modifier state\n");
         state.mods = key.state;
     }
-    if (!g->sync_all_modifiers) {
-        // ignore all but CapsLock
-        state.mods &= LockMask;
-        key.state &= LockMask;
-    }
+    // ignore all but CapsLock
+    state.mods &= LockMask;
+    key.state &= LockMask;
     if (state.mods != key.state) {
         XModifierKeymap *modmap;
         int mod_index;
@@ -1660,6 +1658,7 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
         }
     }
 
+    if (key.keycode == 66) return; // caplocks
     feed_xdriver(g, 'K', key.keycode, key.type == KeyPress ? 1 : 0);
 }
 
