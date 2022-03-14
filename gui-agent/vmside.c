@@ -95,6 +95,7 @@ struct _global_handles {
     Atom wm_class;         /* Atom: WM_CLASS */
     Atom tray_selection;   /* Atom: _NET_SYSTEM_TRAY_SELECTION_S<creen number> */
     Atom tray_opcode;      /* Atom: _NET_SYSTEM_TRAY_OPCODE */
+    int xi_opcode;
     Atom xembed_info;      /* Atom: _XEMBED_INFO */
     Atom utf8_string_atom; /* Atom: UTF8_STRING */
     Atom wm_state;         /* Atom: WM_STATE */
@@ -1618,7 +1619,7 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
         key.state &= LockMask;
     }
     bool is_press = key.type == KeyPress;
-    bool duplicate = false;
+    bool is_mod_key = false;
     if (state.mods != key.state) {
         XModifierKeymap *modmap;
         int mod_index;
@@ -1640,6 +1641,7 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
             // #define Mod5MapIndex            7
             for (mod_index = 0; mod_index < 8; mod_index++) {
                 uint32_t keycode = modmap->modifiermap[mod_index*modmap->max_keypermod];
+                if (keycode == key.keycode) is_mod_key = true;
                 if (keycode == 0x00) {
                     if (g->log_level > 1)
                         fprintf(stderr, "ignoring disabled modifier %d\n", mod_index);
@@ -1656,18 +1658,16 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
                 } else {
                     if ((state.mods & mod_mask) && !(key.state & mod_mask)) {
                         feed_xdriver(g, 'K', keycode, 0);
-                        if (keycode == key.keycode && is_press == 0) duplicate = true;
                     }
                     else if (!(state.mods & mod_mask) && (key.state & mod_mask)) {
                         feed_xdriver(g, 'K', keycode, 1);
-                        if (keycode == key.keycode && is_press == 1) duplicate = true;
                     }
                 }
             }
             XFreeModifiermap(modmap);
         }
     }
-    if (!duplicate) feed_xdriver(g, 'K', key.keycode, is_press);
+    if (!is_mod_key) feed_xdriver(g, 'K', key.keycode, is_press);
 }
 
 static void handle_button(Ghandles * g, XID winid)
@@ -1791,59 +1791,69 @@ static void take_focus(Ghandles * g, XID winid)
     if (g->log_level > 0)
         fprintf(stderr, "WM_TAKE_FOCUS sent for 0x%x\n",
                 (int) winid);
-
 }
 
 static void handle_focus(Ghandles * g, XID winid)
 {
     struct msg_focus key;
     struct genlist *l;
-    int input_hint;
-    int use_take_focus;
+    int use_take_focus = false;
 
     read_data(g->vchan, (char *) &key, sizeof(key));
-    if (key.type == FocusIn
-            && (key.mode == NotifyNormal || key.mode == NotifyUngrab)) {
+    
+    // send event directly
+    XFocusChangeEvent ev;
+    ev.detail = key.detail;
+    ev.mode = key.mode;
+    ev.type = key.type;
+    ev.window = winid;
+    
+    XGenericEventCookie evi; // X Input Extension
+    XILeaveEvent evi_leave;
+    memset(&evi_leave, 0, sizeof(evi_leave)); // no UB...
+    evi.type = GenericEvent;
+    evi.evtype = key.type;
+    evi.extension = g->xi_opcode;
+    // evi.cookie = ????; // no documentation about how to set this field
+    evi.data = &evi_leave;
+    evi_leave.type = GenericEvent;
+    evi_leave.evtype = key.type;
+    evi_leave.extension = g->xi_opcode;
+    evi_leave.detail = key.detail;
+    evi_leave.mode = key.mode;
+    // good luck on applications not rely on other fields
 
+    XSendEvent(g->display, winid, true, 0, (XEvent *)&ev);
+    XSendEvent(g->display, winid, true, 0, (XEvent *)&evi);
+
+    if (key.type == FocusIn) {
+        // XSetInputFocus(g->display, winid, RevertToParent, g->time);
         XRaiseWindow(g->display, winid);
-
+    
         if ( (l=list_lookup(windows_list, winid)) && (l->data) ) {
-            input_hint = ((struct window_data*)l->data)->input_hint;
             use_take_focus = ((struct window_data*)l->data)->support_take_focus;
             if (((struct window_data*)l->data)->is_docked)
-                XRaiseWindow(g->display, ((struct window_data*)l->data)->embeder);
+                if (key.detail == NotifyNormal)
+                    XRaiseWindow(g->display, ((struct window_data*)l->data)->embeder);
         } else {
             fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
-            input_hint = True;
-            use_take_focus = False;
         }
 
-        // Give input focus only to window that set the input hint
-        if (input_hint)
-            XSetInputFocus(g->display, winid, RevertToParent, g->time);
-
-        // Do not send take focus if the window doesn't support it
+        // Do not send WM_TAKE_FOCUS if the window doesn't support it
         if (use_take_focus)
             take_focus(g, winid);
 
         if (g->log_level > 1)
             fprintf(stderr, "0x%x raised\n", (int) winid);
-    } else if (key.type == FocusOut
-            && (key.mode == NotifyNormal
-                || key.mode == NotifyUngrab)) {
-        if ( (l=list_lookup(windows_list, winid)) && (l->data) )
-            input_hint = ((struct window_data*)l->data)->input_hint;
-        else {
-            fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
-            input_hint = True;
-        }
-        if (input_hint)
-            XSetInputFocus(g->display, None, RevertToParent, g->time);
-
+    } else if (key.type == FocusOut) {
+        // int ignore;
+        // XID winid_focused;
+        // XGetInputFocus(g->display, &winid_focused, &ignore);
+        // if (winid_focused == winid)
+        //     XSetInputFocus(g->display, None, RevertToNone, g->time);
         if (g->log_level > 1)
             fprintf(stderr, "0x%x lost focus\n", (int) winid);
     }
-
 }
 
 static int bitset(unsigned char *keys, int num)
@@ -2278,6 +2288,7 @@ int main(int argc, char **argv)
         XSelectInput(g.display, RootWindow(g.display, i),
                 SubstructureNotifyMask);
 
+    
 
     if (!XDamageQueryExtension(g.display, &damage_event,
                 &damage_error)) {
@@ -2298,6 +2309,12 @@ int main(int argc, char **argv)
                                     XFixesDisplayCursorNotifyMask);
     } else
         fprintf(stderr, "XFixes not available, cursor shape handling off");
+    
+    int ev_base, err_base; // ignore those
+    if (!XQueryExtension(g.display, "XInputExtension", &g.xi_opcode, &ev_base, &err_base)) {
+        fprintf(stderr, "X Input extension not available. Key press events not available. Upgrade your X11 server now.");
+        return 1;
+    }
 
     XAutoRepeatOff(g.display);
     signal(SIGCHLD, SIG_IGN);
