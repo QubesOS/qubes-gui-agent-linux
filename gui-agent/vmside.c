@@ -1827,32 +1827,36 @@ static void handle_focus(Ghandles * g, XID winid)
     XSendEvent(g->display, winid, true, 0, (XEvent *)&evi);
 
     if (key.type == FocusIn) {
-        // XSetInputFocus(g->display, winid, RevertToParent, g->time);
-        XRaiseWindow(g->display, winid);
-    
-        if ( (l=list_lookup(windows_list, winid)) && (l->data) ) {
-            use_take_focus = ((struct window_data*)l->data)->support_take_focus;
-            if (((struct window_data*)l->data)->is_docked)
-                if (key.detail == NotifyNormal)
+        if (key.mode == NotifyNormal || key.mode == NotifyUngrab) {
+            XSetInputFocus(g->display, winid, RevertToNone, g->time);
+            XRaiseWindow(g->display, winid);
+            if (g->log_level > 1)
+                fprintf(stderr, "0x%x gained focus\n", (int) winid);
+
+
+            if ( (l=list_lookup(windows_list, winid)) && (l->data) ) {
+                use_take_focus = ((struct window_data*)l->data)->support_take_focus;
+                if (((struct window_data*)l->data)->is_docked)
                     XRaiseWindow(g->display, ((struct window_data*)l->data)->embeder);
-        } else {
-            fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
+            } else {
+                fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
+            }
+
+            // Do not send WM_TAKE_FOCUS if the window doesn't support it
+            if (use_take_focus)
+                take_focus(g, winid);
         }
-
-        // Do not send WM_TAKE_FOCUS if the window doesn't support it
-        if (use_take_focus)
-            take_focus(g, winid);
-
-        if (g->log_level > 1)
-            fprintf(stderr, "0x%x raised\n", (int) winid);
     } else if (key.type == FocusOut) {
-        // int ignore;
-        // XID winid_focused;
-        // XGetInputFocus(g->display, &winid_focused, &ignore);
-        // if (winid_focused == winid)
-        //     XSetInputFocus(g->display, None, RevertToNone, g->time);
-        if (g->log_level > 1)
-            fprintf(stderr, "0x%x lost focus\n", (int) winid);
+        if (key.mode == NotifyNormal || key.mode == NotifyUngrab) {
+            int ignore;
+            XID winid_focused;
+            XGetInputFocus(g->display, &winid_focused, &ignore);
+            if (winid_focused == winid) {
+                XSetInputFocus(g->display, None, RevertToNone, g->time);
+                if (g->log_level > 1)
+                    fprintf(stderr, "0x%x lost focus\n", (int) winid);
+            }
+        }
     }
 }
 
