@@ -20,6 +20,7 @@
  *
  */
 
+#include <X11/X.h>
 #include <assert.h>
 #include <errno.h>
 #include <stddef.h>
@@ -1823,8 +1824,12 @@ static void handle_focus(Ghandles * g, XID winid)
     evi_leave.mode = key.mode;
     // good luck on applications not rely on other fields
 
-    XSendEvent(g->display, winid, true, 0, (XEvent *)&ev);
+    // TODO: figure out what's the best way for this to work
+    // some applications ignore events with send_event = true
+    XSendEvent(g->display, winid, true, FocusChangeMask, (XEvent *)&ev);
+    // XSendEvent(g->display, winid, false, 0, (XEvent *)&ev);
     XSendEvent(g->display, winid, true, 0, (XEvent *)&evi);
+    // XSendEvent(g->display, winid, false, 0, (XEvent *)&evi); // not working
 
     if (key.type == FocusIn) {
         if (key.mode == NotifyNormal || key.mode == NotifyUngrab) {
