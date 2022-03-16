@@ -1824,13 +1824,6 @@ static void handle_focus(Ghandles * g, XID winid)
     evi_leave.mode = key.mode;
     // good luck on applications not rely on other fields
 
-    // TODO: figure out what's the best way for this to work
-    // some applications ignore events with send_event = true
-    XSendEvent(g->display, winid, true, FocusChangeMask, (XEvent *)&ev);
-    // XSendEvent(g->display, winid, false, 0, (XEvent *)&ev);
-    XSendEvent(g->display, winid, true, 0, (XEvent *)&evi);
-    // XSendEvent(g->display, winid, false, 0, (XEvent *)&evi); // not working
-
     if (key.type == FocusIn) {
         if (key.mode == NotifyNormal || key.mode == NotifyUngrab) {
             XSetInputFocus(g->display, winid, RevertToNone, g->time);
@@ -1863,6 +1856,11 @@ static void handle_focus(Ghandles * g, XID winid)
             }
         }
     }
+
+    XSendEvent(g->display, winid, false, 0, (XEvent *)&ev);
+    XSendEvent(g->display, winid, false, 0, (XEvent *)&evi);
+    XSendEvent(g->display, winid, true, FocusChangeMask, (XEvent *)&ev);
+    XSendEvent(g->display, winid, true, FocusChangeMask, (XEvent *)&evi);
 }
 
 static int bitset(unsigned char *keys, int num)
