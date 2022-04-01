@@ -1801,31 +1801,9 @@ static void handle_focus(Ghandles * g, XID winid)
     int use_take_focus = false;
 
     read_data(g->vchan, (char *) &key, sizeof(key));
-    
-    // send event directly
-    XFocusChangeEvent ev;
-    ev.detail = key.detail;
-    ev.mode = key.mode;
-    ev.type = key.type;
-    ev.window = winid;
-    
-    XGenericEventCookie evi; // X Input Extension
-    XILeaveEvent evi_leave;
-    memset(&evi_leave, 0, sizeof(evi_leave)); // no UB...
-    evi.type = GenericEvent;
-    evi.evtype = key.type;
-    evi.extension = g->xi_opcode;
-    // evi.cookie = ????; // no documentation about how to set this field
-    evi.data = &evi_leave;
-    evi_leave.type = GenericEvent;
-    evi_leave.evtype = key.type;
-    evi_leave.extension = g->xi_opcode;
-    evi_leave.detail = key.detail;
-    evi_leave.mode = key.mode;
-    // good luck on applications not rely on other fields
 
     if (key.type == FocusIn) {
-        if (key.mode == NotifyNormal || key.mode == NotifyUngrab) {
+        if (key.mode == NotifyNormal) {
             XSetInputFocus(g->display, winid, RevertToNone, g->time);
             XRaiseWindow(g->display, winid);
             if (g->log_level > 1)
@@ -1844,8 +1822,14 @@ static void handle_focus(Ghandles * g, XID winid)
             if (use_take_focus)
                 take_focus(g, winid);
         }
-    } else if (key.type == FocusOut) {
+        if (key.mode == NotifyGrab) {
+            XGrabPointer(g->display, winid, false, 0, GrabModeSync, GrabModeSync, None, None, CurrentTime);
+        }
         if (key.mode == NotifyNormal || key.mode == NotifyUngrab) {
+            XUngrabPointer(g->display, CurrentTime);
+        }
+    } else if (key.type == FocusOut) {
+        if (key.mode == NotifyNormal) {
             int ignore;
             XID winid_focused;
             XGetInputFocus(g->display, &winid_focused, &ignore);
@@ -1855,12 +1839,13 @@ static void handle_focus(Ghandles * g, XID winid)
                     fprintf(stderr, "0x%x lost focus\n", (int) winid);
             }
         }
+        if (key.mode == NotifyGrab) {
+            XGrabPointer(g->display, g->root_win, false, 0, GrabModeSync, GrabModeSync, None, None, CurrentTime);
+        }
+        if (key.mode == NotifyUngrab) {
+            XUngrabPointer(g->display, CurrentTime);
+        }
     }
-
-    XSendEvent(g->display, winid, false, 0, (XEvent *)&ev);
-    XSendEvent(g->display, winid, false, 0, (XEvent *)&evi);
-    XSendEvent(g->display, winid, true, FocusChangeMask, (XEvent *)&ev);
-    XSendEvent(g->display, winid, true, FocusChangeMask, (XEvent *)&evi);
 }
 
 static int bitset(unsigned char *keys, int num)
