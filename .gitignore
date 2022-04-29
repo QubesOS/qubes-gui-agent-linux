@@ -3,3 +3,9 @@ tags
 deb/
 pkgs
 debian/changelog.*
+xf86-input-mfndev/compile
+xf86-input-mfndev/config.h.in
+xf86-input-mfndev/depcomp
+xf86-input-mfndev/ltmain.sh
+xf86-qubes-common/libxf86-qubes-common.so
+pipewire/qubes-pw-module.so

@@ -20,6 +20,11 @@
 
 set -eu
 
+if [ -f /var/run/qubes-service/pipewire ]; then
+    # PipeWire will be running; silently exit.
+    exit 0
+fi
+
 type pulseaudio >/dev/null 2>&1 || exit 0
 
 if [ -f /lib/systemd/user/pulseaudio.service ]; then

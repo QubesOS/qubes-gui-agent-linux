@@ -1,4 +1,4 @@
-pkgname=(qubes-vm-gui qubes-vm-pulseaudio)
+pkgname=(qubes-vm-gui qubes-vm-pulseaudio qubes-vm-pipewire)
 pkgver=$(cat version)
 pkgrel=10
 epoch=
@@ -7,11 +7,12 @@ arch=("x86_64")
 url="http://qubes-os.org/"
 license=('GPL')
 groups=()
-makedepends=(pkg-config make gcc patch git automake autoconf libtool
-			'pulseaudio<=16.1'
-			xorg-server-devel xorg-util-macros libxcomposite libxt pixman lsb-release
-			qubes-vm-gui-common qubes-libvchan qubes-db-vm
-			)
+makedepends=(
+  pkg-config make gcc patch git automake autoconf libtool
+  'pulseaudio<=16.1' 'pipewire>=1:0.3.53-2' 'pipewire<1:0.4'
+  xorg-server-devel xorg-util-macros libxcomposite libxt pixman lsb-release
+  qubes-vm-gui-common qubes-libvchan qubes-db-vm
+)
 checkdepends=()
 optdepends=()
 provides=()
@@ -29,8 +30,8 @@ pa_ver=$((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -
 
 build() {
 
-for source in Makefile appvm-scripts gui-common include pulse gui-agent common xf86-input-mfndev xf86-video-dummy xf86-qubes-common window-icon-updater version; do
-  (ln -s $srcdir/../$source $srcdir/$source)
+for source in Makefile appvm-scripts gui-common include pulse gui-agent common xf86-input-mfndev xf86-video-dummy xf86-qubes-common window-icon-updater version pipewire; do
+  ln -sf "$srcdir/../$source" "$srcdir/$source"
 done
 
 pa_ver=$((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-")
@@ -77,6 +78,16 @@ install=PKGBUILD-pulseaudio.install
 pa_ver=$( (pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-")
 
 make install-pulseaudio DESTDIR=$pkgdir PA_VER=$pa_ver LIBDIR=/usr/lib USRLIBDIR=/usr/lib SYSLIBDIR=/usr/lib
+
+}
+
+package_qubes-vm-pipewire () {
+
+pkgdesc='PipeWire support for Qubes VM.  This replaces the legacy PulseAudio module.'
+depends=('pipewire>=1:0.3.53-2' 'pipewire<1:0.4')
+replaces=('qubes-vm-pulseaudio<=4.1.26-10')
+
+make install-pipewire "DESTDIR=$pkgdir" LIBDIR=/usr/lib USRLIBDIR=/usr/lib SYSLIBDIR=/usr/lib
 
 }
 

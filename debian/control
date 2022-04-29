@@ -20,10 +20,11 @@ Build-Depends:
     libxt-dev,
     libxen-dev,
     lsb-release,
+    libpipewire-0.3-dev,
     quilt,
     qubes-gui-common (>= 4.1.0),
     qubesdb-dev,
-    libltdl-dev
+    libltdl-dev,
 Standards-Version: 4.4.0.1
 Homepage: http://www.qubes-os.org/
 #Vcs-Git: git://git.debian.org/collab-maint/qubes-gui-agent.git
@@ -108,6 +109,18 @@ Breaks:
  qubes-core-agent (<< 4.2.5-1),
 Description: Audio support for Qubes VM
  Pulseaudio module to enable sound support in Qubes VM
+
+Package: qubes-vm-pipewire
+Architecture: any
+Depends:
+ qubesdb-vm (>= 4.1.4),
+ ${shlibs:Depends},
+ ${misc:Depends}
+Description: PipeWire module to enable sound support in Qubes VM
+ Experimental PipeWire module to enable sound support in Qubes VMs.
+ Unlike the PulseAudio support in the pulseaudio-qubes package, this
+ works with the stock PipeWire service and does not depend on internal
+ PipeWire headers.  It is also less code.
 
 Package: qubes-gui-agent-xfce
 Architecture: any
