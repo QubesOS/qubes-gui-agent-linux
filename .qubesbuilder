@@ -1,10 +1,10 @@
 host:
   rpm:
-    spec:
+    build:
     - rpm_spec/gui-agent.spec
 vm:
   rpm:
-    spec:
+    build:
     - rpm_spec/gui-agent.spec
   deb:
     build:
