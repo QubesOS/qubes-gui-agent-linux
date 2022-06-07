@@ -38,6 +38,8 @@ URL:		http://www.qubes-os.org
 
 %define pa_ver_full %((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -d "-" -f 1)
 %define pa_ver_major_minor %((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -d "-" -f 1 | cut -d "." -f 1,2)
+%define pa_ver_major %(echo %{pa_ver_major_minor} | cut -d "." -f 1)
+%define pa_module_dir %(if [ $(PA_VER_MAJOR) -ge 16 ]; then echo pulseaudio; else echo pulse-%{pa_ver_major_minor}; fi)
 
 BuildRequires:	gcc
 BuildRequires:	libX11-devel
@@ -202,7 +204,7 @@ rm -f %{name}-%{version}
 /usr/lib/tmpfiles.d/qubes-pulseaudio.conf
 /etc/pulse/qubes-default.pa
 /usr/bin/start-pulseaudio-with-vchan
-%{_libdir}/pulse-%{pa_ver_major_minor}/modules/module-vchan-sink.so
+%{_libdir}/%{pa_module_dir}/modules/module-vchan-sink.so
 /etc/xdg/autostart/qubes-pulseaudio.desktop
 
 %files xfce
