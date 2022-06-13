@@ -3,6 +3,8 @@
  * Copyright 2002, SuSE Linux AG, Author: Egbert Eich
  */
 
+#if 0
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -1283,3 +1285,5 @@ dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op, pointer ptr)
             return FALSE;
     }
 }
+
+#endif
