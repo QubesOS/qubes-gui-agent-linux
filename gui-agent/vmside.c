@@ -1671,6 +1671,8 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
     if (!is_mod_key) feed_xdriver(g, 'K', key.keycode, is_press);
 }
 
+static void handle_focus_helper(Ghandles * g, XID winid, struct msg_focus msg);
+
 static void handle_button(Ghandles * g, XID winid)
 {
     struct msg_button msg;
@@ -1688,7 +1690,24 @@ static void handle_button(Ghandles * g, XID winid)
         fprintf(stderr,
                 "send buttonevent, win 0x%x type=%d button=%d\n",
                 (int) winid, msg.type, msg.button);
-    feed_xdriver(g, 'B', msg.button, msg.type == ButtonPress ? 1 : 0);
+
+    bool is_button_press = msg.type == ButtonPress;
+
+    // Fake a "focus in" when mouse down on unfocused window.
+    if (is_button_press) {
+        int _return_to;
+        XID focused_winid;
+        XGetInputFocus(g->display, &focused_winid, &_return_to);
+        if (focused_winid != winid) {
+            struct msg_focus msg_focusin;
+            msg_focusin.type = FocusIn;
+            msg_focusin.mode = NotifyNormal;
+            msg_focusin.detail = NotifyAncestor;
+            handle_focus_helper(g, winid, msg_focusin);
+        }
+    }
+
+    feed_xdriver(g, 'B', msg.button, is_button_press ? 1 : 0);
 }
 
 static void handle_motion(Ghandles * g, XID winid)
