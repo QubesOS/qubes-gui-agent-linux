@@ -1673,11 +1673,11 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
 
 static void handle_button(Ghandles * g, XID winid)
 {
-    struct msg_button key;
+    struct msg_button msg;
     struct genlist *l = list_lookup(windows_list, winid);
 
 
-    read_data(g->vchan, (char *) &key, sizeof(key));
+    read_data(g->vchan, (char *) &msg, sizeof(msg));
     if (l && l->data && ((struct window_data*)l->data)->is_docked) {
         /* get position of embeder, not icon itself*/
         winid = ((struct window_data*)l->data)->embeder;
@@ -1687,19 +1687,19 @@ static void handle_button(Ghandles * g, XID winid)
     if (g->log_level > 1)
         fprintf(stderr,
                 "send buttonevent, win 0x%x type=%d button=%d\n",
-                (int) winid, key.type, key.button);
-    feed_xdriver(g, 'B', key.button, key.type == ButtonPress ? 1 : 0);
+                (int) winid, msg.type, msg.button);
+    feed_xdriver(g, 'B', msg.button, msg.type == ButtonPress ? 1 : 0);
 }
 
 static void handle_motion(Ghandles * g, XID winid)
 {
-    struct msg_motion key;
+    struct msg_motion msg;
     //      XMotionEvent event;
     XWindowAttributes attr;
     int ret;
     struct genlist *l = list_lookup(windows_list, winid);
 
-    read_data(g->vchan, (char *) &key, sizeof(key));
+    read_data(g->vchan, (char *) &msg, sizeof(msg));
     if (l && l->data && ((struct window_data*)l->data)->is_docked) {
         /* get position of embeder, not icon itself*/
         winid = ((struct window_data*)l->data)->embeder;
@@ -1712,14 +1712,14 @@ static void handle_motion(Ghandles * g, XID winid)
         return;
     };
 
-    feed_xdriver(g, 'M', attr.x + key.x, attr.y + key.y);
+    feed_xdriver(g, 'M', attr.x + msg.x, attr.y + msg.y);
 }
 
 // ensure that LeaveNotify is delivered to the window - if pointer is still
 // above this window, place stub window between pointer and the window
 static void handle_crossing(Ghandles * g, XID winid)
 {
-    struct msg_crossing key;
+    struct msg_crossing msg;
     XWindowAttributes attr;
     int ret;
     struct genlist *l = list_lookup(windows_list, winid);
@@ -1731,9 +1731,9 @@ static void handle_crossing(Ghandles * g, XID winid)
         winid = ((struct window_data*)l->data)->embeder;
     }
 
-    read_data(g->vchan, (char *) &key, sizeof(key));
+    read_data(g->vchan, (char *) &msg, sizeof(msg));
 
-    if (key.mode != NotifyNormal)
+    if (msg.mode != NotifyNormal)
         return;
     ret = XGetWindowAttributes(g->display, winid, &attr);
     if (ret != 1) {
@@ -1743,11 +1743,11 @@ static void handle_crossing(Ghandles * g, XID winid)
         return;
     };
 
-    if (key.type == EnterNotify) {
+    if (msg.type == EnterNotify) {
         // hide stub window
         XUnmapWindow(g->display, g->stub_win);
-        feed_xdriver(g, 'M', attr.x + key.x, attr.y + key.y);
-    } else if (key.type == LeaveNotify) {
+        feed_xdriver(g, 'M', attr.x + msg.x, attr.y + msg.y);
+    } else if (msg.type == LeaveNotify) {
         XID window_under_pointer, root_returned;
         int root_x, root_y, win_x, win_y;
         unsigned int mask_return;
@@ -1771,7 +1771,7 @@ static void handle_crossing(Ghandles * g, XID winid)
             XRaiseWindow(g->display, g->stub_win);
         }
     } else {
-        fprintf(stderr, "Invalid crossing event: %d\n", key.type);
+        fprintf(stderr, "Invalid crossing event: %d\n", msg.type);
     }
 
 }
@@ -1794,16 +1794,15 @@ static void take_focus(Ghandles * g, XID winid)
                 (int) winid);
 }
 
-static void handle_focus(Ghandles * g, XID winid)
+static void handle_focus_helper(Ghandles * g, XID winid, struct msg_focus msg)
 {
-    struct msg_focus key;
     struct genlist *l;
     int use_take_focus = false;
 
-    read_data(g->vchan, (char *) &key, sizeof(key));
+    read_data(g->vchan, (char *) &msg, sizeof(msg));
 
-    if (key.type == FocusIn) {
-        if (key.mode == NotifyNormal) {
+    if (msg.type == FocusIn) {
+        if (msg.mode == NotifyNormal) {
             XSetInputFocus(g->display, winid, RevertToNone, g->time);
             XRaiseWindow(g->display, winid);
             if (g->log_level > 1)
@@ -1822,14 +1821,14 @@ static void handle_focus(Ghandles * g, XID winid)
             if (use_take_focus)
                 take_focus(g, winid);
         }
-        if (key.mode == NotifyGrab) {
+        if (msg.mode == NotifyGrab) {
             XGrabPointer(g->display, winid, false, 0, GrabModeSync, GrabModeSync, None, None, CurrentTime);
         }
-        if (key.mode == NotifyNormal || key.mode == NotifyUngrab) {
+        if (msg.mode == NotifyNormal || msg.mode == NotifyUngrab) {
             XUngrabPointer(g->display, CurrentTime);
         }
-    } else if (key.type == FocusOut) {
-        if (key.mode == NotifyNormal) {
+    } else if (msg.type == FocusOut) {
+        if (msg.mode == NotifyNormal) {
             int ignore;
             XID winid_focused;
             XGetInputFocus(g->display, &winid_focused, &ignore);
@@ -1839,13 +1838,20 @@ static void handle_focus(Ghandles * g, XID winid)
                     fprintf(stderr, "0x%x lost focus\n", (int) winid);
             }
         }
-        if (key.mode == NotifyGrab) {
+        if (msg.mode == NotifyGrab) {
             XGrabPointer(g->display, g->root_win, false, 0, GrabModeSync, GrabModeSync, None, None, CurrentTime);
         }
-        if (key.mode == NotifyUngrab) {
+        if (msg.mode == NotifyUngrab) {
             XUngrabPointer(g->display, CurrentTime);
         }
     }
+}
+
+static void handle_focus(Ghandles * g, XID winid)
+{
+    struct msg_focus msg;
+    read_data(g->vchan, (char *) &msg, sizeof(msg));
+    return handle_focus_helper(g, winid, msg);
 }
 
 static int bitset(unsigned char *keys, int num)
