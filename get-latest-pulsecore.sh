@@ -44,7 +44,7 @@ if [ "${LATEST_QUBES_VERSION}" != "${LATEST_REPO_VERSION}" ] && [ ! -e "$LOCALDI
     done
 
     # Verify integrity
-    git tag -v "$(git describe)"
+    git -c gpg.program=gpg tag -v "$(git describe)"
 
     # remove unwanted files
     find "src/pulsecore" -type f ! -regex '.*\.h$' -exec rm -f {} \;
