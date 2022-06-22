@@ -1,3 +1,21 @@
+qubes-gui-agent (4.1.26-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * Drop Travis CI
+
+  [ ejose19 ]
+  * adjust pulsecore download script to use upstream repo to obtain
+    headers
+  * Adjust pulseaudio modules dir
+
+  [ Frédéric Pierret (fepitre) ]
+  * get-latest-pulsecore.sh: ensure to use gpg for git tag
+
+  [ fepitre-bot ]
+  * Add pulseaudio-16.1 headers
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 23 Jun 2022 00:24:25 +0200
+
 qubes-gui-agent (4.1.25-1) unstable; urgency=medium
 
   [ Otto Sabart ]
