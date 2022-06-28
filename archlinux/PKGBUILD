@@ -6,11 +6,6 @@ arch=("x86_64")
 url="http://qubes-os.org/"
 license=('GPL')
 groups=()
-makedepends=(pkg-config make gcc patch git automake autoconf libtool
-			'pulseaudio'
-			xorg-server-devel xorg-util-macros libxcomposite libxt pixman
-			qubes-vm-gui-common qubes-libvchan qubes-db-vm
-			)
 checkdepends=()
 optdepends=()
 provides=()
@@ -24,11 +19,29 @@ source=()
 md5sums=()
 
 noextract=()
-pa_ver=16.1 #specify this manually please
-# If using pkg-config, you must update libpulse first.
-#pa_ver=$((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-")
 
-export PA_VER_FULL=$pa_ver
+# Use envvar $PA_VER_FULL to specify pulseaudio version manually
+# e.g. PA_VER_FULL=16.1 makepkg -s
+if [ -z $PA_VER_FULL ]
+then
+    pa_ver=$(pkg-config --modversion libpulse)
+    if [ ! $? -eq 0 ]; then
+        echo "Cannot find libpulse version with pkg-config."
+        echo "Please specify version manually with PA_VER_FULL."
+        exit 1
+    fi
+    pa_ver=$(echo $pa_ver | cut -f 1 -d "-")
+    export PA_VER_FULL=$pa_ver
+else
+    pa_ver=$PA_VER_FULL
+fi
+
+makedepends=(pkg-config make gcc patch git automake autoconf libtool
+			"pulseaudio=$pa_ver"
+			xorg-server-devel xorg-util-macros libxcomposite libxt pixman
+			qubes-vm-gui-common qubes-libvchan qubes-db-vm
+			)
+
 
 if [ -e archlinux ] # on no, at repo root
 then
@@ -39,21 +52,25 @@ fi
 pkgver=$(cat $startdir/../version)
 
 clean() {
-    rm $srcdir/* -r || true
+    rm -r $srcdir/* || true
 }
 
 build() {
 
 rm $srcdir/PKGBUILD-z-qubes-session.sh || true
 cp $startdir/PKGBUILD-z-qubes-session.sh $srcdir/
-for source in Makefile appvm-scripts gui-common include pulse gui-agent common xf86-input-mfndev xf86-video-dummy xf86-qubes-common window-icon-updater version; do    
-  rm $source -r || true
+for source in Makefile appvm-scripts gui-common include pulse gui-agent common xf86-input-mfndev xf86-video-dummy xf86-qubes-common window-icon-updater version; do
+  if [ -e "$source" ]; then rm -r "$source"; fi
   cp -r $startdir/../$source $source
 done
 
-
-rm -rf pulse/pulsecore
-ln -s pulsecore-$pa_ver pulse/pulsecore
+pulsecore_dir="pulse/pulsecore-$pa_ver"
+if [ ! -d $pulsecore_dir ]; then
+    echo "Invalid pulsecore_dir: $pulsecore_dir"
+    exit 2
+fi
+if [ -e pulse/pulsecore ]; then rm -r pulse/pulsecore; fi
+ln -s $(realpath "$pulsecore_dir") pulse/pulsecore
 
 # Bug fixes : /var/run/console depends on pam_console, which is fedora specific
 # As a consequece, /var/run/console does not exists and qubes-gui-agent will always fail
@@ -88,7 +105,7 @@ install -D $srcdir/PKGBUILD-z-qubes-session.sh $pkgdir/etc/X11/xinit/xinitrc.d/z
 package_qubes-vm-pulseaudio() {
 
 pkgdesc="Pulseaudio support for Qubes VM"
-depends=('alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'pulseaudio')
+depends=('alsa-lib' 'alsa-utils' 'pulseaudio-alsa' "pulseaudio=$pa_ver")
 install=PKGBUILD-pulseaudio.install
 
 make install-pulseaudio DESTDIR=$pkgdir PA_VER=$pa_ver LIBDIR=/usr/lib USRLIBDIR=/usr/lib SYSLIBDIR=/usr/lib
