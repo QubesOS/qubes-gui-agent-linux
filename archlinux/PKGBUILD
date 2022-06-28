@@ -1,5 +1,4 @@
 pkgname=(qubes-vm-gui qubes-vm-pulseaudio)
-pkgver=$(cat version)
 pkgrel=10
 epoch=
 pkgdesc="The Qubes GUI Agent for AppVMs"
@@ -8,8 +7,8 @@ url="http://qubes-os.org/"
 license=('GPL')
 groups=()
 makedepends=(pkg-config make gcc patch git automake autoconf libtool
-			'pulseaudio<=16.1'
-			xorg-server-devel xorg-util-macros libxcomposite libxt pixman lsb-release
+			'pulseaudio'
+			xorg-server-devel xorg-util-macros libxcomposite libxt pixman
 			qubes-vm-gui-common qubes-libvchan qubes-db-vm
 			)
 checkdepends=()
@@ -21,21 +20,39 @@ backup=()
 options=()
 changelog=
 
-source=(PKGBUILD-z-qubes-session.sh)
+source=()
+md5sums=()
 
 noextract=()
-md5sums=() #generate with 'makepkg -g'
-pa_ver=$((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-")
+pa_ver=16.1 #specify this manually please
+# If using pkg-config, you must update libpulse first.
+#pa_ver=$((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-")
+
+export PA_VER_FULL=$pa_ver
+
+if [ -e archlinux ] # on no, at repo root
+then
+    echo Do not run 'makepkg' at repo root! >&2
+    cd archlinux
+fi
+
+pkgver=$(cat $startdir/../version)
+
+clean() {
+    rm $srcdir/* -r || true
+}
 
 build() {
 
-for source in Makefile appvm-scripts gui-common include pulse gui-agent common xf86-input-mfndev xf86-video-dummy xf86-qubes-common window-icon-updater version; do
-  (ln -s $srcdir/../$source $srcdir/$source)
+rm $srcdir/PKGBUILD-z-qubes-session.sh || true
+cp $startdir/PKGBUILD-z-qubes-session.sh $srcdir/
+for source in Makefile appvm-scripts gui-common include pulse gui-agent common xf86-input-mfndev xf86-video-dummy xf86-qubes-common window-icon-updater version; do    
+  rm $source -r || true
+  cp -r $startdir/../$source $source
 done
 
-pa_ver=$((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-")
 
-rm -f pulse/pulsecore
+rm -rf pulse/pulsecore
 ln -s pulsecore-$pa_ver pulse/pulsecore
 
 # Bug fixes : /var/run/console depends on pam_console, which is fedora specific
@@ -71,9 +88,8 @@ install -D $srcdir/PKGBUILD-z-qubes-session.sh $pkgdir/etc/X11/xinit/xinitrc.d/z
 package_qubes-vm-pulseaudio() {
 
 pkgdesc="Pulseaudio support for Qubes VM"
-depends=('alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'pulseaudio<=16.1')
+depends=('alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'pulseaudio')
 install=PKGBUILD-pulseaudio.install
-pa_ver=$((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-")
 
 make install-pulseaudio DESTDIR=$pkgdir PA_VER=$pa_ver LIBDIR=/usr/lib USRLIBDIR=/usr/lib SYSLIBDIR=/usr/lib
 
