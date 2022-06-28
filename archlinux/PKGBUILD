@@ -51,10 +51,6 @@ fi
 
 pkgver=$(cat $startdir/../version)
 
-clean() {
-    rm -r $srcdir/* || true
-}
-
 build() {
 
 rm $srcdir/PKGBUILD-z-qubes-session.sh || true
