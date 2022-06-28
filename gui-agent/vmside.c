@@ -1816,17 +1816,19 @@ static void take_focus(Ghandles * g, XID winid)
 static void handle_focus_helper(Ghandles * g, XID winid, struct msg_focus msg)
 {
     struct genlist *l;
-    int use_take_focus = false;
-
-    read_data(g->vchan, (char *) &msg, sizeof(msg));
-
+    bool use_take_focus = false;
+    bool input_hint = false;
+    if ( (l=list_lookup(windows_list, winid)) && (l->data) )
+        input_hint = ((struct window_data*)l->data)->input_hint;
+    else {
+        fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
+        input_hint = true;
+    }
+    
     if (msg.type == FocusIn) {
         if (msg.mode == NotifyNormal) {
-            XSetInputFocus(g->display, winid, RevertToNone, g->time);
             XRaiseWindow(g->display, winid);
-            if (g->log_level > 1)
-                fprintf(stderr, "0x%x gained focus\n", (int) winid);
-
+            
 
             if ( (l=list_lookup(windows_list, winid)) && (l->data) ) {
                 use_take_focus = ((struct window_data*)l->data)->support_take_focus;
@@ -1834,6 +1836,12 @@ static void handle_focus_helper(Ghandles * g, XID winid, struct msg_focus msg)
                     XRaiseWindow(g->display, ((struct window_data*)l->data)->embeder);
             } else {
                 fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
+            }
+
+            if (input_hint) {
+                if (g->log_level > 1)
+                    fprintf(stderr, "0x%x gained focus\n", (int) winid);
+                XSetInputFocus(g->display, winid, RevertToNone, g->time);
             }
 
             // Do not send WM_TAKE_FOCUS if the window doesn't support it
@@ -1846,7 +1854,7 @@ static void handle_focus_helper(Ghandles * g, XID winid, struct msg_focus msg)
         if (msg.mode == NotifyNormal || msg.mode == NotifyUngrab) {
             XUngrabPointer(g->display, CurrentTime);
         }
-    } else if (msg.type == FocusOut) {
+    } else if (msg.type == FocusOut && input_hint) {
         if (msg.mode == NotifyNormal) {
             int ignore;
             XID winid_focused;
