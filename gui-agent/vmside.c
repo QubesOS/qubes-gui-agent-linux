@@ -1844,7 +1844,7 @@ static void handle_focus_helper(Ghandles * g, XID winid, struct msg_focus msg)
             if (input_hint) {
                 if (g->log_level > 1)
                     fprintf(stderr, "0x%x gained focus\n", (int) winid);
-                XSetInputFocus(g->display, winid, RevertToNone, g->time);
+                XSetInputFocus(g->display, winid, RevertToParent, g->time);
             }
 
             // Do not send WM_TAKE_FOCUS if the window doesn't support it
@@ -1863,7 +1863,7 @@ static void handle_focus_helper(Ghandles * g, XID winid, struct msg_focus msg)
             XID winid_focused;
             XGetInputFocus(g->display, &winid_focused, &ignore);
             if (winid_focused == winid) {
-                XSetInputFocus(g->display, None, RevertToNone, g->time);
+                XSetInputFocus(g->display, None, RevertToParent, g->time);
                 if (g->log_level > 1)
                     fprintf(stderr, "0x%x lost focus\n", (int) winid);
             }
