@@ -1620,7 +1620,7 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
         key.state &= LockMask;
     }
     bool is_press = key.type == KeyPress;
-    bool is_mod_key = false;
+    bool already_handled = false;
     if (state.mods != key.state) {
         XModifierKeymap *modmap;
         int mod_index;
@@ -1642,7 +1642,6 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
             // #define Mod5MapIndex            7
             for (mod_index = 0; mod_index < 8; mod_index++) {
                 uint32_t keycode = modmap->modifiermap[mod_index*modmap->max_keypermod];
-                if (keycode == key.keycode) is_mod_key = true;
                 if (keycode == 0x00) {
                     if (g->log_level > 1)
                         fprintf(stderr, "ignoring disabled modifier %d\n", mod_index);
@@ -1658,9 +1657,13 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
                     }
                 } else {
                     if ((state.mods & mod_mask) && !(key.state & mod_mask)) {
+                        // need to release
+                        if (keycode == key.keycode && !is_press) already_handled = true;
                         feed_xdriver(g, 'K', keycode, 0);
                     }
                     else if (!(state.mods & mod_mask) && (key.state & mod_mask)) {
+                        // need to press
+                        if (keycode == key.keycode && is_press) already_handled = true;
                         feed_xdriver(g, 'K', keycode, 1);
                     }
                 }
@@ -1668,7 +1671,7 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
             XFreeModifiermap(modmap);
         }
     }
-    if (!is_mod_key) feed_xdriver(g, 'K', key.keycode, is_press);
+    if (!already_handled) feed_xdriver(g, 'K', key.keycode, is_press);
 }
 
 static void handle_focus_helper(Ghandles * g, XID winid, struct msg_focus msg);
