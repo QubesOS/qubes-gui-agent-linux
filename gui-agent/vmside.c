@@ -1698,16 +1698,17 @@ static void handle_button(Ghandles * g, XID winid)
 
     // Fake a "focus in" when mouse down on unfocused window.
     if (is_button_press) {
-        int _return_to;
-        XID focused_winid;
-        XGetInputFocus(g->display, &focused_winid, &_return_to);
-        if (focused_winid != winid) {
-            struct msg_focus msg_focusin;
-            msg_focusin.type = FocusIn;
-            msg_focusin.mode = NotifyNormal;
-            msg_focusin.detail = NotifyAncestor;
-            handle_focus_helper(g, winid, msg_focusin);
-        }
+        // TODO: detect focus correctly
+        // int _return_to;
+        // XID focused_winid;
+        // XGetInputFocus(g->display, &focused_winid, &_return_to);
+        // if (focused_winid != winid) {
+        //     struct msg_focus msg_focusin;
+        //     msg_focusin.type = FocusIn;
+        //     msg_focusin.mode = NotifyNormal;
+        //     msg_focusin.detail = NotifyAncestor;
+        //     handle_focus_helper(g, winid, msg_focusin);
+        // }
     }
 
     feed_xdriver(g, 'B', msg.button, is_button_press ? 1 : 0);
