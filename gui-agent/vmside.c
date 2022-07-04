@@ -1696,22 +1696,28 @@ static void handle_button(Ghandles * g, XID winid)
 
     bool is_button_press = msg.type == ButtonPress;
 
+    // click first, or some weird race condition may happen
+    // some applications close all context menus when focused, and the click will happen after
+    feed_xdriver(g, 'B', msg.button, is_button_press ? 1 : 0);
+
     // Fake a "focus in" when mouse down on unfocused window.
     if (is_button_press) {
-        // TODO: detect focus correctly
         // int _return_to;
         // XID focused_winid;
         // XGetInputFocus(g->display, &focused_winid, &_return_to);
-        // if (focused_winid != winid) {
-        //     struct msg_focus msg_focusin;
-        //     msg_focusin.type = FocusIn;
-        //     msg_focusin.mode = NotifyNormal;
-        //     msg_focusin.detail = NotifyAncestor;
-        //     handle_focus_helper(g, winid, msg_focusin);
-        // }
+        // bool a = focused_winid != winid
+        // TODO: check if window is "top-level" (has border), and only focus if it or its child was not focused
+        // some applications get confused if you give focus to its context menu
+        // I'm not sure how this works yet
+        bool need_focus = false; 
+        if (need_focus) {
+            struct msg_focus msg_focusin;
+            msg_focusin.type = FocusIn;
+            msg_focusin.mode = NotifyNormal;
+            msg_focusin.detail = NotifyNonlinear;
+            handle_focus_helper(g, winid, msg_focusin);
+        }
     }
-
-    feed_xdriver(g, 'B', msg.button, is_button_press ? 1 : 0);
 }
 
 static void handle_motion(Ghandles * g, XID winid)
