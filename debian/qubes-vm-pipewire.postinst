@@ -1,0 +1,1 @@
+systemctl --global --no-reload preset wireplumber.service pipewire.service pipewire.socket || :
