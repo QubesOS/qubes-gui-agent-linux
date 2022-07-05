@@ -23,6 +23,10 @@ VERSION := $(file <version)
 LIBDIR ?= /usr/lib64
 USRLIBDIR ?= /usr/lib
 SYSLIBDIR ?= /lib
+UNITDIR ?= $(SYSLIBDIR)/systemd/system
+USERUNITDIR ?= $(SYSLIBDIR)/systemd/user
+USERPRESETDIR ?= $(SYSLIBDIR)/systemd/user-preset
+UDEVRULESDIR ?= $(SYSLIBDIR)/udev/rules.d
 DATADIR ?= /usr/share
 ifneq (,$(filter-out selinux install-selinux,$(MAKECMDGOALS)))
 PA_VER_FULL ?= $(shell pkg-config --modversion libpulse | cut -d "-" -f 1 || echo 0.0)
@@ -142,21 +146,21 @@ install-pipewire:
 	install -m 0644 -D pipewire/30_qubes.conf \
 		$(DESTDIR)$(DATADIR)/pipewire/pipewire.conf.d/30_qubes.conf
 	install -m 0644 -D appvm-scripts/lib/systemd/user/pipewire.service.d/30_qubes.conf \
-		$(DESTDIR)$(SYSLIBDIR)/systemd/user/pipewire.service.d/30_qubes.conf
+		$(DESTDIR)$(USERUNITDIR)/pipewire.service.d/30_qubes.conf
 	install -m 0644 -D appvm-scripts/lib/systemd/user-preset/76-qubes-vm.preset \
-		$(DESTDIR)$(SYSLIBDIR)/systemd/user-preset/76-qubes-vm.preset
-	mkdir -p -m 0755 $(DESTDIR)$(SYSLIBDIR)/systemd/user/pipewire.service.d \
-	                 $(DESTDIR)$(SYSLIBDIR)/systemd/user/pipewire.socket.d \
-	                 $(DESTDIR)$(SYSLIBDIR)/systemd/user/wireplumber.service.d
-	ln $(DESTDIR)$(SYSLIBDIR)/systemd/user/pipewire.service.d/30_qubes.conf \
-	   $(DESTDIR)$(SYSLIBDIR)/systemd/user/pipewire.socket.d/30_qubes.conf
-	ln $(DESTDIR)$(SYSLIBDIR)/systemd/user/pipewire.service.d/30_qubes.conf \
-	   $(DESTDIR)$(SYSLIBDIR)/systemd/user/wireplumber.service.d/30_qubes.conf
+		$(DESTDIR)$(USERPRESETDIR)/76-qubes-vm.preset
+	mkdir -p -m 0755 $(DESTDIR)$(USERUNITDIR)/pipewire.service.d \
+	                 $(DESTDIR)$(USERUNITDIR)/pipewire.socket.d \
+	                 $(DESTDIR)$(USERUNITDIR)/wireplumber.service.d
+	ln $(DESTDIR)$(USERUNITDIR)/pipewire.service.d/30_qubes.conf \
+	   $(DESTDIR)$(USERUNITDIR)/pipewire.socket.d/30_qubes.conf
+	ln $(DESTDIR)$(USERUNITDIR)/pipewire.service.d/30_qubes.conf \
+	   $(DESTDIR)$(USERUNITDIR)/wireplumber.service.d/30_qubes.conf
 
 .PHONY: install-systemd
 install-systemd:
 	install -m 0644 -D appvm-scripts/qubes-gui-agent.service \
-		$(DESTDIR)/$(SYSLIBDIR)/systemd/system/qubes-gui-agent.service
+		$(DESTDIR)$(UNITDIR)/qubes-gui-agent.service
 
 .PHONY: install-common
 install-common:
@@ -221,7 +225,7 @@ endif
 	install -D -m 0644 appvm-scripts/usr/lib/sysctl.d/30-qubes-gui-agent.conf \
 		$(DESTDIR)/usr/lib/sysctl.d/30-qubes-gui-agent.conf
 	install -D -m 0644 appvm-scripts/lib/udev/rules.d/70-master-of-seat.rules \
-		$(DESTDIR)/$(SYSLIBDIR)/udev/rules.d/70-master-of-seat.rules
+		$(DESTDIR)/$(UDEVRULESDIR)/70-master-of-seat.rules
 	install -D appvm-scripts/usr/lib/qubes/qubes-gui-agent-pre.sh \
 		$(DESTDIR)/usr/lib/qubes/qubes-gui-agent-pre.sh
 	install -D appvm-scripts/usr/lib/qubes/qubes-keymap.sh \
