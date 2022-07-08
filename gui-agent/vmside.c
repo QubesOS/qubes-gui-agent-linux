@@ -1824,8 +1824,7 @@ static void handle_focus_helper(Ghandles * g, XID winid, struct msg_focus msg)
         }
         if (msg.mode == NotifyGrab) {
             XGrabPointer(g->display, winid, false, 0, GrabModeSync, GrabModeSync, None, None, CurrentTime);
-        }
-        if (msg.mode == NotifyNormal || msg.mode == NotifyUngrab) {
+        } else {
             XUngrabPointer(g->display, CurrentTime);
         }
     } else if (msg.type == FocusOut && input_hint) {
