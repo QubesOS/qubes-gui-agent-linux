@@ -1787,56 +1787,72 @@ static void take_focus(Ghandles * g, XID winid)
 
 }
 
+static void handle_focus_helper(Ghandles * g, XID winid, struct msg_focus msg)
+{
+    struct genlist *l;
+    bool use_take_focus = false;
+    bool input_hint = false;
+    if ( (l=list_lookup(windows_list, winid)) && (l->data) )
+        input_hint = ((struct window_data*)l->data)->input_hint;
+    else {
+        fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
+        input_hint = true;
+    }
+    
+    if (msg.type == FocusIn) {
+        if (msg.mode == NotifyNormal) {
+            XRaiseWindow(g->display, winid);
+            
+
+            if ( (l=list_lookup(windows_list, winid)) && (l->data) ) {
+                use_take_focus = ((struct window_data*)l->data)->support_take_focus;
+                if (((struct window_data*)l->data)->is_docked)
+                    XRaiseWindow(g->display, ((struct window_data*)l->data)->embeder);
+            } else {
+                fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
+            }
+
+            if (input_hint) {
+                if (g->log_level > 1)
+                    fprintf(stderr, "0x%x gained focus\n", (int) winid);
+                XSetInputFocus(g->display, winid, RevertToParent, g->time);
+            }
+
+            // Do not send WM_TAKE_FOCUS if the window doesn't support it
+            if (use_take_focus)
+                take_focus(g, winid);
+        }
+        if (msg.mode == NotifyGrab) {
+            XGrabPointer(g->display, winid, false, 0, GrabModeSync, GrabModeSync, None, None, CurrentTime);
+        }
+        if (msg.mode == NotifyNormal || msg.mode == NotifyUngrab) {
+            XUngrabPointer(g->display, CurrentTime);
+        }
+    } else if (msg.type == FocusOut && input_hint) {
+        if (msg.mode == NotifyNormal) {
+            int ignore;
+            XID winid_focused;
+            XGetInputFocus(g->display, &winid_focused, &ignore);
+            if (winid_focused == winid) {
+                XSetInputFocus(g->display, None, RevertToParent, g->time);
+                if (g->log_level > 1)
+                    fprintf(stderr, "0x%x lost focus\n", (int) winid);
+            }
+        }
+        if (msg.mode == NotifyGrab) {
+            XGrabPointer(g->display, g->root_win, false, 0, GrabModeSync, GrabModeSync, None, None, CurrentTime);
+        }
+        if (msg.mode == NotifyUngrab) {
+            XUngrabPointer(g->display, CurrentTime);
+        }
+    }
+}
+
 static void handle_focus(Ghandles * g, XID winid)
 {
-    struct msg_focus key;
-    struct genlist *l;
-    int input_hint;
-    int use_take_focus;
-
-    read_data(g->vchan, (char *) &key, sizeof(key));
-    if (key.type == FocusIn
-            && (key.mode == NotifyNormal || key.mode == NotifyUngrab)) {
-
-        XRaiseWindow(g->display, winid);
-
-        if ( (l=list_lookup(windows_list, winid)) && (l->data) ) {
-            input_hint = ((struct window_data*)l->data)->input_hint;
-            use_take_focus = ((struct window_data*)l->data)->support_take_focus;
-            if (((struct window_data*)l->data)->is_docked)
-                XRaiseWindow(g->display, ((struct window_data*)l->data)->embeder);
-        } else {
-            fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
-            input_hint = True;
-            use_take_focus = False;
-        }
-
-        // Give input focus only to window that set the input hint
-        if (input_hint)
-            XSetInputFocus(g->display, winid, RevertToParent, g->time);
-
-        // Do not send take focus if the window doesn't support it
-        if (use_take_focus)
-            take_focus(g, winid);
-
-        if (g->log_level > 1)
-            fprintf(stderr, "0x%x raised\n", (int) winid);
-    } else if (key.type == FocusOut
-            && (key.mode == NotifyNormal
-                || key.mode == NotifyUngrab)) {
-        if ( (l=list_lookup(windows_list, winid)) && (l->data) )
-            input_hint = ((struct window_data*)l->data)->input_hint;
-        else {
-            fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
-            input_hint = True;
-        }
-        if (input_hint)
-            XSetInputFocus(g->display, None, RevertToParent, g->time);
-
-        if (g->log_level > 1)
-            fprintf(stderr, "0x%x lost focus\n", (int) winid);
-    }
-
+    struct msg_focus msg;
+    read_data(g->vchan, (char *) &msg, sizeof(msg));
+    return handle_focus_helper(g, winid, msg);
 }
 
 static int bitset(unsigned char *keys, int num)
