@@ -1,0 +1,14 @@
+host:
+  rpm:
+    build:
+    - rpm_spec/gui-agent.spec
+vm:
+  rpm:
+    build:
+    - rpm_spec/gui-agent.spec
+  deb:
+    build:
+    - debian
+  archlinux:
+    build:
+    - archlinux
