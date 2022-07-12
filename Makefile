@@ -147,8 +147,8 @@ install-pipewire:
 		$(DESTDIR)$(DATADIR)/pipewire/pipewire.conf.d/30_qubes.conf
 	install -m 0644 -D appvm-scripts/lib/systemd/user/pipewire.service.d/30_qubes.conf \
 		$(DESTDIR)$(USERUNITDIR)/pipewire.service.d/30_qubes.conf
-	install -m 0644 -D appvm-scripts/lib/systemd/user-preset/76-qubes-vm.preset \
-		$(DESTDIR)$(USERPRESETDIR)/76-qubes-vm.preset
+	install -m 0644 -D appvm-scripts/lib/systemd/user-preset/74-qubes-vm.preset \
+		$(DESTDIR)$(USERPRESETDIR)/74-qubes-vm.preset
 	mkdir -p -m 0755 $(DESTDIR)$(USERUNITDIR)/pipewire.service.d \
 	                 $(DESTDIR)$(USERUNITDIR)/pipewire.socket.d \
 	                 $(DESTDIR)$(USERUNITDIR)/wireplumber.service.d
