@@ -164,6 +164,9 @@ static void unload_module(struct impl *impl)
 _Static_assert(PW_DIRECTION_INPUT == 0, "wrong PW_DIRECTION_INPUT");
 _Static_assert(PW_DIRECTION_OUTPUT == 1, "wrong PW_DIRECTION_OUTPUT");
 
+// Flag to indicate shutdown in progress
+static _Atomic bool shutting_down;
+
 static int remove_stream(struct spa_loop *loop,
                          bool async,
                          uint32_t seq,
@@ -171,6 +174,8 @@ static int remove_stream(struct spa_loop *loop,
                          size_t size,
                          void *user_data)
 {
+    if (shutting_down)
+        return -EFAULT;
     struct qubes_stream *stream = user_data;
     spa_loop_remove_source(loop, &stream->source);
     stream->closed_vchan = stream->vchan;
@@ -192,6 +197,8 @@ static int add_stream(struct spa_loop *loop,
                       size_t size,
                       void *user_data)
 {
+    if (shutting_down)
+        return -EFAULT;
     struct qubes_stream *stream = user_data;
     spa_assert(stream->closed_vchan);
     spa_assert(!stream->vchan);
@@ -231,6 +238,7 @@ static void connect_stream(struct qubes_stream *stream)
 static void stream_destroy(struct impl *impl, enum spa_direction direction)
 {
     struct qubes_stream *stream = impl->stream + direction;
+    shutting_down = true;
     if (stream->dead)
         return;
     stream->dead = true;
@@ -286,7 +294,11 @@ static int main_thread_disconnect_stream(struct spa_loop *loop,
                                          size_t size,
                                          void *user_data)
 {
-    struct qubes_stream *stream = user_data;
+    struct qubes_stream *stream;
+
+    if (shutting_down)
+        return 0;
+    stream = user_data;
     spa_assert(stream->closed_vchan);
     spa_assert(!stream->vchan);
     pw_stream_disconnect(stream->stream);
@@ -298,6 +310,39 @@ static int main_thread_disconnect_stream(struct spa_loop *loop,
 }
 
 static void discard_unwanted_recorded_data(struct qubes_stream *stream);
+
+/* Called on the main thread by spa_loop_invoke() from vchan_ready() */
+static int main_thread_connect(struct spa_loop *loop,
+                               bool async,
+                               uint32_t seq,
+                               const void *data,
+                               size_t size,
+                               void *user_data)
+{
+
+    struct qubes_stream *stream;
+    uint32_t n_params = 0;
+    const struct spa_pod *params[1];
+    uint8_t buffer[1024];
+    struct spa_pod_builder b = { 0 };
+
+    if (shutting_down)
+        return 0;
+    stream = user_data;
+    spa_pod_builder_init(&b, buffer, sizeof(buffer));
+    params[n_params++] = spa_format_audio_raw_build(&b,
+            SPA_PARAM_EnumFormat, &stream->info);
+
+    if (pw_stream_connect(stream->stream,
+            stream->direction,
+            PW_ID_ANY,
+            PW_STREAM_FLAG_AUTOCONNECT |
+            PW_STREAM_FLAG_RT_PROCESS |
+            0,
+            params, n_params) < 0)
+        pw_log_error("Could not connect stream: %m");
+    return 0;
+}
 
 static void vchan_ready(struct spa_source *source)
 {
@@ -319,25 +364,8 @@ static void vchan_ready(struct spa_source *source)
     bool is_open = libvchan_is_open(stream->vchan);
     if (is_open != stream->is_open) {
         if (is_open) {
-            int res;
-            uint32_t n_params = 0;
-            const struct spa_pod *params[1];
-            uint8_t buffer[1024];
-            struct spa_pod_builder b = { 0 };
-            spa_pod_builder_init(&b, buffer, sizeof(buffer));
-            params[n_params++] = spa_format_audio_raw_build(&b,
-                    SPA_PARAM_EnumFormat, &stream->info);
-
-            if ((res = pw_stream_connect(stream->stream,
-                    stream->direction,
-                    PW_ID_ANY,
-                    PW_STREAM_FLAG_AUTOCONNECT |
-                    PW_STREAM_FLAG_RT_PROCESS |
-                    0,
-                    params, n_params)) < 0) {
-                pw_log_error("Could not connect stream: %m");
-                return;
-            }
+            spa_loop_invoke(stream->impl->main_loop,
+                            main_thread_connect, 0, NULL, 0, false, stream);
             stream->is_open = true;
         } else {
             // Must do this first, so that EPOLL_CTL_DEL is called before the
@@ -397,6 +425,12 @@ static int process_control_commands(struct spa_loop *loop,
                        *playback_stream = impl->stream + PW_DIRECTION_INPUT;
     bool new_state = playback_stream->current_state;
     struct libvchan *control_vchan = capture_stream->vchan;
+
+    if (!control_vchan) {
+        capture_stream->last_state = false;
+        playback_stream->last_state = false;
+        return -EFAULT;
+    }
 
     if (new_state != playback_stream->last_state) {
         uint32_t cmd = new_state ? QUBES_PA_SINK_UNCORK_CMD : QUBES_PA_SINK_CORK_CMD;
@@ -745,6 +779,7 @@ static const struct pw_proxy_events core_proxy_events = {
 
 static void impl_destroy(struct impl *impl)
 {
+    shutting_down = true;
     stream_destroy(impl, PW_DIRECTION_INPUT);
     stream_destroy(impl, PW_DIRECTION_OUTPUT);
     if (impl->core) {
@@ -844,6 +879,7 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
     const char *peer_domain_prop = NULL;
     uint32_t domid = UINT32_MAX;
     int res = -EFAULT;
+    shutting_down = false; // for musl support, where dlclose() is a NOP
 
 #ifdef PW_LOG_TOPIC_INIT
     PW_LOG_TOPIC_INIT(mod_topic);
