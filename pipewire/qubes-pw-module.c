@@ -123,11 +123,11 @@ struct qubes_stream {
     struct pw_stream *stream;
     struct spa_hook stream_listener;
     struct spa_audio_info_raw info;
-    struct libvchan *vchan;
+    struct libvchan *vchan, *closed_vchan;
     struct impl *impl;
     _Atomic size_t current_state, last_state;
     struct spa_source source;
-    bool is_open, direction;
+    bool is_open, direction, dead;
 };
 
 struct impl {
@@ -140,7 +140,7 @@ struct impl {
     struct spa_hook module_listener;
 
     struct pw_core *core;
-    struct spa_loop *data_loop;
+    struct spa_loop *data_loop, *main_loop;
     struct spa_hook core_proxy_listener;
     struct spa_hook core_listener;
 
@@ -164,32 +164,100 @@ static void unload_module(struct impl *impl)
 _Static_assert(PW_DIRECTION_INPUT == 0, "wrong PW_DIRECTION_INPUT");
 _Static_assert(PW_DIRECTION_OUTPUT == 1, "wrong PW_DIRECTION_OUTPUT");
 
+static int remove_stream(struct spa_loop *loop,
+                         bool async,
+                         uint32_t seq,
+                         const void *data,
+                         size_t size,
+                         void *user_data)
+{
+    struct qubes_stream *stream = user_data;
+    spa_loop_remove_source(loop, &stream->source);
+    stream->closed_vchan = stream->vchan;
+    stream->is_open = false;
+    stream->vchan = NULL;
+    return 0;
+}
+
+static void vchan_ready(struct spa_source *source);
+
+/**
+ * Called on the realtime thread after creating a vchan.  The main
+ * thread is suspended.
+ */
+static int add_stream(struct spa_loop *loop,
+                      bool async,
+                      uint32_t seq,
+                      const void *data,
+                      size_t size,
+                      void *user_data)
+{
+    struct qubes_stream *stream = user_data;
+    spa_assert(stream->closed_vchan);
+    spa_assert(!stream->vchan);
+    stream->vchan = stream->closed_vchan;
+    stream->closed_vchan = NULL;
+    stream->source.loop = stream->impl->data_loop;
+    stream->source.func = vchan_ready;
+    stream->source.data = stream;
+    stream->source.fd = libvchan_fd_for_select(stream->vchan);
+    stream->source.mask = SPA_IO_IN;
+    return spa_loop_add_source(loop, &stream->source);
+}
+
+/**
+ * Connect a Qubes stream.  Must be called on the main thread.
+ *
+ * @param stream The stream to connect.
+ */
+static void connect_stream(struct qubes_stream *stream)
+{
+    const char *msg = stream->direction ? "capture" : "playback";
+    uint16_t domid = stream->impl->domid;
+    spa_assert(stream->vchan == NULL);
+    spa_assert(stream->closed_vchan == NULL);
+    stream->closed_vchan = stream->direction ?
+        libvchan_server_init((int)domid, QUBES_PA_SOURCE_VCHAN_PORT, 1 << 15, 128) :
+        libvchan_server_init((int)domid, QUBES_PA_SINK_VCHAN_PORT, 128, 1 << 15);
+    if (stream->closed_vchan == NULL) {
+        pw_log_error("can't create %s vchan: %m", msg);
+        spa_assert(!"FATAL ERROR: vchan creation failed");
+    }
+    if (spa_loop_invoke(stream->impl->data_loop, add_stream, 0, NULL, 0, true, stream))
+        assert(!"FATAL ERROR: spa_loop_add_source() failed");
+    return;
+}
+
 static void stream_destroy(struct impl *impl, enum spa_direction direction)
 {
     struct qubes_stream *stream = impl->stream + direction;
+    if (stream->dead)
+        return;
+    stream->dead = true;
     if (stream->stream) {
         spa_hook_remove(&stream->stream_listener);
-        spa_loop_remove_source(stream->impl->data_loop, &stream->source);
-        libvchan_close(stream->vchan);
-        stream->vchan = NULL;
-        pw_stream_destroy(stream->stream);
+        spa_loop_invoke(impl->data_loop, remove_stream, 0, NULL, 0, true, stream);
         stream->stream = NULL;
     }
     if (stream->stream_props)
         pw_properties_free(stream->stream_props);
     stream->stream_props = NULL;
-    if (stream->vchan)
-        libvchan_close(stream->vchan);
+    if (stream->closed_vchan) {
+        pw_log_info("Closing vchan");
+        libvchan_close(stream->closed_vchan);
+    }
     stream->vchan = NULL;
 }
 
 static void capture_stream_destroy(void *d)
 {
+    pw_log_error("Trying to free capture stream");
     stream_destroy(d, PW_DIRECTION_INPUT);
 }
 
 static void playback_stream_destroy(void *d)
 {
+    pw_log_error("Trying to free playback stream");
     stream_destroy(d, PW_DIRECTION_OUTPUT);
 }
 
@@ -204,42 +272,45 @@ static int process_control_commands(struct spa_loop *loop,
                                     size_t size,
                                     void *user_data);
 
-static void vchan_ready(struct spa_source *source);
-
 static const struct pw_stream_events capture_stream_events, playback_stream_events;
 
-static void connect_stream(struct qubes_stream *stream)
+static void connect_stream(struct qubes_stream *stream);
+
+/**
+ * Called on the main thread when a stream needs to be disconnected.
+ */
+static int main_thread_disconnect_stream(struct spa_loop *loop,
+                                         bool async,
+                                         uint32_t seq,
+                                         const void *data,
+                                         size_t size,
+                                         void *user_data)
 {
-    const char *msg = stream->direction ? "sink" : "source";
-    uint16_t domid = stream->impl->domid;
-    assert(stream->vchan == NULL);
-    stream->vchan = stream->direction ?
-        libvchan_server_init((int)domid, QUBES_PA_SOURCE_VCHAN_PORT, 1 << 15, 128) :
-        libvchan_server_init((int)domid, QUBES_PA_SINK_VCHAN_PORT, 128, 1 << 15);
-    if (stream->vchan == NULL) {
-        pw_log_error("can't create %s vchan: %m", msg);
-        assert(!"FATAL ERROR: vchan creation failed");
-    }
-    stream->source.loop = stream->impl->data_loop;
-    stream->source.func = vchan_ready;
-    stream->source.data = stream;
-    stream->source.fd = libvchan_fd_for_select(stream->vchan);
-    stream->source.mask = SPA_IO_IN;
-    if (spa_loop_add_source(stream->impl->data_loop, &stream->source))
-        assert(!"FATAL ERROR: spa_loop_add_source() failed");
-    pw_stream_add_listener(stream->stream,
-            &stream->stream_listener,
-            stream->direction ? &capture_stream_events : &playback_stream_events,
-            stream->impl);
+    struct qubes_stream *stream = user_data;
+    spa_assert(stream->closed_vchan);
+    spa_assert(!stream->vchan);
+    pw_stream_disconnect(stream->stream);
+    pw_log_info("Closing stale vchan");
+    libvchan_close(stream->closed_vchan);
+    stream->closed_vchan = NULL;
+    connect_stream(stream);
+    return 0;
 }
 
 static void discard_unwanted_recorded_data(struct qubes_stream *stream);
 
 static void vchan_ready(struct spa_source *source)
 {
-    // 1: Acknowledge vchan event
     struct qubes_stream *stream = source->data;
 
+    // 0: Check if the vchan exists
+    if (!stream->vchan) {
+        spa_assert(!stream->is_open && "no vchan on open stream?");
+        pw_log_error("vchan_ready() called with vchan closed???");
+        return;
+    }
+
+    // 1: Acknowledge vchan event
     pw_log_info("Waiting for vchan");
     libvchan_wait(stream->vchan);
     pw_log_info("Vchan awaited");
@@ -267,15 +338,18 @@ static void vchan_ready(struct spa_source *source)
                 pw_log_error("Could not connect stream: %m");
                 return;
             }
+            stream->is_open = true;
         } else {
-            spa_hook_remove(&stream->stream_listener);
-            pw_stream_disconnect(stream->stream);
+            // Must do this first, so that EPOLL_CTL_DEL is called before the
+            // file descriptor is closed.
             spa_loop_remove_source(stream->impl->data_loop, &stream->source);
-            libvchan_close(stream->vchan);
+            stream->closed_vchan = stream->vchan;
+            stream->is_open = false;
             stream->vchan = NULL;
-            connect_stream(stream);
+            spa_loop_invoke(stream->impl->main_loop,
+                            main_thread_disconnect_stream, 0, NULL, 0, false,
+                            stream);
         }
-        stream->is_open = is_open;
     }
     if (!is_open)
         return; /* vchan closed */
@@ -417,7 +491,7 @@ static void capture_stream_process(void *d)
     struct qubes_stream *stream = impl->stream + PW_DIRECTION_OUTPUT;
     uint8_t *dst;
 
-    if (!libvchan_is_open(stream->vchan)) {
+    if (!stream->vchan || !libvchan_is_open(stream->vchan)) {
         pw_log_error("vchan not open yet!");
         return;
     }
@@ -522,6 +596,7 @@ static void playback_stream_process(void *d)
         pw_log_error("vchan error: %m");
         return;
     }
+    spa_assert(pw_stream_dequeue_buffer(stream->stream) == NULL);
     pw_stream_queue_buffer(stream->stream, buf);
 }
 
@@ -636,7 +711,6 @@ static int create_stream(struct impl *impl, enum spa_direction direction)
 
     if (stream->stream == NULL)
         return -errno;
-
     return 0;
 }
 
@@ -671,6 +745,8 @@ static const struct pw_proxy_events core_proxy_events = {
 
 static void impl_destroy(struct impl *impl)
 {
+    stream_destroy(impl, PW_DIRECTION_INPUT);
+    stream_destroy(impl, PW_DIRECTION_OUTPUT);
     if (impl->core) {
         if (impl->do_disconnect)
             pw_core_disconnect(impl->core);
@@ -902,6 +978,13 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
         goto error;
     }
 
+    impl->main_loop = spa_support_find(support, n_support, SPA_TYPE_INTERFACE_Loop);
+    if (!impl->main_loop) {
+        res = -errno;
+        pw_log_error("cannot get main loop: %m");
+        goto error;
+    }
+
     if ((res = create_stream(impl, PW_DIRECTION_INPUT)) < 0)
         goto error;
 
@@ -913,6 +996,10 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
         stream->impl = impl;
         stream->direction = i;
         connect_stream(stream);
+        pw_stream_add_listener(stream->stream,
+                &stream->stream_listener,
+                stream->direction ? &capture_stream_events : &playback_stream_events,
+                impl);
     }
 
     pw_impl_module_add_listener(module, &impl->module_listener, &module_events, impl);
