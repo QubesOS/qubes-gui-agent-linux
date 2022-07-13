@@ -446,21 +446,19 @@ static void capture_stream_process(void *d)
 
     assert(buf->n_datas == 1 && "wrong number of datas");
 
-    uint32_t size = b->requested, room_for;
-    if (__builtin_add_overflow(buf->datas[0].maxsize, impl->frame_size, &room_for)) {
-        pw_log_error("Overflow calculating amount of data there is room for????");
-        return;
-    }
+    uint32_t size = b->requested, room_for = buf->datas[0].maxsize;
     // TODO: handle more data
     if (size > room_for) {
         pw_log_error("Can only record %" PRIu32 " bytes of %" PRIu32, size, room_for);
         size = room_for;
     }
 
-    if (size < 2048 && 1) {
-        pw_log_error("Bad amount %" PRIu32 " requested by PipeWire, will read 2048 bytes instead", size);
-        size = 2048;
+    uint32_t to_read = UINT32_MAX;
+    if (__builtin_mul_overflow(size, impl->frame_size, &to_read)) {
+        pw_log_error("Overflow calculating amount of data there is room for????");
+        return;
     }
+    size = to_read;
 
     if (size > (uint32_t)ready) {
         pw_log_error("Underrun: asked to read %" PRIu32 " bytes, but only %d available", size, ready);
@@ -471,11 +469,6 @@ static void capture_stream_process(void *d)
     if (libvchan_read(stream->vchan, dst, size) != (int)size) {
         pw_log_error("vchan error: %m");
         return;
-    }
-
-    if (size == 0 && room_for) {
-        *dst = 0;
-        size = 1;
     }
     buf->datas[0].chunk->size = size;
     pw_stream_queue_buffer(stream->stream, b);
