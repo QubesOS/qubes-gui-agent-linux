@@ -2,7 +2,7 @@
  * The Qubes OS Project, http://www.qubes-os.org
  *
  * Copyright (C) 2010  Rafal Wojtczuk  <rafal@invisiblethingslab.com>
- * Copyright (C) 2022  Demi Marie Obenour  <demi@invisiblethingslab.com>
+ * Copyright © 2022  Demi Marie Obenour  <demi@invisiblethingslab.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -116,13 +116,18 @@ static const struct spa_dict_item module_props[] = {
     { PW_KEY_MODULE_VERSION, "4.1.0" },
 };
 
+struct impl;
+
 struct qubes_stream {
     struct pw_properties *stream_props;
     struct pw_stream *stream;
     struct spa_hook stream_listener;
     struct spa_audio_info_raw info;
     struct libvchan *vchan;
+    struct impl *impl;
     _Atomic size_t current_state, last_state;
+    struct spa_source source;
+    bool is_open, direction;
 };
 
 struct impl {
@@ -143,6 +148,7 @@ struct impl {
 
     uint32_t frame_size;
 
+    unsigned int domid: 16;
     unsigned int do_disconnect:1;
     unsigned int unloading:1;
 };
@@ -163,6 +169,9 @@ static void stream_destroy(struct impl *impl, enum spa_direction direction)
     struct qubes_stream *stream = impl->stream + direction;
     if (stream->stream) {
         spa_hook_remove(&stream->stream_listener);
+        spa_loop_remove_source(stream->impl->data_loop, &stream->source);
+        libvchan_close(stream->vchan);
+        stream->vchan = NULL;
         pw_stream_destroy(stream->stream);
         stream->stream = NULL;
     }
@@ -188,6 +197,119 @@ static void set_stream_state(struct qubes_stream *stream, bool state)
 {
     stream->current_state = state;
 }
+static int process_control_commands(struct spa_loop *loop,
+                                    bool async,
+                                    uint32_t seq,
+                                    const void *data,
+                                    size_t size,
+                                    void *user_data);
+
+static void vchan_ready(struct spa_source *source);
+
+static const struct pw_stream_events capture_stream_events, playback_stream_events;
+
+static void connect_stream(struct qubes_stream *stream)
+{
+    const char *msg = stream->direction ? "sink" : "source";
+    uint16_t domid = stream->impl->domid;
+    assert(stream->vchan == NULL);
+    stream->vchan = stream->direction ?
+        libvchan_server_init((int)domid, QUBES_PA_SOURCE_VCHAN_PORT, 1 << 15, 128) :
+        libvchan_server_init((int)domid, QUBES_PA_SINK_VCHAN_PORT, 128, 1 << 15);
+    if (stream->vchan == NULL) {
+        pw_log_error("can't create %s vchan: %m", msg);
+        assert(!"FATAL ERROR: vchan creation failed");
+    }
+    stream->source.loop = stream->impl->data_loop;
+    stream->source.func = vchan_ready;
+    stream->source.data = stream;
+    stream->source.fd = libvchan_fd_for_select(stream->vchan);
+    stream->source.mask = SPA_IO_IN;
+    if (spa_loop_add_source(stream->impl->data_loop, &stream->source))
+        assert(!"FATAL ERROR: spa_loop_add_source() failed");
+    pw_stream_add_listener(stream->stream,
+            &stream->stream_listener,
+            stream->direction ? &capture_stream_events : &playback_stream_events,
+            stream->impl);
+}
+
+static void discard_unwanted_recorded_data(struct qubes_stream *stream);
+
+static void vchan_ready(struct spa_source *source)
+{
+    // 1: Acknowledge vchan event
+    struct qubes_stream *stream = source->data;
+
+    pw_log_info("Waiting for vchan");
+    libvchan_wait(stream->vchan);
+    pw_log_info("Vchan awaited");
+
+    // 2: Figure out if stream is open
+    bool is_open = libvchan_is_open(stream->vchan);
+    if (is_open != stream->is_open) {
+        if (is_open) {
+            int res;
+            uint32_t n_params = 0;
+            const struct spa_pod *params[1];
+            uint8_t buffer[1024];
+            struct spa_pod_builder b = { 0 };
+            spa_pod_builder_init(&b, buffer, sizeof(buffer));
+            params[n_params++] = spa_format_audio_raw_build(&b,
+                    SPA_PARAM_EnumFormat, &stream->info);
+
+            if ((res = pw_stream_connect(stream->stream,
+                    stream->direction,
+                    PW_ID_ANY,
+                    PW_STREAM_FLAG_AUTOCONNECT |
+                    PW_STREAM_FLAG_RT_PROCESS |
+                    0,
+                    params, n_params)) < 0) {
+                pw_log_error("Could not connect stream: %m");
+                return;
+            }
+        } else {
+            spa_hook_remove(&stream->stream_listener);
+            pw_stream_disconnect(stream->stream);
+            spa_loop_remove_source(stream->impl->data_loop, &stream->source);
+            libvchan_close(stream->vchan);
+            stream->vchan = NULL;
+            connect_stream(stream);
+        }
+        stream->is_open = is_open;
+    }
+    if (!is_open)
+        return; /* vchan closed */
+    if (!stream->direction)
+        return; // Nothing to do for playback
+    discard_unwanted_recorded_data(stream);
+}
+
+static void discard_unwanted_recorded_data(struct qubes_stream *stream)
+{
+    if (stream->last_state)
+        return; // Nothing to do, capture_stream_process() will deal with it
+
+    if (!stream->vchan)
+        return; // No vchan
+
+    if (!libvchan_is_open(stream->vchan))
+        return; // vchan closed
+
+    // Discard unexpected data
+    char buf[512];
+    int ready = libvchan_data_ready(stream->vchan);
+    if (ready <= 0)
+        return;
+
+    size_t to_read = (size_t)ready;
+    pw_log_info("Discarding %d bytes of unwanted data", ready);
+    while (to_read > 0) {
+        int res = libvchan_read(stream->vchan, buf, to_read > sizeof buf ? sizeof buf : to_read);
+        if (res <= 0)
+            break;
+        to_read -= (size_t)res;
+    }
+}
 
 static int process_control_commands(struct spa_loop *loop,
                                     bool async,
@@ -201,6 +323,7 @@ static int process_control_commands(struct spa_loop *loop,
                        *playback_stream = impl->stream + PW_DIRECTION_INPUT;
     bool new_state = playback_stream->current_state;
     struct libvchan *control_vchan = capture_stream->vchan;
+
     if (new_state != playback_stream->last_state) {
         uint32_t cmd = new_state ? QUBES_PA_SINK_UNCORK_CMD : QUBES_PA_SINK_CORK_CMD;
 
@@ -214,7 +337,7 @@ static int process_control_commands(struct spa_loop *loop,
             return -ENOSPC;
         }
 
-        pw_log_error("Audio playback %s", new_state ? "started" : "stopped");
+        pw_log_info("Audio playback %s", new_state ? "started" : "stopped");
 
         playback_stream->last_state = new_state;
     }
@@ -237,6 +360,7 @@ static int process_control_commands(struct spa_loop *loop,
 
         capture_stream->last_state = new_state;
     }
+
     return 0;
 }
 
@@ -252,18 +376,18 @@ static void stream_state_changed_common(void *d, enum pw_stream_state old,
         set_stream_state(&impl->stream[playback ? PW_DIRECTION_INPUT : PW_DIRECTION_OUTPUT], false);
         break;
     case PW_STREAM_STATE_UNCONNECTED:
-        pw_log_error("%s unconnected", name);
+        pw_log_info("%s unconnected", name);
         set_stream_state(&impl->stream[playback ? PW_DIRECTION_INPUT : PW_DIRECTION_OUTPUT], false);
         break;
     case PW_STREAM_STATE_CONNECTING:
-        pw_log_error("%s connected", name);
+        pw_log_info("%s connected", name);
         return;
     case PW_STREAM_STATE_PAUSED:
-        pw_log_error("%s paused", name);
+        pw_log_info("%s paused", name);
         set_stream_state(&impl->stream[playback ? PW_DIRECTION_INPUT : PW_DIRECTION_OUTPUT], false);
         break;
     case PW_STREAM_STATE_STREAMING:
-        pw_log_error("%s streaming", name);
+        pw_log_info("%s streaming", name);
         set_stream_state(&impl->stream[playback ? PW_DIRECTION_INPUT : PW_DIRECTION_OUTPUT], true);
         break;
     default:
@@ -271,7 +395,7 @@ static void stream_state_changed_common(void *d, enum pw_stream_state old,
         return;
     }
     spa_loop_invoke(impl->data_loop, process_control_commands, 0, NULL, 0, true, impl);
-    pw_log_error("Successfully queued message");
+    pw_log_info("Successfully queued message");
 }
 
 static void playback_stream_state_changed(void *d, enum pw_stream_state old,
@@ -292,9 +416,14 @@ static void capture_stream_process(void *d)
     struct pw_buffer *b;
     struct qubes_stream *stream = impl->stream + PW_DIRECTION_OUTPUT;
     uint8_t *dst;
+
+    if (!libvchan_is_open(stream->vchan)) {
+        pw_log_error("vchan not open yet!");
+        return;
+    }
     int ready = libvchan_data_ready(stream->vchan);
 
-    if (!stream->last_state)
+    if (!stream->last_state && 0)
         return; // Nothing to do
 
     if (ready <= 0) {
@@ -317,27 +446,37 @@ static void capture_stream_process(void *d)
 
     assert(buf->n_datas == 1 && "wrong number of datas");
 
-    uint32_t maxsize = buf->datas[0].maxsize;
-#if PW_CHECK_VERSION(0, 3, 52) // Fedora 35
-    uint32_t size = b->requested ? b->requested : impl->frame_size * maxsize;
-    assert(size <= impl->frame_size * maxsize);
-#else
-    uint32_t size = impl->frame_size * maxsize;
-#endif
+    uint32_t size = b->requested, room_for;
+    if (__builtin_add_overflow(buf->datas[0].maxsize, impl->frame_size, &room_for)) {
+        pw_log_error("Overflow calculating amount of data there is room for????");
+        return;
+    }
+    // TODO: handle more data
+    if (size > room_for) {
+        pw_log_error("Can only record %" PRIu32 " bytes of %" PRIu32, size, room_for);
+        size = room_for;
+    }
 
-    if (ready < 0 || size > (uint32_t)ready) {
+    if (size < 2048 && 1) {
+        pw_log_error("Bad amount %" PRIu32 " requested by PipeWire, will read 2048 bytes instead", size);
+        size = 2048;
+    }
+
+    if (size > (uint32_t)ready) {
         pw_log_error("Underrun: asked to read %" PRIu32 " bytes, but only %d available", size, ready);
-        if (ready <= 0)
-            return;
         size = ready;
     }
 
-    pw_log_debug("reading %" PRIu32 " bytes from vchan", size);
+    pw_log_info("reading %" PRIu32 " bytes from vchan", size);
     if (libvchan_read(stream->vchan, dst, size) != (int)size) {
         pw_log_error("vchan error: %m");
         return;
     }
 
+    if (size == 0 && room_for) {
+        *dst = 0;
+        size = 1;
+    }
     buf->datas[0].chunk->size = size;
     pw_stream_queue_buffer(stream->stream, b);
 }
@@ -347,10 +486,21 @@ static void playback_stream_process(void *d)
     struct impl *impl = d;
     struct pw_buffer *buf;
     struct qubes_stream *stream = impl->stream + PW_DIRECTION_INPUT;
+    struct qubes_stream *capture_stream = impl->stream + PW_DIRECTION_OUTPUT;
     struct spa_data *bd;
     uint8_t *data;
     uint32_t size;
+
+    if (!stream->vchan || !libvchan_is_open(stream->vchan)) {
+        pw_log_error("Cannot read data, vchan not functional");
+        return;
+    }
+
     int ready = libvchan_buffer_space(stream->vchan);
+
+    discard_unwanted_recorded_data(capture_stream);
+
+    pw_log_info("%d bytes ready for writing", ready);
 
     if (!stream->last_state)
         return; // Nothing to do
@@ -374,7 +524,7 @@ static void playback_stream_process(void *d)
         size = ready;
     }
 
-    pw_log_debug("writing %" PRIu32 " bytes to vchan", size);
+    pw_log_info("writing %" PRIu32 " bytes to vchan", size);
     if (libvchan_write(stream->vchan, data, size) != (int)size) {
         pw_log_error("vchan error: %m");
         return;
@@ -486,38 +636,13 @@ static const struct pw_stream_events playback_stream_events = {
 
 static int create_stream(struct impl *impl, enum spa_direction direction)
 {
-    int res;
-    uint32_t n_params;
-    const struct spa_pod *params[1];
     struct qubes_stream *stream = impl->stream + direction;
-    uint8_t buffer[1024];
-    struct spa_pod_builder b = { 0 };
 
     stream->stream = pw_stream_new(impl->core, direction == PW_DIRECTION_INPUT ? "Qubes Sink" : "Qubes Source", stream->stream_props);
     stream->stream_props = NULL;
 
     if (stream->stream == NULL)
         return -errno;
-
-    pw_stream_add_listener(stream->stream,
-            &stream->stream_listener,
-            direction == PW_DIRECTION_INPUT ? &playback_stream_events : &capture_stream_events,
-            impl);
-
-    n_params = 0;
-    spa_pod_builder_init(&b, buffer, sizeof(buffer));
-    params[n_params++] = spa_format_audio_raw_build(&b,
-            SPA_PARAM_EnumFormat, &stream->info);
-
-    if ((res = pw_stream_connect(stream->stream,
-            direction,
-            PW_ID_ANY,
-            PW_STREAM_FLAG_AUTOCONNECT |
-            PW_STREAM_FLAG_RT_PROCESS |
-            PW_STREAM_FLAG_MAP_BUFFERS |
-            0,
-            params, n_params)) < 0)
-        return res;
 
     return 0;
 }
@@ -719,6 +844,7 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
     }
 
     pw_log_error("module %p: new (%s), peer id is %d", impl, args, (int)domid);
+    impl->domid = domid;
 
     for (uint8_t i = 0; i < 2; ++i) {
         const char *msg = i ? "sink" : "source";
@@ -728,14 +854,6 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
         if (stream->stream_props == NULL) {
             res = -errno;
             pw_log_error("can't create %s properties: %m", msg);
-            goto error;
-        }
-        stream->vchan = i ?
-            libvchan_server_init((int)domid, QUBES_PA_SOURCE_VCHAN_PORT, 1 << 15, 128) :
-            libvchan_server_init((int)domid, QUBES_PA_SINK_VCHAN_PORT, 128, 1 << 15);
-        if (stream->vchan == NULL) {
-            res = -errno;
-            pw_log_error("can't create %s vchan: %m", msg);
             goto error;
         }
     }
@@ -796,6 +914,13 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
 
     if ((res = create_stream(impl, PW_DIRECTION_OUTPUT)) < 0)
         goto error;
+
+    for (uint8_t i = 0; i < 2; ++i) {
+        struct qubes_stream *stream = impl->stream + i;
+        stream->impl = impl;
+        stream->direction = i;
+        connect_stream(stream);
+    }
 
     pw_impl_module_add_listener(module, &impl->module_listener, &module_events, impl);
 
