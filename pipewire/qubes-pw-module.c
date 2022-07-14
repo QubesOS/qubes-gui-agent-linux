@@ -356,9 +356,9 @@ static void vchan_ready(struct spa_source *source)
     }
 
     // 1: Acknowledge vchan event
-    pw_log_info("Waiting for vchan");
+    pw_log_debug("Waiting for vchan");
     libvchan_wait(stream->vchan);
-    pw_log_info("Vchan awaited");
+    pw_log_debug("Vchan awaited");
 
     // 2: Figure out if stream is open
     bool is_open = libvchan_is_open(stream->vchan);
@@ -404,7 +404,7 @@ static void discard_unwanted_recorded_data(struct qubes_stream *stream)
         return;
 
     size_t to_read = (size_t)ready;
-    pw_log_info("Discarding %d bytes of unwanted data", ready);
+    pw_log_debug("Discarding %d bytes of unwanted data", ready);
     while (to_read > 0) {
         int res = libvchan_read(stream->vchan, buf, to_read > sizeof buf ? sizeof buf : to_read);
         if (res <= 0)
@@ -484,18 +484,18 @@ static void stream_state_changed_common(void *d, enum pw_stream_state old,
         set_stream_state(&impl->stream[playback ? PW_DIRECTION_INPUT : PW_DIRECTION_OUTPUT], false);
         break;
     case PW_STREAM_STATE_UNCONNECTED:
-        pw_log_info("%s unconnected", name);
+        pw_log_debug("%s unconnected", name);
         set_stream_state(&impl->stream[playback ? PW_DIRECTION_INPUT : PW_DIRECTION_OUTPUT], false);
         break;
     case PW_STREAM_STATE_CONNECTING:
-        pw_log_info("%s connected", name);
+        pw_log_debug("%s connected", name);
         return;
     case PW_STREAM_STATE_PAUSED:
-        pw_log_info("%s paused", name);
+        pw_log_debug("%s paused", name);
         set_stream_state(&impl->stream[playback ? PW_DIRECTION_INPUT : PW_DIRECTION_OUTPUT], false);
         break;
     case PW_STREAM_STATE_STREAMING:
-        pw_log_info("%s streaming", name);
+        pw_log_debug("%s streaming", name);
         set_stream_state(&impl->stream[playback ? PW_DIRECTION_INPUT : PW_DIRECTION_OUTPUT], true);
         break;
     default:
@@ -503,7 +503,7 @@ static void stream_state_changed_common(void *d, enum pw_stream_state old,
         return;
     }
     spa_loop_invoke(impl->data_loop, process_control_commands, 0, NULL, 0, true, impl);
-    pw_log_info("Successfully queued message");
+    pw_log_debug("Successfully queued message");
 }
 
 static void playback_stream_state_changed(void *d, enum pw_stream_state old,
@@ -573,7 +573,7 @@ static void capture_stream_process(void *d)
         size = ready;
     }
 
-    pw_log_info("reading %" PRIu32 " bytes from vchan", size);
+    pw_log_debug("reading %" PRIu32 " bytes from vchan", size);
     if (libvchan_read(stream->vchan, dst, size) != (int)size) {
         pw_log_error("vchan error: %m");
         return;
@@ -601,7 +601,7 @@ static void playback_stream_process(void *d)
 
     discard_unwanted_recorded_data(capture_stream);
 
-    pw_log_info("%d bytes ready for writing", ready);
+    pw_log_debug("%d bytes ready for writing", ready);
 
     if (!stream->last_state)
         return; // Nothing to do
@@ -625,7 +625,7 @@ static void playback_stream_process(void *d)
         size = ready;
     }
 
-    pw_log_info("writing %" PRIu32 " bytes to vchan", size);
+    pw_log_debug("writing %" PRIu32 " bytes to vchan", size);
     if (size > 0 && libvchan_write(stream->vchan, data, size) != (int)size) {
         pw_log_error("vchan error: %m");
         return;
