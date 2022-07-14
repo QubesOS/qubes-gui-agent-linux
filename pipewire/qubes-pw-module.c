@@ -429,6 +429,7 @@ static int process_control_commands(struct spa_loop *loop,
     if (!control_vchan) {
         capture_stream->last_state = false;
         playback_stream->last_state = false;
+        pw_log_error("Control vchan closed, cannot issue control command");
         return -EFAULT;
     }
 
@@ -525,28 +526,28 @@ static void capture_stream_process(void *d)
     struct qubes_stream *stream = impl->stream + PW_DIRECTION_OUTPUT;
     uint8_t *dst;
 
-    if (!stream->vchan || !libvchan_is_open(stream->vchan)) {
-        pw_log_error("vchan not open yet!");
-        return;
-    }
-    int ready = libvchan_data_ready(stream->vchan);
-
-    if (!stream->last_state && 0)
-        return; // Nothing to do
-
-    if (ready <= 0) {
-        pw_log_error("no data in vchan");
-        return;
-    }
-
     if ((b = pw_stream_dequeue_buffer(stream->stream)) == NULL) {
         pw_log_error("out of capture buffers: %m");
         return;
     }
 
+    if (!stream->vchan || !libvchan_is_open(stream->vchan)) {
+        pw_log_error("vchan not open yet!");
+        goto done;
+    }
+    int ready = libvchan_data_ready(stream->vchan);
+
+    if (!stream->last_state)
+        goto done; // Nothing to do
+
+    if (ready <= 0) {
+        pw_log_error("no data in vchan");
+        goto done;
+    }
+
     struct spa_buffer *buf = b->buffer;
     if (buf->n_datas < 1 || (dst = buf->datas[0].data) == NULL)
-        return;
+        goto done;
 
     buf->datas[0].chunk->offset = 0;
     buf->datas[0].chunk->stride = 4;
@@ -564,7 +565,7 @@ static void capture_stream_process(void *d)
     uint32_t to_read = UINT32_MAX;
     if (__builtin_mul_overflow(size, impl->frame_size, &to_read)) {
         pw_log_error("Overflow calculating amount of data there is room for????");
-        return;
+        goto done;
     }
     size = to_read;
 
@@ -576,9 +577,10 @@ static void capture_stream_process(void *d)
     pw_log_debug("reading %" PRIu32 " bytes from vchan", size);
     if (libvchan_read(stream->vchan, dst, size) != (int)size) {
         pw_log_error("vchan error: %m");
-        return;
+        goto done;
     }
     buf->datas[0].chunk->size = size;
+done:
     pw_stream_queue_buffer(stream->stream, b);
 }
 
@@ -603,13 +605,13 @@ static void playback_stream_process(void *d)
 
     pw_log_debug("%d bytes ready for writing", ready);
 
-    if (!stream->last_state)
-        return; // Nothing to do
-
     if ((buf = pw_stream_dequeue_buffer(stream->stream)) == NULL) {
         pw_log_error("out of buffers: %m");
         return;
     }
+
+    if (!stream->last_state)
+        goto done; // Nothing to do
 
     assert(buf->buffer->n_datas == 1 && "wrong number of datas");
 
@@ -619,9 +621,19 @@ static void playback_stream_process(void *d)
     size = bd->chunk->size;
 
     if (ready <= 0 || size > (uint32_t)ready) {
+        uint32_t uncork_cmd = QUBES_PA_SINK_UNCORK_CMD;
+        struct libvchan *control_vchan = capture_stream ? capture_stream->vchan : NULL;
         pw_log_error("Overrun: asked to write %" PRIu32 " bytes, but can only write %d", size, ready);
+        // Try to kick off pacat-simple-vchan
         if (ready < 0)
-            return;
+            goto done;
+        if (control_vchan && libvchan_is_open(control_vchan) &&
+            libvchan_buffer_space(control_vchan) >= (int)sizeof uncork_cmd) {
+            libvchan_write(control_vchan, &uncork_cmd, sizeof uncork_cmd);
+            pw_log_error("Kicked off playback");
+        } else {
+            pw_log_error("Could not kick off control vchan");
+        }
         size = ready;
     }
 
@@ -631,6 +643,7 @@ static void playback_stream_process(void *d)
         return;
     }
     spa_assert(pw_stream_dequeue_buffer(stream->stream) == NULL);
+done:
     pw_stream_queue_buffer(stream->stream, buf);
 }
 
