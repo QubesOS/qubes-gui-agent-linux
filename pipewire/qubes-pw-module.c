@@ -620,13 +620,13 @@ static void playback_stream_process(void *d)
 
     if (ready <= 0 || size > (uint32_t)ready) {
         pw_log_error("Overrun: asked to write %" PRIu32 " bytes, but can only write %d", size, ready);
-        if (ready <= 0)
+        if (ready < 0)
             return;
         size = ready;
     }
 
     pw_log_info("writing %" PRIu32 " bytes to vchan", size);
-    if (libvchan_write(stream->vchan, data, size) != (int)size) {
+    if (size > 0 && libvchan_write(stream->vchan, data, size) != (int)size) {
         pw_log_error("vchan error: %m");
         return;
     }
