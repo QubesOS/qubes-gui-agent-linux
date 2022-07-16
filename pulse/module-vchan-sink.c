@@ -521,12 +521,12 @@ static int do_conn(struct userdata *u)
 {
     struct pollfd *pollfd;
 
-    u->play_ctrl = libvchan_server_init(u->domid, QUBES_PA_SINK_VCHAN_PORT, 128, 2048);
+    u->play_ctrl = libvchan_server_init(u->domid, QUBES_PA_SINK_VCHAN_PORT, 128, 8192);
     if (!u->play_ctrl) {
         pa_log("libvchan_server_init play failed\n");
         return -1;
     }
-    u->rec_ctrl = libvchan_server_init(u->domid, QUBES_PA_SOURCE_VCHAN_PORT, 2048, 128);
+    u->rec_ctrl = libvchan_server_init(u->domid, QUBES_PA_SOURCE_VCHAN_PORT, 8192, 128);
     if (!u->rec_ctrl) {
         pa_log("libvchan_server_init rec failed\n");
         return -1;
