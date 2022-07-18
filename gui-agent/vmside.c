@@ -872,6 +872,7 @@ static void process_xevent_destroy(Ghandles * g, XID window)
     }
 
     SKIP_NONMANAGED_WINDOW;
+    XUngrabPointer(g->display, CurrentTime);
     if (g->log_level > 0)
         fprintf(stderr, "handle destroy 0x%x\n", (int) window);
     hdr.type = MSG_DESTROY;
