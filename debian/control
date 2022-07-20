@@ -99,9 +99,13 @@ Depends:
     libpulse0,
     ${shlibs:Depends},
     ${pulse:Depends},
-    ${misc:Depends}
-Replaces: qubes-gui-agent (<< 4.1.9-1)
-Breaks: qubes-gui-agent (<< 4.1.9-1)
+    ${misc:Depends},
+Replaces:
+ qubes-gui-agent (<< 4.1.9-1),
+ qubes-core-agent (<< 4.2.5-1),
+Breaks:
+ qubes-gui-agent (<< 4.1.9-1),
+ qubes-core-agent (<< 4.2.5-1),
 Description: Audio support for Qubes VM
  Pulseaudio module to enable sound support in Qubes VM
 

@@ -87,6 +87,8 @@ Summary: Audio support for Qubes VM
 # It is possible that our code will work fine with any later pulseaudio
 # version; but this needs to be verified for each pulseaudio version.
 Requires:	pulseaudio = %{pa_ver_full}
+# Needed so that systemd can manage PulseAudio
+Conflicts:	qubes-core-agent < 4.2.5
 Conflicts:  qubes-gui-vm < 4.0.0
 
 %description -n pulseaudio-qubes
@@ -136,6 +138,32 @@ fi
 
 sed -i '/^autospawn/d' /etc/pulse/client.conf
 echo autospawn=no >> /etc/pulse/client.conf
+
+# simplified version of preset_units() from core-agent-linux
+preset_units() {
+    local represet=
+    cat "$1" | while read action unit_name
+    do
+        if [ "$action" = "#" -a "$unit_name" = "Units below this line will be re-preset on package upgrade" ]
+        then
+            represet=1
+            continue
+        fi
+        echo "$action $unit_name" | grep -q '^[[:space:]]*[^#;]' || continue
+        [ -n "$action" -a -n "$unit_name" ] || continue
+        if [ "$2" = "initial" -o "$represet" = "1" ]
+        then
+            systemctl --no-reload --global preset "$unit_name" >/dev/null 2>&1 || :
+        fi
+    done
+}
+
+if [ $1 -eq 1 ]
+then
+    preset_units /usr/lib/systemd/user-preset/75-pulseaudio-qubes.preset initial
+else
+    preset_units /usr/lib/systemd/user-preset/75-pulseaudio-qubes.preset upgrade
+fi
 
 %preun
 if [ "$1" = 0 ] ; then
@@ -205,6 +233,8 @@ rm -f %{name}-%{version}
 /usr/bin/start-pulseaudio-with-vchan
 %{pa_module_dir}/module-vchan-sink.so
 /etc/xdg/autostart/qubes-pulseaudio.desktop
+/usr/lib/systemd/user-preset/75-pulseaudio-qubes.preset
+/usr/lib/systemd/user/pulseaudio.service.d/30_qubes.conf
 
 %files xfce
 /etc/X11/xinit/xinitrc.d/60xfce-desktop.sh
