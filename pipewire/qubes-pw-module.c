@@ -525,24 +525,24 @@ static void capture_stream_process(void *d)
     struct pw_buffer *b;
     struct qubes_stream *stream = impl->stream + PW_DIRECTION_OUTPUT;
     uint8_t *dst;
+    uint32_t bytes_ready = 0;
 
     if ((b = pw_stream_dequeue_buffer(stream->stream)) == NULL) {
         pw_log_error("out of capture buffers: %m");
         return;
     }
 
-    if (!stream->vchan || !libvchan_is_open(stream->vchan)) {
-        pw_log_error("vchan not open yet!");
-        goto done;
-    }
-    int ready = libvchan_data_ready(stream->vchan);
-
     if (!stream->last_state)
-        goto done; // Nothing to do
-
-    if (ready <= 0) {
-        pw_log_error("no data in vchan");
         goto done;
+
+    if (!stream->vchan || !libvchan_is_open(stream->vchan))
+        pw_log_error("vchan not open yet!");
+    else {
+        int ready = libvchan_data_ready(stream->vchan);
+        if (ready < 0)
+            pw_log_error("vchan problem!");
+        else
+            bytes_ready = (uint32_t)ready;
     }
 
     struct spa_buffer *buf = b->buffer;
@@ -562,24 +562,24 @@ static void capture_stream_process(void *d)
         size = room_for;
     }
 
-    uint32_t to_read = UINT32_MAX;
-    if (__builtin_mul_overflow(size, impl->frame_size, &to_read)) {
+    if (__builtin_mul_overflow(size, impl->frame_size, &size)) {
         pw_log_error("Overflow calculating amount of data there is room for????");
         goto done;
     }
-    size = to_read;
+    buf->datas[0].chunk->size = size;
 
-    if (size > (uint32_t)ready) {
-        pw_log_error("Underrun: asked to read %" PRIu32 " bytes, but only %d available", size, ready);
-        size = ready;
+    if (size > bytes_ready) {
+        pw_log_error("Underrun: asked to read %" PRIu32 " bytes, but only %d available", size, (int)bytes_ready);
+        memset(dst + bytes_ready, 0, size - bytes_ready);
+        size = bytes_ready;
     }
 
     pw_log_debug("reading %" PRIu32 " bytes from vchan", size);
     if (libvchan_read(stream->vchan, dst, size) != (int)size) {
         pw_log_error("vchan error: %m");
-        goto done;
+        // avoid recording uninitialized memory
+        memset(dst, 0, size);
     }
-    buf->datas[0].chunk->size = size;
 done:
     pw_stream_queue_buffer(stream->stream, b);
 }
