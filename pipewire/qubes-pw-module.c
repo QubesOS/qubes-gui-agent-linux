@@ -607,9 +607,6 @@ static void playback_stream_process(void *d)
         return;
     }
 
-    if (!stream->last_state)
-        goto done; // Nothing to do
-
     assert(buf->buffer->n_datas == 1 && "wrong number of datas");
 
     bd = &buf->buffer->datas[0];
@@ -622,7 +619,7 @@ static void playback_stream_process(void *d)
         struct libvchan *control_vchan = capture_stream ? capture_stream->vchan : NULL;
         pw_log_error("Overrun: asked to write %" PRIu32 " bytes, but can only write %d", size, ready);
         // Try to kick off pacat-simple-vchan
-        if (ready < 0)
+        if (ready < 0 || !stream->last_state)
             goto done;
         if (control_vchan && libvchan_is_open(control_vchan) &&
             libvchan_buffer_space(control_vchan) >= (int)sizeof uncork_cmd) {
