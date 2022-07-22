@@ -532,9 +532,6 @@ static void capture_stream_process(void *d)
         return;
     }
 
-    if (!stream->last_state)
-        goto done;
-
     if (!stream->vchan || !libvchan_is_open(stream->vchan))
         pw_log_error("vchan not open yet!");
     else {
