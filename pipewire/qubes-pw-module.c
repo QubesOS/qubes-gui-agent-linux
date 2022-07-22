@@ -643,14 +643,25 @@ done:
     pw_stream_queue_buffer(stream->stream, buf);
 }
 
+static const struct spa_audio_info_raw qubes_audio_format = {
+    .format = SPA_AUDIO_FORMAT_S16_LE,
+    .flags = 0,
+    .rate = 44100,
+    .channels = 2,
+    .position = { SPA_AUDIO_CHANNEL_FL, SPA_AUDIO_CHANNEL_FR },
+};
+
 static void stream_param_changed(void *data, uint32_t id,
         const struct spa_pod *param, enum spa_direction direction)
 {
     struct impl *impl = data;
     uint32_t media_type = UINT32_MAX, media_subtype = UINT32_MAX;
     struct spa_audio_info_raw info = { 0 };
-    const struct spa_pod *params = NULL;
     int res;
+    uint8_t params_buffer[1024];
+
+    struct spa_pod_builder b = SPA_POD_BUILDER_INIT(params_buffer, sizeof(params_buffer));
+    const struct spa_pod *params[5];
 
     switch (id) {
     case SPA_PARAM_Format:
@@ -722,7 +733,18 @@ static void stream_param_changed(void *data, uint32_t id,
     }
 
 doit:
-    if ((res = pw_stream_update_params(impl->stream[direction].stream, &params, 0)) < 0) {
+    params[0] = spa_pod_builder_add_object(&b,
+            SPA_TYPE_OBJECT_ParamBuffers, SPA_PARAM_Buffers,
+            SPA_PARAM_BUFFERS_buffers, SPA_POD_Int(1),
+            SPA_PARAM_BUFFERS_blocks, SPA_POD_Int(1),
+            SPA_PARAM_BUFFERS_size, SPA_POD_Int(2048),
+            SPA_PARAM_BUFFERS_stride, impl->frame_size,
+            SPA_PARAM_BUFFERS_dataType, SPA_POD_CHOICE_FLAGS_Int((1 << SPA_DATA_MemPtr)));
+
+    params[1] = spa_format_audio_raw_build(&b, SPA_PARAM_Format,
+            (struct spa_audio_info_raw *)&qubes_audio_format);
+
+    if ((res = pw_stream_update_params(impl->stream[direction].stream, params, 2)) < 0) {
         errno = -res;
         pw_log_error("Failed to negotiate parameters: %m");
         errno = -res;
