@@ -572,7 +572,7 @@ static void capture_stream_process(void *d)
     }
 
     pw_log_debug("reading %" PRIu32 " bytes from vchan", size);
-    if (libvchan_read(stream->vchan, dst, size) != (int)size) {
+    if (size && libvchan_read(stream->vchan, dst, size) != (int)size) {
         pw_log_error("vchan error: %m");
         // avoid recording uninitialized memory
         memset(dst, 0, size);
