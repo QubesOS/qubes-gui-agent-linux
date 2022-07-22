@@ -933,6 +933,31 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
     if (args == NULL)
         args = "";
 
+    impl->module = module;
+    impl->context = context;
+
+    uint32_t n_support;
+    const struct spa_support *support = pw_context_get_support(impl->context, &n_support);
+    if (!support) {
+        res = -errno;
+        pw_log_error("cannot get support: %m");
+        goto error;
+    }
+
+    impl->data_loop = spa_support_find(support, n_support, SPA_TYPE_INTERFACE_DataLoop);
+    if (!impl->data_loop) {
+        res = -errno;
+        pw_log_error("cannot get data loop: %m");
+        goto error;
+    }
+
+    impl->main_loop = spa_support_find(support, n_support, SPA_TYPE_INTERFACE_Loop);
+    if (!impl->main_loop) {
+        res = -errno;
+        pw_log_error("cannot get main loop: %m");
+        goto error;
+    }
+
     props = pw_properties_new_string(args);
     if (props == NULL) {
         res = -errno;
@@ -1018,9 +1043,6 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
         }
     }
 
-    impl->module = module;
-    impl->context = context;
-
 #if PW_CHECK_VERSION(0, 3, 30)
     if ((str = pw_properties_get(props, "stream.source.props")) != NULL)
         pw_properties_update_string(impl->stream[PW_DIRECTION_OUTPUT].stream_props, str, strlen(str));
@@ -1041,6 +1063,7 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
                 0);
         impl->do_disconnect = true;
     }
+
     if (impl->core == NULL) {
         res = -errno;
         pw_log_error("can't connect: %m");
@@ -1053,28 +1076,6 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
     pw_core_add_listener(impl->core,
             &impl->core_listener,
             &core_events, impl);
-
-    uint32_t n_support;
-    const struct spa_support *support = pw_context_get_support(impl->context, &n_support);
-    if (!support) {
-        res = -errno;
-        pw_log_error("cannot get support: %m");
-        goto error;
-    }
-
-    impl->data_loop = spa_support_find(support, n_support, SPA_TYPE_INTERFACE_DataLoop);
-    if (!impl->data_loop) {
-        res = -errno;
-        pw_log_error("cannot get data loop: %m");
-        goto error;
-    }
-
-    impl->main_loop = spa_support_find(support, n_support, SPA_TYPE_INTERFACE_Loop);
-    if (!impl->main_loop) {
-        res = -errno;
-        pw_log_error("cannot get main loop: %m");
-        goto error;
-    }
 
     if ((res = create_stream(impl, PW_DIRECTION_INPUT)) < 0)
         goto error;
