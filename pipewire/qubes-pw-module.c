@@ -77,11 +77,6 @@
 #include <pipewire/impl.h>
 #include <pipewire/log.h>
 
-#ifdef NDEBUG
-#error "Qubes PipeWire module requires assertions"
-#endif
-#include <assert.h>
-
 #include <libvchan.h>
 #include <qubesdb-client.h>
 
@@ -235,7 +230,7 @@ static void connect_stream(struct qubes_stream *stream)
         spa_assert(!"FATAL ERROR: vchan creation failed");
     }
     if (spa_loop_invoke(stream->impl->data_loop, add_stream, 0, NULL, 0, true, stream))
-        assert(!"FATAL ERROR: spa_loop_add_source() failed");
+        spa_assert(!"FATAL ERROR: spa_loop_add_source() failed");
     return;
 }
 
@@ -554,7 +549,7 @@ static void capture_stream_process(void *d)
     buf->datas[0].chunk->stride = 4;
     buf->datas[0].chunk->size = 0;
 
-    assert(buf->n_datas == 1 && "wrong number of datas");
+    spa_assert(buf->n_datas == 1 && "wrong number of datas");
 
     size = buf->datas[0].maxsize;
     // TODO: handle more data
@@ -614,10 +609,10 @@ static void playback_stream_process(void *d)
         return;
     }
 
-    assert(buf->buffer->n_datas == 1 && "wrong number of datas");
+    spa_assert(buf->buffer->n_datas == 1 && "wrong number of datas");
 
     bd = &buf->buffer->datas[0];
-    assert(bd->chunk->offset == 0);
+    spa_assert(bd->chunk->offset == 0);
     data = bd->data + bd->chunk->offset;
     size = bd->chunk->size;
 
@@ -669,7 +664,7 @@ static void stream_param_changed(void *data, uint32_t id,
         return;
     }
 
-    assert(direction >= 0 && direction <= 1);
+    spa_assert(direction >= 0 && direction <= 1);
 
     if (param == NULL)
         goto doit;
