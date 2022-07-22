@@ -52,6 +52,9 @@
 
 #define QUBES_AUDIOVM_QUBESDB_ENTRY "/qubes-audio-domain-xid"
 #define QUBES_AUDIOVM_PW_KEY "org.qubes-os.audio-domain-xid"
+#define QUBES_PW_KEY_BUFFER_SPACE   "org.qubes-os.vchan-buffer-space"
+#define QUBES_PW_KEY_RECORD_BUFFER_SPACE   "org.qubes-os.record-buffer-space"
+#define QUBES_PW_KEY_PLAYBACK_BUFFER_SPACE   "org.qubes-os.playback-buffer-space"
 
 #include <string.h>
 #include <stdio.h>
@@ -127,6 +130,7 @@ struct qubes_stream {
     struct impl *impl;
     _Atomic size_t current_state, last_state;
     struct spa_source source;
+    size_t buffer_size;
     bool is_open, direction, dead;
 };
 
@@ -224,8 +228,8 @@ static void connect_stream(struct qubes_stream *stream)
     spa_assert(stream->vchan == NULL);
     spa_assert(stream->closed_vchan == NULL);
     stream->closed_vchan = stream->direction ?
-        libvchan_server_init((int)domid, QUBES_PA_SOURCE_VCHAN_PORT, 1 << 15, 128) :
-        libvchan_server_init((int)domid, QUBES_PA_SINK_VCHAN_PORT, 128, 1 << 15);
+        libvchan_server_init((int)domid, QUBES_PA_SOURCE_VCHAN_PORT, stream->buffer_size, 128) :
+        libvchan_server_init((int)domid, QUBES_PA_SINK_VCHAN_PORT, 128, stream->buffer_size);
     if (stream->closed_vchan == NULL) {
         pw_log_error("can't create %s vchan: %m", msg);
         spa_assert(!"FATAL ERROR: vchan creation failed");
@@ -876,6 +880,36 @@ static const struct spa_dict_item sink_props[] = {
 
 static const struct spa_dict sink_dict = SPA_DICT_INIT_ARRAY(sink_props);
 
+// FIXME: this should be a Qubes-wide domID parsing function
+static int parse_number(const char *const peer_domain_prop,
+        unsigned long long max_value,
+        size_t *res, const char *const msg)
+{
+    char *endptr = (void *)1;
+    *res = 0;
+    unsigned long long domid = strtoull(peer_domain_prop, &endptr, 10);
+    if (*peer_domain_prop < '0' || *peer_domain_prop > '9') {
+        pw_log_error("Invalid %s \"%s\": bad first byte %d",
+                msg, peer_domain_prop, (int)peer_domain_prop[0]);
+        return -EINVAL;
+    } else if (*peer_domain_prop == '0' && peer_domain_prop[1]) {
+        pw_log_error("Invalid %s \"%s\": leading zeros",
+                msg, peer_domain_prop);
+        return -EINVAL;
+    } else if (*endptr) {
+        pw_log_error("Invalid %s \"%s\": trailing junk (\"%s\")",
+                msg, peer_domain_prop, endptr);
+        return -EINVAL;
+    } else if (domid > max_value) {
+        pw_log_error("Invalid %s \"%s\": exceeds maximum %s %llu",
+                msg, peer_domain_prop, msg, max_value);
+        return -ERANGE;
+    } else {
+        *res = domid;
+        return 0;
+    }
+}
+
 SPA_EXPORT
 int pipewire__module_init(struct pw_impl_module *module, const char *args)
 {
@@ -884,7 +918,6 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
     struct impl *impl;
     const char *str;
     const char *peer_domain_prop = NULL;
-    uint32_t domid = UINT32_MAX;
     int res = -EFAULT;
     shutting_down = false; // for musl support, where dlclose() is a NOP
 
@@ -939,24 +972,39 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
     }
 
     {
-        char *endptr;
-        errno = 0;
-        domid = strtoul(peer_domain_prop, &endptr, 10);
-        if (*peer_domain_prop < '0' || *peer_domain_prop > '9' ||
-            (*peer_domain_prop == '0' && peer_domain_prop[1]) ||
-            *endptr)
-            errno = EINVAL;
-        else if (domid >= UINT16_MAX >> 2)
-            errno = ERANGE;
-        if (errno) {
-            pw_log_error("Invalid domain ID %s", peer_domain_prop);
-            res = -errno;
+        size_t domid;
+        if ((res = parse_number(peer_domain_prop, 0x7FEF, &domid, "domain ID")))
             goto error;
+        impl->domid = (uint16_t)domid;
+
+        size_t read_min = 1 << 15, write_min = 1 << 15;
+        const char *record_size = pw_properties_get(props, QUBES_PW_KEY_RECORD_BUFFER_SPACE);
+        const char *playback_size = pw_properties_get(props, QUBES_PW_KEY_PLAYBACK_BUFFER_SPACE);
+        if (!record_size || !playback_size) {
+            const char *buffer_size = pw_properties_get(props, QUBES_PW_KEY_BUFFER_SPACE);
+            if (buffer_size && !record_size)
+                record_size = buffer_size;
+            if (buffer_size && !playback_size)
+                playback_size = buffer_size;
         }
+
+        if (record_size &&
+            (res = parse_number(peer_domain_prop, INT32_MAX / 2, &read_min, "record buffer size")))
+            goto error;
+
+        if (playback_size &&
+            (res = parse_number(peer_domain_prop, INT32_MAX / 2, &write_min, "record buffer size")))
+            goto error;
+
+        impl->stream[PW_DIRECTION_OUTPUT].buffer_size = read_min;
+        impl->stream[PW_DIRECTION_INPUT].buffer_size = write_min;
     }
 
-    pw_log_error("module %p: new (%s), peer id is %d", impl, args, (int)domid);
-    impl->domid = domid;
+    pw_log_error("module %p: new (%s), peer id is %d", impl, args, (int)impl->domid);
+    pw_log_error("module %p: record buffer size %zu, playback buffer size %zu",
+                 impl,
+                 impl->stream[PW_DIRECTION_OUTPUT].buffer_size,
+                 impl->stream[PW_DIRECTION_INPUT].buffer_size);
 
     for (uint8_t i = 0; i < 2; ++i) {
         const char *msg = i ? "sink" : "source";
