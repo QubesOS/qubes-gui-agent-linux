@@ -645,20 +645,8 @@ done:
     pw_stream_queue_buffer(stream->stream, buf);
 }
 
-static const struct pw_stream_events capture_stream_events = {
-    .version = PW_VERSION_STREAM_EVENTS,
-    .destroy = capture_stream_destroy,
-    .state_changed = capture_stream_state_changed,
-    .control_info = NULL,
-    .io_changed = NULL,
-    .param_changed = NULL,
-    .add_buffer = NULL,
-    .remove_buffer = NULL,
-    .process = capture_stream_process,
-    .drained = NULL,
-};
-
-static void playback_stream_param_changed(void *data, uint32_t id, const struct spa_pod *param)
+static void stream_param_changed(void *data, uint32_t id,
+        const struct spa_pod *param, enum spa_direction direction)
 {
     struct impl *impl = data;
     uint32_t media_type = UINT32_MAX, media_subtype = UINT32_MAX;
@@ -666,10 +654,19 @@ static void playback_stream_param_changed(void *data, uint32_t id, const struct 
     const struct spa_pod *params = NULL;
     int res;
 
-    if (id != SPA_PARAM_Format) {
+    switch (id) {
+    case SPA_PARAM_Format:
+        break;
+    case SPA_PARAM_Props:;
+        _Static_assert(SPA_PARAM_Props == 2, "wrong SPA_PARAM_Props");
+        /* TODO: reconfigure the stream according to the new properties */
+        return;
+    default:
         pw_log_error("Unknown id %" PRIu32, id);
         return;
     }
+
+    assert(direction >= 0 && direction <= 1);
 
     if (param == NULL)
         goto doit;
@@ -727,11 +724,36 @@ static void playback_stream_param_changed(void *data, uint32_t id, const struct 
     }
 
 doit:
-    if ((res = pw_stream_update_params(impl->stream[PW_DIRECTION_INPUT].stream, &params, 0)) < 0) {
+    if ((res = pw_stream_update_params(impl->stream[direction].stream, &params, 0)) < 0) {
         errno = -res;
         pw_log_error("Failed to negotiate parameters: %m");
         errno = -res;
     }
+}
+
+static void capture_stream_param_changed(void *data, uint32_t id,
+        const struct spa_pod *param)
+{
+    stream_param_changed(data, id, param, PW_DIRECTION_OUTPUT);
+}
+
+static const struct pw_stream_events capture_stream_events = {
+    .version = PW_VERSION_STREAM_EVENTS,
+    .destroy = capture_stream_destroy,
+    .state_changed = capture_stream_state_changed,
+    .control_info = NULL,
+    .io_changed = NULL,
+    .param_changed = capture_stream_param_changed,
+    .add_buffer = NULL,
+    .remove_buffer = NULL,
+    .process = capture_stream_process,
+    .drained = NULL,
+};
+
+static void playback_stream_param_changed(void *data, uint32_t id,
+        const struct spa_pod *param)
+{
+    stream_param_changed(data, id, param, PW_DIRECTION_INPUT);
 }
 
 static const struct pw_stream_events playback_stream_events = {
