@@ -529,7 +529,7 @@ static void capture_stream_process(void *d)
     struct pw_buffer *b;
     struct qubes_stream *stream = impl->stream + PW_DIRECTION_OUTPUT;
     uint8_t *dst;
-    uint32_t bytes_ready = 0;
+    uint32_t bytes_ready = 0, size;
 
     if ((b = pw_stream_dequeue_buffer(stream->stream)) == NULL) {
         pw_log_error("out of capture buffers: %m");
@@ -556,12 +556,15 @@ static void capture_stream_process(void *d)
 
     assert(buf->n_datas == 1 && "wrong number of datas");
 
-    uint32_t size = b->requested, room_for = buf->datas[0].maxsize;
+    size = buf->datas[0].maxsize;
     // TODO: handle more data
-    if (size > room_for) {
-        pw_log_error("Can only record %" PRIu32 " bytes of %" PRIu32, size, room_for);
-        size = room_for;
-    }
+#if PW_CHECK_VERSION(0, 3, 49)
+    if (SPA_UNLIKELY(b->requested > size))
+        pw_log_error("Can only record %" PRIu32 " bytes of %" PRIu64, size,
+                    b->requested);
+    else if (b->requested)
+        size = b->requested;
+#endif
 
     if (__builtin_mul_overflow(size, impl->frame_size, &size)) {
         pw_log_error("Overflow calculating amount of data there is room for????");
