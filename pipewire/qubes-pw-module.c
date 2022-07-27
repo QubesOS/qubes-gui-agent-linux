@@ -738,7 +738,7 @@ doit:
             SPA_PARAM_BUFFERS_buffers, SPA_POD_Int(1),
             SPA_PARAM_BUFFERS_blocks, SPA_POD_Int(1),
             SPA_PARAM_BUFFERS_size, SPA_POD_Int(2048),
-            SPA_PARAM_BUFFERS_stride, impl->frame_size,
+            SPA_PARAM_BUFFERS_stride, SPA_POD_Int((int)impl->frame_size),
             SPA_PARAM_BUFFERS_dataType, SPA_POD_CHOICE_FLAGS_Int((1 << SPA_DATA_MemPtr)));
 
     params[1] = spa_format_audio_raw_build(&b, SPA_PARAM_Format,
