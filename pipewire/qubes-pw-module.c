@@ -1056,11 +1056,11 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
         }
 
         if (record_size &&
-            (res = parse_number(peer_domain_prop, INT32_MAX / 2, &read_min, "record buffer size")))
+            (res = parse_number(record_size, INT32_MAX / 2, &read_min, "record buffer size")))
             goto error;
 
         if (playback_size &&
-            (res = parse_number(peer_domain_prop, INT32_MAX / 2, &write_min, "record buffer size")))
+            (res = parse_number(playback_size, INT32_MAX / 2, &write_min, "playback buffer size")))
             goto error;
 
         impl->stream[PW_DIRECTION_OUTPUT].buffer_size = read_min;
