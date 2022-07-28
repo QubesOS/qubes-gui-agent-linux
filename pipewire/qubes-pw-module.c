@@ -945,31 +945,26 @@ static const struct spa_dict_item sink_props[] = {
 static const struct spa_dict sink_dict = SPA_DICT_INIT_ARRAY(sink_props);
 
 // FIXME: this should be a Qubes-wide domID parsing function
-static int parse_number(const char *const peer_domain_prop,
-        unsigned long long max_value,
-        size_t *res, const char *const msg)
+static int parse_number(const char *const str,
+        size_t max_value, size_t *res, const char *const msg)
 {
     char *endptr = (void *)1;
-    *res = 0;
-    unsigned long long domid = strtoull(peer_domain_prop, &endptr, 10);
-    if (*peer_domain_prop < '0' || *peer_domain_prop > '9') {
-        pw_log_error("Invalid %s \"%s\": bad first byte %d",
-                msg, peer_domain_prop, (int)peer_domain_prop[0]);
-        return -EINVAL;
-    } else if (*peer_domain_prop == '0' && peer_domain_prop[1]) {
-        pw_log_error("Invalid %s \"%s\": leading zeros",
-                msg, peer_domain_prop);
-        return -EINVAL;
+    errno = *res = 0;
+    unsigned long long value = strtoull(str, &endptr, 10);
+    if (errno) {
+        int i = errno;
+        pw_log_error("Invalid %s \"%s\": %m", msg, str);
+        return -i;
     } else if (*endptr) {
         pw_log_error("Invalid %s \"%s\": trailing junk (\"%s\")",
-                msg, peer_domain_prop, endptr);
+                msg, str, endptr);
         return -EINVAL;
-    } else if (domid > max_value) {
-        pw_log_error("Invalid %s \"%s\": exceeds maximum %s %llu",
-                msg, peer_domain_prop, msg, max_value);
+    } else if (value > max_value) {
+        pw_log_error("Invalid %s \"%s\": exceeds maximum %s %zu",
+                msg, str, msg, max_value);
         return -ERANGE;
     } else {
-        *res = domid;
+        *res = (size_t)value;
         return 0;
     }
 }
