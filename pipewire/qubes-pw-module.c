@@ -365,6 +365,18 @@ static int main_thread_connect(struct spa_loop *loop,
     return 0;
 }
 
+static int process_control_commands(struct impl *impl);
+
+static int process_control_commands_cb(struct spa_loop *loop,
+                                       bool async,
+                                       uint32_t seq,
+                                       const void *data,
+                                       size_t size,
+                                       void *user_data)
+{
+    return process_control_commands(user_data);
+}
+
 /**
  * Called on the realtime thread when a vchan's event channel
  * is signaled.  Must not be called on any other thread.
@@ -409,6 +421,7 @@ static void vchan_ready(struct spa_source *source)
     if (!stream->direction)
         return; // Nothing to do for playback
     discard_unwanted_recorded_data(stream);
+    process_control_commands(stream->impl);
 }
 
 /**
@@ -444,14 +457,8 @@ static void discard_unwanted_recorded_data(struct qubes_stream *stream)
 /**
  * Called on the realtime thread to process control commands.
  */
-static int process_control_commands(struct spa_loop *loop,
-                                    bool async,
-                                    uint32_t seq,
-                                    const void *data,
-                                    size_t size,
-                                    void *user_data)
+static int process_control_commands(struct impl *impl)
 {
-    struct impl *impl = user_data;
     struct qubes_stream *capture_stream = impl->stream + PW_DIRECTION_OUTPUT,
                        *playback_stream = impl->stream + PW_DIRECTION_INPUT;
     bool new_state = playback_stream->current_state;
@@ -534,7 +541,7 @@ static void stream_state_changed_common(void *d, enum pw_stream_state old,
         pw_log_error("unknown %s stream state %d", name, state);
         return;
     }
-    spa_loop_invoke(impl->data_loop, process_control_commands, 0, NULL, 0, true, impl);
+    spa_loop_invoke(impl->data_loop, process_control_commands_cb, 0, NULL, 0, true, impl);
     pw_log_debug("Successfully queued message");
 }
 
