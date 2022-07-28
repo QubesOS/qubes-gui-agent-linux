@@ -667,8 +667,7 @@ static void stream_param_changed(void *data, uint32_t id,
     switch (id) {
     case SPA_PARAM_Format:
         break;
-    case SPA_PARAM_Props:;
-        _Static_assert(SPA_PARAM_Props == 2, "wrong SPA_PARAM_Props");
+    case SPA_PARAM_Props:
         /* TODO: reconfigure the stream according to the new properties */
         return;
     default:
