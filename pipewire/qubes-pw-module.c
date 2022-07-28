@@ -649,19 +649,7 @@ static void playback_stream_process(void *d)
     size = bd->chunk->size;
 
     if (ready <= 0 || size > (uint32_t)ready) {
-        uint32_t uncork_cmd = QUBES_PA_SINK_UNCORK_CMD;
-        struct libvchan *control_vchan = capture_stream ? capture_stream->vchan : NULL;
         pw_log_error("Overrun: asked to write %" PRIu32 " bytes, but can only write %d", size, ready);
-        // Try to kick off pacat-simple-vchan
-        if (ready < 0 || !stream->last_state)
-            goto done;
-        if (control_vchan && libvchan_is_open(control_vchan) &&
-            libvchan_buffer_space(control_vchan) >= (int)sizeof uncork_cmd) {
-            libvchan_write(control_vchan, &uncork_cmd, sizeof uncork_cmd);
-            pw_log_error("Kicked off playback");
-        } else {
-            pw_log_error("Could not kick off control vchan");
-        }
         size = ready;
     }
 
@@ -671,7 +659,6 @@ static void playback_stream_process(void *d)
         return;
     }
     spa_assert(pw_stream_dequeue_buffer(stream->stream) == NULL);
-done:
     pw_stream_queue_buffer(stream->stream, buf);
 }
 
