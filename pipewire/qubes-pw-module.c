@@ -306,7 +306,7 @@ static void set_stream_state(struct qubes_stream *stream, bool state)
 static const struct pw_stream_events capture_stream_events, playback_stream_events;
 
 /**
- * Called on the main thread when a stream needs to be disconnected.
+ * Called on the main thread when a vchan has been disconnected.
  */
 static int main_thread_disconnect_stream(struct spa_loop *loop,
                                          bool async,
