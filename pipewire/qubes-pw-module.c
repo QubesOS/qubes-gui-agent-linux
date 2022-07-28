@@ -197,7 +197,8 @@ static int add_stream(struct spa_loop *loop,
                       void *user_data)
 {
     if (shutting_down)
-        return -EFAULT;
+        return -ESHUTDOWN;
+
     struct qubes_stream *stream = user_data;
     spa_assert(stream->closed_vchan);
     spa_assert(!stream->vchan);
@@ -429,7 +430,7 @@ static int process_control_commands(struct spa_loop *loop,
         capture_stream->last_state = false;
         playback_stream->last_state = false;
         pw_log_error("Control vchan closed, cannot issue control command");
-        return -EFAULT;
+        return -EPIPE;
     }
 
     if (new_state != playback_stream->last_state) {
@@ -437,12 +438,12 @@ static int process_control_commands(struct spa_loop *loop,
 
         if (libvchan_buffer_space(control_vchan) < (int)sizeof(cmd)) {
             pw_log_error("cannot write command to control vchan: no buffer space");
-            return -ENOSPC;
+            return -ENOBUFS;
         }
 
         if (libvchan_send(control_vchan, &cmd, sizeof(cmd)) != sizeof(cmd)) {
             pw_log_error("error writing command to control vchan");
-            return -ENOSPC;
+            return -EPROTO;
         }
 
         pw_log_info("Audio playback %s", new_state ? "started" : "stopped");
@@ -960,7 +961,7 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
     struct impl *impl;
     const char *str;
     const char *peer_domain_prop = NULL;
-    int res = -EFAULT;
+    int res = -EFAULT; /* should never be returned, modulo bugs */
     shutting_down = false; // for musl support, where dlclose() is a NOP
 
 #ifdef PW_LOG_TOPIC_INIT
