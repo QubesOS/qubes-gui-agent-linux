@@ -275,8 +275,8 @@ static void stream_destroy(struct impl *impl, enum spa_direction direction)
     if (stream->closed_vchan) {
         pw_log_info("Closing vchan");
         libvchan_close(stream->closed_vchan);
+        stream->closed_vchan = NULL;
     }
-    stream->vchan = NULL;
 }
 
 /**
