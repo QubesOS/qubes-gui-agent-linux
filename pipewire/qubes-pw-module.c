@@ -663,7 +663,6 @@ static void playback_stream_process(void *d)
         pw_log_error("vchan error: %m");
         return;
     }
-    spa_assert(pw_stream_dequeue_buffer(stream->stream) == NULL);
     pw_stream_queue_buffer(stream->stream, buf);
 }
 
