@@ -166,20 +166,32 @@ _Static_assert(PW_DIRECTION_OUTPUT == 1, "wrong PW_DIRECTION_OUTPUT");
 // Flag to indicate shutdown in progress
 static _Atomic bool shutting_down;
 
-static int remove_stream(struct spa_loop *loop,
-                         bool async,
-                         uint32_t seq,
-                         const void *data,
-                         size_t size,
-                         void *user_data)
+/**
+ * Disconnect a stream from its event loop.  Must be called on the realtime
+ * thread.
+ */
+static void stop_watching_vchan(struct qubes_stream *stream)
+{
+    if (stream && stream->vchan) {
+        // Must do this first, so that EPOLL_CTL_DEL is called before the
+        // file descriptor is closed.
+        spa_loop_remove_source(stream->impl->data_loop, &stream->source);
+        stream->closed_vchan = stream->vchan;
+        stream->is_open = false;
+        stream->vchan = NULL;
+    }
+}
+
+static int remove_stream_cb(struct spa_loop *loop,
+                            bool async,
+                            uint32_t seq,
+                            const void *data,
+                            size_t size,
+                            void *user_data)
 {
     if (shutting_down)
         return -EFAULT;
-    struct qubes_stream *stream = user_data;
-    spa_loop_remove_source(loop, &stream->source);
-    stream->closed_vchan = stream->vchan;
-    stream->is_open = false;
-    stream->vchan = NULL;
+    stop_watching_vchan(user_data);
     return 0;
 }
 
@@ -255,7 +267,8 @@ static void stream_destroy(struct impl *impl, enum spa_direction direction)
     stream->dead = true;
     if (stream->stream) {
         spa_hook_remove(&stream->stream_listener);
-        spa_loop_invoke(impl->data_loop, remove_stream, 0, NULL, 0, true, stream);
+        spa_loop_invoke(impl->data_loop, remove_stream_cb, 0, NULL, 0, true, stream);
+        /* after this point the realtime thread is definitely aware of the shutdown */
         stream->stream = NULL;
     }
     if (stream->stream_props)
@@ -380,16 +393,14 @@ static void vchan_ready(struct spa_source *source)
     bool is_open = libvchan_is_open(stream->vchan);
     if (is_open != stream->is_open) {
         if (is_open) {
+            // vchan connected
             spa_loop_invoke(stream->impl->main_loop,
                             main_thread_connect, 0, NULL, 0, false, stream);
             stream->is_open = true;
         } else {
-            // Must do this first, so that EPOLL_CTL_DEL is called before the
-            // file descriptor is closed.
-            spa_loop_remove_source(stream->impl->data_loop, &stream->source);
-            stream->closed_vchan = stream->vchan;
-            stream->is_open = false;
-            stream->vchan = NULL;
+            // vchan disconnected.  Stop watching for events on it.
+            stop_watching_vchan(stream);
+            // Update the main-thread state asynchronously.
             spa_loop_invoke(stream->impl->main_loop,
                             main_thread_disconnect_stream, 0, NULL, 0, false,
                             stream);
