@@ -189,8 +189,6 @@ static int remove_stream_cb(struct spa_loop *loop,
                             size_t size,
                             void *user_data)
 {
-    if (shutting_down)
-        return -EFAULT;
     stop_watching_vchan(user_data);
     return 0;
 }
