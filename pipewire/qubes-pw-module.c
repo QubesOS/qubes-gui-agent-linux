@@ -188,6 +188,14 @@ static void vchan_ready(struct spa_source *source);
 /**
  * Called on the realtime thread after creating a vchan.  The main
  * thread is suspended.
+ *
+ * @param loop The event loop to use.
+ * @param async Was this called synchronously or asynchronously?
+ * @param seq a 32-bit sequence number.
+ * @param data The data argument to spa_loop_invoke().  Not used by this
+ *        function.
+ * @param size The size of that data.
+ * @param user_data The user data passed to spa_loop_invoke().
  */
 static int add_stream(struct spa_loop *loop,
                       bool async,
@@ -235,6 +243,9 @@ static void connect_stream(struct qubes_stream *stream)
     return;
 }
 
+/**
+ * Called on the main thread to destroy a stream.
+ */
 static void stream_destroy(struct impl *impl, enum spa_direction direction)
 {
     struct qubes_stream *stream = impl->stream + direction;
@@ -257,18 +268,25 @@ static void stream_destroy(struct impl *impl, enum spa_direction direction)
     stream->vchan = NULL;
 }
 
+/**
+ * Called on the main thread to destroy the capture stream.
+ */
 static void capture_stream_destroy(void *d)
 {
     pw_log_error("Trying to free capture stream");
     stream_destroy(d, PW_DIRECTION_INPUT);
 }
 
+/**
+ * Called on the main thread to destroy the playback stream.
+ */
 static void playback_stream_destroy(void *d)
 {
     pw_log_error("Trying to free playback stream");
     stream_destroy(d, PW_DIRECTION_OUTPUT);
 }
 
+/** Called on the main thread to set the stream state */
 static void set_stream_state(struct qubes_stream *stream, bool state)
 {
     stream->current_state = state;
@@ -344,6 +362,12 @@ static int main_thread_connect(struct spa_loop *loop,
     return 0;
 }
 
+/**
+ * Called on the realtime thread when a vchan's event channel
+ * is signaled.  Must not be called on any other thread.
+ *
+ * @param source The spa_source that triggered the event.
+ */
 static void vchan_ready(struct spa_source *source)
 {
     struct qubes_stream *stream = source->data;
@@ -386,6 +410,9 @@ static void vchan_ready(struct spa_source *source)
     discard_unwanted_recorded_data(stream);
 }
 
+/**
+ * Called on the realtime thread to discard unwanted data from the daemon.
+ */
 static void discard_unwanted_recorded_data(struct qubes_stream *stream)
 {
     if (stream->last_state)
@@ -413,6 +440,9 @@ static void discard_unwanted_recorded_data(struct qubes_stream *stream)
     }
 }
 
+/**
+ * Called on the realtime thread to process control commands.
+ */
 static int process_control_commands(struct spa_loop *loop,
                                     bool async,
                                     uint32_t seq,
