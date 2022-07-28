@@ -291,16 +291,8 @@ static void set_stream_state(struct qubes_stream *stream, bool state)
 {
     stream->current_state = state;
 }
-static int process_control_commands(struct spa_loop *loop,
-                                    bool async,
-                                    uint32_t seq,
-                                    const void *data,
-                                    size_t size,
-                                    void *user_data);
 
 static const struct pw_stream_events capture_stream_events, playback_stream_events;
-
-static void connect_stream(struct qubes_stream *stream);
 
 /**
  * Called on the main thread when a stream needs to be disconnected.
