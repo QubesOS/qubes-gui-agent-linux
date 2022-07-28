@@ -29,6 +29,9 @@ override_dh_install:
 	dh_install
 	dh_missing --fail-missing
 
+override_dh_installsystemduser:
+	dh_installsystemduser pipewire.socket pipewire-pulse.socket pipewire.service pipewire-pulse.service wireplumber.service
+
 override_dh_gencontrol:
 	echo "pulse:Depends=pulseaudio (>= $(PA_VER)), pulseaudio (<< $(PA_VER).1)" >> debian/pulseaudio-qubes.substvars
 	dh_gencontrol

@@ -110,7 +110,7 @@ Breaks:
 Description: Audio support for Qubes VM
  Pulseaudio module to enable sound support in Qubes VM
 
-Package: qubes-vm-pipewire
+Package: pipewire-qubes
 Architecture: any
 Depends:
  qubesdb-vm (>= 4.1.4),
