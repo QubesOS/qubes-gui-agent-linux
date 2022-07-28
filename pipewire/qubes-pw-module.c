@@ -284,7 +284,6 @@ static void stream_destroy(struct impl *impl, enum spa_direction direction)
  */
 static void capture_stream_destroy(void *d)
 {
-    pw_log_error("Trying to free capture stream");
     stream_destroy(d, PW_DIRECTION_INPUT);
 }
 
@@ -293,7 +292,6 @@ static void capture_stream_destroy(void *d)
  */
 static void playback_stream_destroy(void *d)
 {
-    pw_log_error("Trying to free playback stream");
     stream_destroy(d, PW_DIRECTION_OUTPUT);
 }
 
@@ -991,7 +989,7 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
 #ifdef PW_LOG_TOPIC_INIT
     PW_LOG_TOPIC_INIT(mod_topic);
 #endif
-    pw_log_error("hello from qubes module");
+    pw_log_info("hello from qubes module");
 
     impl = calloc(1, sizeof(struct impl));
     if (impl == NULL)
@@ -1092,11 +1090,11 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
         impl->stream[PW_DIRECTION_INPUT].buffer_size = write_min;
     }
 
-    pw_log_error("module %p: new (%s), peer id is %d", impl, args, (int)impl->domid);
-    pw_log_error("module %p: record buffer size %zu, playback buffer size %zu",
-                 impl,
-                 impl->stream[PW_DIRECTION_OUTPUT].buffer_size,
-                 impl->stream[PW_DIRECTION_INPUT].buffer_size);
+    pw_log_info("module %p: new (%s), peer id is %d", impl, args, (int)impl->domid);
+    pw_log_info("module %p: record buffer size %zu, playback buffer size %zu",
+                impl,
+                impl->stream[PW_DIRECTION_OUTPUT].buffer_size,
+                impl->stream[PW_DIRECTION_INPUT].buffer_size);
 
     for (uint8_t i = 0; i < 2; ++i) {
         const char *msg = i ? "sink" : "source";
