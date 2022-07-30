@@ -973,7 +973,7 @@ SPA_EXPORT
 int pipewire__module_init(struct pw_impl_module *module, const char *args)
 {
     struct pw_context *context = pw_impl_module_get_context(module);
-    struct pw_properties *props = NULL;
+    struct pw_properties *props = NULL, *arg_props = NULL;
     const struct pw_properties *global_props = NULL;
     struct impl *impl;
     const char *str;
@@ -1030,8 +1030,14 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
         goto error;
     }
 
-    if ((res = pw_properties_update_string(props, args, strlen(args))) < 0) {
-        errno = -res;
+    if ((arg_props = pw_properties_new_string(args)) == NULL) {
+        res = -errno;
+        pw_log_error( "can't parse arguments: %m");
+        goto error;
+    }
+
+    if ((res = pw_properties_update(props, &arg_props->dict)) < 0) {
+        res = -errno;
         pw_log_error( "can't update properties: %m");
         goto error;
     }
@@ -1120,12 +1126,15 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
     }
 
 #if PW_CHECK_VERSION(0, 3, 30)
-    if ((str = pw_properties_get(props, "stream.source.props")) != NULL)
+    if ((str = pw_properties_get(arg_props, "stream.source.props")) != NULL)
         pw_properties_update_string(impl->stream[PW_DIRECTION_OUTPUT].stream_props, str, strlen(str));
 
-    if ((str = pw_properties_get(props, "stream.sink.props")) != NULL)
+    if ((str = pw_properties_get(arg_props, "stream.sink.props")) != NULL)
         pw_properties_update_string(impl->stream[PW_DIRECTION_INPUT].stream_props, str, strlen(str));
 #endif
+
+    pw_properties_free(arg_props);
+    arg_props = NULL;
 
     parse_audio_info(impl);
 
