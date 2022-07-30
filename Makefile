@@ -145,6 +145,8 @@ install-pipewire:
 		$(DESTDIR)$(LIBDIR)/pipewire-0.3/libpipewire-module-qubes.so
 	install -m 0644 -D pipewire/30_qubes.conf \
 		$(DESTDIR)$(DATADIR)/pipewire/pipewire.conf.d/30_qubes.conf
+	install -m 0644 -D pipewire/COPYING \
+		$(DESTDIR)$(DATADIR)/licenses/pipewire-qubes/COPYING
 	install -m 0644 -D appvm-scripts/lib/systemd/user/pipewire.service.d/30_qubes.conf \
 		$(DESTDIR)$(USERUNITDIR)/pipewire.service.d/30_qubes.conf
 	install -m 0644 -D appvm-scripts/lib/systemd/user-preset/74-qubes-vm.preset \

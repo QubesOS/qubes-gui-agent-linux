@@ -271,6 +271,7 @@ rm -f %{name}-%{version}
 %_userunitdir/wireplumber.service.d/30_qubes.conf
 %_userpresetdir/74-qubes-vm.preset
 %_libdir/pipewire-0.3/libpipewire-module-qubes.so
+%_defaultlicensedir/pipewire-qubes/COPYING
 # Works with ordinary PipeWire service :)
 
 %files xfce
