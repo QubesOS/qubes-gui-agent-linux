@@ -52,9 +52,9 @@
 
 #define QUBES_AUDIOVM_QUBESDB_ENTRY "/qubes-audio-domain-xid"
 #define QUBES_AUDIOVM_PW_KEY "org.qubes-os.audio-domain-xid"
-#define QUBES_PW_KEY_BUFFER_SPACE   "org.qubes-os.vchan-buffer-space"
-#define QUBES_PW_KEY_RECORD_BUFFER_SPACE   "org.qubes-os.record-buffer-space"
-#define QUBES_PW_KEY_PLAYBACK_BUFFER_SPACE   "org.qubes-os.playback-buffer-space"
+#define QUBES_PW_KEY_BUFFER_SPACE   "org.qubes-os.vchan-buffer-size"
+#define QUBES_PW_KEY_RECORD_BUFFER_SPACE   "org.qubes-os.record-buffer-size"
+#define QUBES_PW_KEY_PLAYBACK_BUFFER_SPACE   "org.qubes-os.playback-buffer-size"
 
 #include <string.h>
 #include <stdio.h>
@@ -974,6 +974,7 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
 {
     struct pw_context *context = pw_impl_module_get_context(module);
     struct pw_properties *props = NULL;
+    const struct pw_properties *global_props = NULL;
     struct impl *impl;
     const char *str;
     const char *peer_domain_prop = NULL;
@@ -996,7 +997,7 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
     impl->context = context;
 
     uint32_t n_support;
-    const struct spa_support *support = pw_context_get_support(impl->context, &n_support);
+    const struct spa_support *support = pw_context_get_support(context, &n_support);
     if (!support) {
         res = -errno;
         pw_log_error("cannot get support: %m");
@@ -1017,12 +1018,24 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
         goto error;
     }
 
-    props = pw_properties_new_string(args);
-    if (props == NULL) {
-        res = -errno;
-        pw_log_error( "can't create properties: %m");
+    if (!(global_props = pw_context_get_properties(context))) {
+        res = -errno || -ENOMEM;
+        pw_log_error("cannot obtain properties: %m");
         goto error;
     }
+
+    if (!(props = pw_properties_copy(global_props))) {
+        res = -errno || -ENOMEM;
+        pw_log_error("cannot clone properties: %m");
+        goto error;
+    }
+
+    if ((res = pw_properties_update_string(props, args, strlen(args))) < 0) {
+        errno = -res;
+        pw_log_error( "can't update properties: %m");
+        goto error;
+    }
+
     impl->props = props;
     if ((peer_domain_prop = pw_properties_get(props, QUBES_AUDIOVM_PW_KEY)) == NULL) {
         qdb_handle_t qdb = qdb_open(NULL);
@@ -1061,23 +1074,27 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
             goto error;
         impl->domid = (uint16_t)domid;
 
-        size_t read_min = 1 << 15, write_min = 1 << 15;
+        size_t read_min = SIZE_MAX, write_min = SIZE_MAX;
         const char *record_size = pw_properties_get(props, QUBES_PW_KEY_RECORD_BUFFER_SPACE);
         const char *playback_size = pw_properties_get(props, QUBES_PW_KEY_PLAYBACK_BUFFER_SPACE);
         if (!record_size || !playback_size) {
             const char *buffer_size = pw_properties_get(props, QUBES_PW_KEY_BUFFER_SPACE);
-            if (buffer_size && !record_size)
+            if (!buffer_size) { // should always be set
+                pw_log_error("Packaging bug: %s not specified in configuration file",
+                             QUBES_PW_KEY_BUFFER_SPACE);
+                res = -ENOENT;
+                goto error;
+            }
+            if (!record_size)
                 record_size = buffer_size;
-            if (buffer_size && !playback_size)
+            if (!playback_size)
                 playback_size = buffer_size;
         }
 
-        if (record_size &&
-            (res = parse_number(record_size, INT32_MAX / 2, &read_min, "record buffer size")))
+        if ((res = parse_number(record_size, INT32_MAX / 2, &read_min, "record buffer size")))
             goto error;
 
-        if (playback_size &&
-            (res = parse_number(playback_size, INT32_MAX / 2, &write_min, "playback buffer size")))
+        if ((res = parse_number(playback_size, INT32_MAX / 2, &write_min, "playback buffer size")))
             goto error;
 
         impl->stream[PW_DIRECTION_OUTPUT].buffer_size = read_min;
@@ -1112,7 +1129,7 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
 
     parse_audio_info(impl);
 
-    impl->core = pw_context_get_object(impl->context, PW_TYPE_INTERFACE_Core);
+    impl->core = pw_context_get_object(context, PW_TYPE_INTERFACE_Core);
     if (impl->core == NULL) {
         str = pw_properties_get(props, PW_KEY_REMOTE_NAME);
         impl->core = pw_context_connect(impl->context,
