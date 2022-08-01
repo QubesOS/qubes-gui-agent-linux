@@ -108,6 +108,9 @@ PW_LOG_TOPIC_STATIC(mod_topic, "mod." NAME);
                         "[ node.name=<name of the nodes> ] "                    \
                         "[ node.description=<description of the nodes> ] "            \
                         "[ " QUBES_AUDIOVM_PW_KEY "=<AudioVM XID (default: use the one from QubesDB)> ] " \
+                        "[ " QUBES_PW_KEY_BUFFER_SPACE "=<default vchan buffer space (headroom)> ] " \
+                        "[ " QUBES_PW_KEY_RECORD_BUFFER_SPACE "=<recording headroom> ]" \
+                        "[ " QUBES_PW_KEY_PLAYBACK_BUFFER_SPACE "=<playback headroom> ]" \
                         MODULE_EXTRA_USAGE
 
 
