@@ -576,7 +576,7 @@ static void capture_stream_process(void *d)
     uint32_t bytes_ready = 0, size;
 
     if ((b = pw_stream_dequeue_buffer(stream->stream)) == NULL) {
-        pw_log_error("out of capture buffers: %m");
+        pw_log_warn("out of capture buffers: %m");
         return;
     }
 
@@ -604,7 +604,7 @@ static void capture_stream_process(void *d)
     // TODO: handle more data
 #if PW_CHECK_VERSION(0, 3, 49)
     if (SPA_UNLIKELY(b->requested > size))
-        pw_log_error("Can only record %" PRIu32 " bytes of %" PRIu64, size,
+        pw_log_warn("Can only record %" PRIu32 " bytes of %" PRIu64, size,
                     b->requested);
     else if (b->requested)
         size = b->requested;
@@ -617,7 +617,7 @@ static void capture_stream_process(void *d)
     buf->datas[0].chunk->size = size;
 
     if (size > bytes_ready) {
-        pw_log_error("Underrun: asked to read %" PRIu32 " bytes, but only %d available", size, (int)bytes_ready);
+        pw_log_warn("Underrun: asked to read %" PRIu32 " bytes, but only %d available", size, (int)bytes_ready);
         memset(dst + bytes_ready, 0, size - bytes_ready);
         size = bytes_ready;
     }
@@ -666,7 +666,7 @@ static void playback_stream_process(void *d)
     size = bd->chunk->size;
 
     if (ready <= 0 || size > (uint32_t)ready) {
-        pw_log_error("Overrun: asked to write %" PRIu32 " bytes, but can only write %d", size, ready);
+        pw_log_warn("Overrun: asked to write %" PRIu32 " bytes, but can only write %d", size, ready);
         size = ready;
     }
 
