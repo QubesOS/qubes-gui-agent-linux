@@ -169,6 +169,13 @@ _Static_assert(PW_DIRECTION_OUTPUT == 1, "wrong PW_DIRECTION_OUTPUT");
 // Flag to indicate shutdown in progress
 static _Atomic bool shutting_down;
 
+static int vchan_error_callback(struct spa_loop *loop,
+                                bool async,
+                                uint32_t seq,
+                                const void *data,
+                                size_t size,
+                                void *user_data);
+
 /**
  * Disconnect a stream from its event loop.  Must be called on the realtime
  * thread.
@@ -180,9 +187,13 @@ static void stop_watching_vchan(struct qubes_stream *stream)
         // file descriptor is closed.
         spa_loop_remove_source(stream->impl->data_loop, &stream->source);
         stream->closed_vchan = stream->vchan;
-        stream->is_open = false;
         stream->vchan = NULL;
     }
+    stream->is_open = false;
+    // Update the main-thread state asynchronously.
+    spa_loop_invoke(stream->impl->main_loop,
+                    vchan_error_callback, 0, NULL, 0, false,
+                    stream);
 }
 
 static int remove_stream_cb(struct spa_loop *loop,
@@ -256,11 +267,26 @@ static void connect_stream(struct qubes_stream *stream)
 }
 
 /**
+ * Called on the main thread to shut down a stream.
+ *
+ * \param stream The stream to shut down.
+ */
+static void stream_shutdown(struct qubes_stream *stream)
+{
+    pw_stream_disconnect(stream->stream);
+    pw_log_info("Closing stale vchan");
+    if (stream->closed_vchan)
+        libvchan_close(stream->closed_vchan);
+    stream->closed_vchan = NULL;
+}
+
+/**
  * Called on the main thread to destroy a stream.
  */
 static void stream_destroy(struct impl *impl, enum spa_direction direction)
 {
     struct qubes_stream *stream = impl->stream + direction;
+    stream_shutdown(stream);
     shutting_down = true;
     if (stream->dead)
         return;
@@ -274,11 +300,6 @@ static void stream_destroy(struct impl *impl, enum spa_direction direction)
     if (stream->stream_props)
         pw_properties_free(stream->stream_props);
     stream->stream_props = NULL;
-    if (stream->closed_vchan) {
-        pw_log_info("Closing vchan");
-        libvchan_close(stream->closed_vchan);
-        stream->closed_vchan = NULL;
-    }
 }
 
 /**
@@ -308,24 +329,17 @@ static const struct pw_stream_events capture_stream_events, playback_stream_even
 /**
  * Called on the main thread when a vchan has been disconnected.
  */
-static int main_thread_disconnect_stream(struct spa_loop *loop,
-                                         bool async,
-                                         uint32_t seq,
-                                         const void *data,
-                                         size_t size,
-                                         void *user_data)
+static int vchan_error_callback(struct spa_loop *loop,
+                                bool async,
+                                uint32_t seq,
+                                const void *data,
+                                size_t size,
+                                void *user_data)
 {
-    struct qubes_stream *stream;
+    struct qubes_stream *stream = user_data;
 
-    if (shutting_down)
-        return 0;
-    stream = user_data;
-    spa_assert(stream->closed_vchan);
     spa_assert(!stream->vchan);
-    pw_stream_disconnect(stream->stream);
-    pw_log_info("Closing stale vchan");
-    libvchan_close(stream->closed_vchan);
-    stream->closed_vchan = NULL;
+    stream_shutdown(stream);
     connect_stream(stream);
     return 0;
 }
@@ -424,10 +438,6 @@ static void vchan_ready(struct spa_source *source)
         } else {
             // vchan disconnected.  Stop watching for events on it.
             stop_watching_vchan(stream);
-            // Update the main-thread state asynchronously.
-            spa_loop_invoke(stream->impl->main_loop,
-                            main_thread_disconnect_stream, 0, NULL, 0, false,
-                            stream);
         }
     }
     if (!is_open)
