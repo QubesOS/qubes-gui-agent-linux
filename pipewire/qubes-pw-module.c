@@ -1099,27 +1099,23 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
             goto error;
         impl->domid = (uint16_t)domid;
 
-        size_t read_min = SIZE_MAX, write_min = SIZE_MAX;
+        size_t read_min = 0x8000, write_min = 0x8000;
         const char *record_size = pw_properties_get(props, QUBES_PW_KEY_RECORD_BUFFER_SPACE);
         const char *playback_size = pw_properties_get(props, QUBES_PW_KEY_PLAYBACK_BUFFER_SPACE);
         if (!record_size || !playback_size) {
             const char *buffer_size = pw_properties_get(props, QUBES_PW_KEY_BUFFER_SPACE);
-            if (!buffer_size) { // should always be set
-                pw_log_error("Packaging bug: %s not specified in configuration file",
-                             QUBES_PW_KEY_BUFFER_SPACE);
-                res = -ENOENT;
-                goto error;
-            }
             if (!record_size)
                 record_size = buffer_size;
             if (!playback_size)
                 playback_size = buffer_size;
         }
 
-        if ((res = parse_number(record_size, INT32_MAX / 2, &read_min, "record buffer size")))
+        if (record_size &&
+            (res = parse_number(record_size, INT32_MAX / 2, &read_min, "record buffer size")))
             goto error;
 
-        if ((res = parse_number(playback_size, INT32_MAX / 2, &write_min, "playback buffer size")))
+        if (playback_size &&
+            (res = parse_number(playback_size, INT32_MAX / 2, &write_min, "playback buffer size")))
             goto error;
 
         impl->stream[PW_DIRECTION_OUTPUT].buffer_size = read_min;
