@@ -475,8 +475,6 @@ static int process_control_commands(struct impl *impl)
     struct libvchan *control_vchan = capture_stream->vchan;
 
     if (!control_vchan) {
-        capture_stream->last_state = false;
-        playback_stream->last_state = false;
         pw_log_error("Control vchan closed, cannot issue control command");
         return -EPIPE;
     }
