@@ -332,11 +332,10 @@ static int vchan_error_callback(struct spa_loop *loop,
 {
     struct qubes_stream *stream = user_data;
 
-    if (stream->dead)
-        return 0;
     spa_assert(!stream->vchan);
     stream_shutdown(stream);
-    connect_stream(stream);
+    if (!stream->dead)
+        connect_stream(stream);
     return 0;
 }
 
