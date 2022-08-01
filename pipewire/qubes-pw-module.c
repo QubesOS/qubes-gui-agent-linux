@@ -80,6 +80,11 @@
 #include <libvchan.h>
 #include <qubesdb-client.h>
 
+// spa_assert (guarded by NDEBUG) is used to detect fatal errors
+#ifdef NDEBUG
+#error "Qubes PipeWire module cannot be compiled without assertions"
+#endif
+
 /** \page page_module_example_sink PipeWire Module: Example Sink
  */
 
