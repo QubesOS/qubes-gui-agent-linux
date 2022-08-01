@@ -386,6 +386,7 @@ static int process_control_commands_cb(struct spa_loop *loop,
 static void vchan_ready(struct spa_source *source)
 {
     struct qubes_stream *stream = source->data;
+    struct qubes_stream *playback_stream = stream->impl->stream;
 
     // 0: Check if the vchan exists
     if (!stream->vchan) {
@@ -407,9 +408,12 @@ static void vchan_ready(struct spa_source *source)
             spa_loop_invoke(stream->impl->main_loop,
                             main_thread_connect, 0, NULL, 0, false, stream);
             if (stream->direction) {
+                // vchan just opened, no need to check for buffer space
                 const uint32_t control_commands[2] = {
-                    stream->last_state ? QUBES_PA_SOURCE_START_CMD : QUBES_PA_SOURCE_STOP_CMD,
-                    stream->impl->stream[0].last_state ? QUBES_PA_SINK_UNCORK_CMD : QUBES_PA_SINK_CORK_CMD,
+                    (stream->last_state = stream->current_state) ?
+                        QUBES_PA_SOURCE_START_CMD : QUBES_PA_SOURCE_STOP_CMD,
+                    (playback_stream->last_state = playback_stream->current_state) ?
+                        QUBES_PA_SINK_UNCORK_CMD : QUBES_PA_SINK_CORK_CMD,
                 };
                 if (libvchan_write(stream->vchan, control_commands, sizeof control_commands) !=
                     sizeof control_commands)
