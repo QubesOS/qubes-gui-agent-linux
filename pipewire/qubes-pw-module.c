@@ -88,7 +88,7 @@
 /** \page page_module_example_sink PipeWire Module: Example Sink
  */
 
-#define NAME "qubes-virtual-audio"
+#define NAME "qubes-audio"
 
 #ifdef PW_LOG_TOPIC_STATIC
 PW_LOG_TOPIC_STATIC(mod_topic, "mod." NAME);
