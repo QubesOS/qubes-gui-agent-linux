@@ -412,6 +412,16 @@ static void vchan_ready(struct spa_source *source)
             // vchan connected
             spa_loop_invoke(stream->impl->main_loop,
                             main_thread_connect, 0, NULL, 0, false, stream);
+            if (stream->direction) {
+                const uint32_t control_commands[2] = {
+                    stream->last_state ? QUBES_PA_SOURCE_START_CMD : QUBES_PA_SOURCE_STOP_CMD,
+                    stream->impl->stream[0].last_state ? QUBES_PA_SINK_UNCORK_CMD : QUBES_PA_SINK_CORK_CMD,
+                };
+                if (libvchan_write(stream->vchan, control_commands, sizeof control_commands) !=
+                    sizeof control_commands)
+                    pw_log_error("Cannot write stream initial states to vchan");
+            }
+
             stream->is_open = true;
         } else {
             // vchan disconnected.  Stop watching for events on it.
