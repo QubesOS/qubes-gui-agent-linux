@@ -80,11 +80,6 @@
 #include <libvchan.h>
 #include <qubesdb-client.h>
 
-// spa_assert (guarded by NDEBUG) is used to detect fatal errors
-#ifdef NDEBUG
-#error "Qubes PipeWire module cannot be compiled without assertions"
-#endif
-
 /** \page page_module_example_sink PipeWire Module: Example Sink
  */
 
@@ -253,11 +248,10 @@ static void connect_stream(struct qubes_stream *stream)
         libvchan_server_init((int)domid, QUBES_PA_SOURCE_VCHAN_PORT, stream->buffer_size, 128) :
         libvchan_server_init((int)domid, QUBES_PA_SINK_VCHAN_PORT, 128, stream->buffer_size);
     if (stream->closed_vchan == NULL) {
-        pw_log_error("can't create %s vchan: %m", msg);
-        spa_assert(!"FATAL ERROR: vchan creation failed");
+        pw_log_error("can't create %s vchan, audio will not work", msg);
     }
     if (spa_loop_invoke(stream->impl->data_loop, add_stream, 0, NULL, 0, true, stream))
-        spa_assert(!"FATAL ERROR: spa_loop_add_source() failed");
+        pw_log_error("spa_loop_add_source() failed, audio will not work");
     return;
 }
 
