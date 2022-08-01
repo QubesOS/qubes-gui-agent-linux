@@ -129,7 +129,8 @@ struct qubes_stream {
     _Atomic size_t current_state, last_state;
     struct spa_source source;
     size_t buffer_size;
-    bool is_open, direction, dead;
+    bool is_open, direction;
+    _Atomic bool dead;
 };
 
 struct impl {
@@ -165,9 +166,6 @@ static void unload_module(struct impl *impl)
 
 _Static_assert(PW_DIRECTION_INPUT == 0, "wrong PW_DIRECTION_INPUT");
 _Static_assert(PW_DIRECTION_OUTPUT == 1, "wrong PW_DIRECTION_OUTPUT");
-
-// Flag to indicate shutdown in progress
-static _Atomic bool shutting_down;
 
 static int vchan_error_callback(struct spa_loop *loop,
                                 bool async,
@@ -228,10 +226,9 @@ static int add_stream(struct spa_loop *loop,
                       size_t size,
                       void *user_data)
 {
-    if (shutting_down)
-        return -ESHUTDOWN;
-
     struct qubes_stream *stream = user_data;
+    if (stream->dead)
+        return -ESHUTDOWN;
     spa_assert(stream->closed_vchan);
     spa_assert(!stream->vchan);
     stream->vchan = stream->closed_vchan;
@@ -273,7 +270,8 @@ static void connect_stream(struct qubes_stream *stream)
  */
 static void stream_shutdown(struct qubes_stream *stream)
 {
-    pw_stream_disconnect(stream->stream);
+    if (stream->stream)
+        pw_stream_disconnect(stream->stream);
     pw_log_info("Closing stale vchan");
     if (stream->closed_vchan)
         libvchan_close(stream->closed_vchan);
@@ -286,20 +284,16 @@ static void stream_shutdown(struct qubes_stream *stream)
 static void stream_destroy(struct impl *impl, enum spa_direction direction)
 {
     struct qubes_stream *stream = impl->stream + direction;
-    stream_shutdown(stream);
-    shutting_down = true;
     if (stream->dead)
         return;
     stream->dead = true;
-    if (stream->stream) {
-        spa_hook_remove(&stream->stream_listener);
-        spa_loop_invoke(impl->data_loop, remove_stream_cb, 0, NULL, 0, true, stream);
-        /* after this point the realtime thread is definitely aware of the shutdown */
-        stream->stream = NULL;
-    }
+    spa_loop_invoke(impl->data_loop, remove_stream_cb, 0, NULL, 0, true, stream);
+    /* after this point the realtime thread is definitely aware of the shutdown */
+    stream_shutdown(stream);
+    spa_hook_remove(&stream->stream_listener);
+    stream->stream = NULL;
     if (stream->stream_props)
         pw_properties_free(stream->stream_props);
-    stream->stream_props = NULL;
 }
 
 /**
@@ -338,6 +332,8 @@ static int vchan_error_callback(struct spa_loop *loop,
 {
     struct qubes_stream *stream = user_data;
 
+    if (stream->dead)
+        return 0;
     spa_assert(!stream->vchan);
     stream_shutdown(stream);
     connect_stream(stream);
@@ -361,9 +357,8 @@ static int main_thread_connect(struct spa_loop *loop,
     uint8_t buffer[1024];
     struct spa_pod_builder b = { 0 };
 
-    if (shutting_down)
+    if ((stream = user_data)->dead)
         return 0;
-    stream = user_data;
     spa_pod_builder_init(&b, buffer, sizeof(buffer));
     params[n_params++] = spa_format_audio_raw_build(&b,
             SPA_PARAM_EnumFormat, &stream->info);
@@ -883,7 +878,6 @@ static const struct pw_proxy_events core_proxy_events = {
 
 static void impl_destroy(struct impl *impl)
 {
-    shutting_down = true;
     stream_destroy(impl, PW_DIRECTION_INPUT);
     stream_destroy(impl, PW_DIRECTION_OUTPUT);
     if (impl->core) {
@@ -1008,7 +1002,6 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
     const char *str;
     const char *peer_domain_prop = NULL;
     int res = -EFAULT; /* should never be returned, modulo bugs */
-    shutting_down = false; // for musl support, where dlclose() is a NOP
 
 #ifdef PW_LOG_TOPIC_INIT
     PW_LOG_TOPIC_INIT(mod_topic);
