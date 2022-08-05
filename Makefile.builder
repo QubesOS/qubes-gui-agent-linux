@@ -1,4 +1,6 @@
+ifneq ($(PACKAGE_SET),dom0)
 RPM_SPEC_FILES := rpm_spec/gui-agent.spec
+endif
 ARCH_BUILD_DIRS := archlinux
 DEBIAN_BUILD_DIRS := debian
 
