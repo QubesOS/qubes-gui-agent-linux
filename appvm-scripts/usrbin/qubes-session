@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash --
 #
 # The Qubes OS Project, http://www.qubes-os.org
 #
@@ -75,11 +75,5 @@ fi
 # Wait some time to pick up zombie children
 wait
 
-# Now hang myself so Xorg may live :'(
-# ____
-# |/ |
-# |  O
-# | /|\
-# | / \
-# |
-env sleep inf
+# Sleep forever so that Xorg keeps running
+sleep inf
