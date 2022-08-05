@@ -5,5 +5,8 @@ auth		include		postlogin
 account		sufficient	pam_succeed_if.so uid = 0 use_uid quiet
 account		include		system-auth
 password	include		system-auth
+-session	required	pam_selinux.so close
+-session	required	pam_loginuid.so
+-session	required	pam_selinux.so nottys open
 session		include		system-auth
 session		include		postlogin
