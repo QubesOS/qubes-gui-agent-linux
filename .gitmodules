@@ -1,0 +1,4 @@
+[submodule "qubes-common"]
+	path = qubes-common
+	url = git@github.com:locriacyber/qubes-gui-common.git
+	branch = xinput2
