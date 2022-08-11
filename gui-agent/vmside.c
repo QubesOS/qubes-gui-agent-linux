@@ -20,11 +20,13 @@
  *
  */
 
-#define _POSIX_C_SOURCE 2 // getopt
+#define _POSIX_C_SOURCE 200112L // getopt
 
 #include <X11/X.h>
+#include <alloca.h>
 #include <assert.h>
 #include <errno.h>
+#include <string.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1606,10 +1608,86 @@ static void mkghandles(Ghandles * g)
     g->clipboard_data_len = 0;
 }
 
+
+// return true if the key is already handled
+static bool reset_modifier_keys(Ghandles * g, uint32_t key_evtype, uint32_t key_detail, uint32_t key_modifier)
+{
+    XkbStateRec state;
+    // sync modifiers state
+    if (XkbGetState(g->display, XkbUseCoreKbd, &state) != Success) {
+        if (g->log_level > 0)
+            fprintf(stderr, "failed to get modifier state\n");
+        state.mods = key_modifier;
+    }
+    if (!g->sync_all_modifiers) {
+        // ignore all but CapsLock
+        state.mods &= LockMask;
+        key_modifier &= LockMask;
+    }
+    bool is_press = key_evtype == KeyPress;
+    bool already_handled = false;
+    if (state.mods != key_modifier) {
+        XModifierKeymap *modmap;
+        int mod_index;
+        int mod_mask;
+
+        modmap = XGetModifierMapping(g->display);
+        if (!modmap) {
+            if (g->log_level > 0)
+                fprintf(stderr, "failed to get modifier mapping\n");
+        } else {
+            // from X.h:
+            // #define ShiftMapIndex           0
+            // #define LockMapIndex            1
+            // #define ControlMapIndex         2
+            // #define Mod1MapIndex            3
+            // #define Mod2MapIndex            4
+            // #define Mod3MapIndex            5
+            // #define Mod4MapIndex            6
+            // #define Mod5MapIndex            7
+            for (mod_index = 0; mod_index < 8; mod_index++) {
+                uint32_t keycode = modmap->modifiermap[mod_index*modmap->max_keypermod];
+                if (keycode == 0x00) {
+                    if (g->log_level > 1)
+                        fprintf(stderr, "ignoring disabled modifier %d\n", mod_index);
+                    // no key set for this modifier, ignore
+                    continue;
+                }
+                mod_mask = (1<<mod_index);
+                // special case for caps lock switch by press+release
+                if (mod_index == LockMapIndex) {
+                    if ((state.mods & mod_mask) ^ (key_modifier & mod_mask)) {
+                        feed_xdriver(g, 'K', keycode, 1);
+                        feed_xdriver(g, 'K', keycode, 0);
+                    }
+                } else {
+                    if ((state.mods & mod_mask) && !(key_modifier & mod_mask)) {
+                        // need to release
+                        if (keycode == key_detail && !is_press) already_handled = true;
+                        // todo: feed device id as well
+                        feed_xdriver(g, 'K', keycode, 0);
+                    }
+                    else if (!(state.mods & mod_mask) && (key_modifier & mod_mask)) {
+                        // need to press
+                        if (keycode == key_detail && is_press) already_handled = true;
+                        // todo: feed device id as well
+                        feed_xdriver(g, 'K', keycode, 1);
+                    }
+                }
+            }
+            XFreeModifiermap(modmap);
+        }
+    }
+    return already_handled;
+}
+
 static void handle_xi_key(Ghandles * g, XID UNUSED(winid))
 {
     struct msg_xi_key key;
     read_data(g->vchan, (char *) &key, sizeof(key));
+    // TODO: make this an tweakable option (in config file)
+    // drop key repeat
+    if (key.flags & XIKeyRepeat) return;
     bool is_press = key.evtype == KeyPress;
     bool already_handled = reset_modifier_keys(g, key.evtype, key.detail, key.modifier_effective);
     if (!already_handled) feed_xdriver(g, 'K', key.detail, is_press);
@@ -1764,78 +1842,6 @@ static void take_focus(Ghandles * g, XID winid)
                 (int) winid);
 }
 
-// return true if the key is already handled
-static bool reset_modifier_keys(Ghandles * g, uint32_t key_evtype, uint32_t key_detail, uint32_t key_modifier)
-{
-    XkbStateRec state;
-    // sync modifiers state
-    if (XkbGetState(g->display, XkbUseCoreKbd, &state) != Success) {
-        if (g->log_level > 0)
-            fprintf(stderr, "failed to get modifier state\n");
-        state.mods = key_modifier;
-    }
-    if (!g->sync_all_modifiers) {
-        // ignore all but CapsLock
-        state.mods &= LockMask;
-        key_modifier &= LockMask;
-    }
-    bool is_press = key_evtype == KeyPress;
-    bool already_handled = false;
-    if (state.mods != key_modifier) {
-        XModifierKeymap *modmap;
-        int mod_index;
-        int mod_mask;
-
-        modmap = XGetModifierMapping(g->display);
-        if (!modmap) {
-            if (g->log_level > 0)
-                fprintf(stderr, "failed to get modifier mapping\n");
-        } else {
-            // from X.h:
-            // #define ShiftMapIndex           0
-            // #define LockMapIndex            1
-            // #define ControlMapIndex         2
-            // #define Mod1MapIndex            3
-            // #define Mod2MapIndex            4
-            // #define Mod3MapIndex            5
-            // #define Mod4MapIndex            6
-            // #define Mod5MapIndex            7
-            for (mod_index = 0; mod_index < 8; mod_index++) {
-                uint32_t keycode = modmap->modifiermap[mod_index*modmap->max_keypermod];
-                if (keycode == 0x00) {
-                    if (g->log_level > 1)
-                        fprintf(stderr, "ignoring disabled modifier %d\n", mod_index);
-                    // no key set for this modifier, ignore
-                    continue;
-                }
-                mod_mask = (1<<mod_index);
-                // special case for caps lock switch by press+release
-                if (mod_index == LockMapIndex) {
-                    if ((state.mods & mod_mask) ^ (key_modifier & mod_mask)) {
-                        feed_xdriver(g, 'K', keycode, 1);
-                        feed_xdriver(g, 'K', keycode, 0);
-                    }
-                } else {
-                    if ((state.mods & mod_mask) && !(key_modifier & mod_mask)) {
-                        // need to release
-                        if (keycode == key_detail && !is_press) already_handled = true;
-                        // todo: feed device id as well
-                        feed_xdriver(g, 'K', keycode, 0);
-                    }
-                    else if (!(state.mods & mod_mask) && (key_modifier & mod_mask)) {
-                        // need to press
-                        if (keycode == key_detail && is_press) already_handled = true;
-                        // todo: feed device id as well
-                        feed_xdriver(g, 'K', keycode, 1);
-                    }
-                }
-            }
-            XFreeModifiermap(modmap);
-        }
-    }
-    return already_handled;
-}
-
 static void handle_focus_helper(Ghandles * g, XID winid, struct msg_xi_focus msg)
 {
     struct genlist *l;
@@ -1900,7 +1906,8 @@ static void handle_xi_focus(Ghandles * g, XID winid)
 {
     struct msg_xi_focus msg;
     read_data(g->vchan, (char *) &msg, sizeof(msg));
-    reset_modifier_keys(g, 0, 0, msg.modifier_effective); // release keys when focus out
+    // disabled, since it doesn't seem to do much
+    // reset_modifier_keys(g, 0, 0, msg.modifier_effective); // release keys when focus out
     return handle_focus_helper(g, winid, msg);
 }
 
@@ -2205,6 +2212,8 @@ static pid_t get_xconf_and_run_x(Ghandles *g)
 static void send_protocol_version(libvchan_t *vchan)
 {
     uint32_t version = PROTOCOL_VERSION;
+    // todo: remove    
+    fprintf(stderr, "send version %d", version);
     write_struct(vchan, version);
 }
 
@@ -2240,6 +2249,7 @@ static void handle_sigterm()
 static void usage()
 {
     fprintf(stderr, "Usage: qubes_gui [options]\n");
+    fprintf(stderr, "       -V  show version\n");
     fprintf(stderr, "       -v  increase log verbosity\n");
     fprintf(stderr, "       -q  decrease log verbosity\n");
     fprintf(stderr, "       -m  sync all modifiers before key event (default)\n");
@@ -2263,7 +2273,7 @@ static void parse_args(Ghandles * g, int argc, char **argv)
     g->sync_all_modifiers = 1;
     g->composite_redirect_automatic = 1;
     g->domid = 0;
-    while ((opt = getopt(argc, argv, "qvchmMd:")) != -1) {
+    while ((opt = getopt(argc, argv, "qvVchmMd:")) != -1) {
         switch (opt) {
             case 'q':
                 g->log_level--;
@@ -2271,6 +2281,9 @@ static void parse_args(Ghandles * g, int argc, char **argv)
             case 'v':
                 g->log_level++;
                 break;
+            case 'V':
+                fprintf(stderr, "qubes-gui version %d.%d\n", PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR);
+                exit(0);
             case 'm':
                 g->sync_all_modifiers = 1;
                 break;
