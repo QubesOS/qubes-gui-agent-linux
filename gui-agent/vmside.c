@@ -20,6 +20,8 @@
  *
  */
 
+#define _POSIX_C_SOURCE 2 // getopt
+
 #include <X11/X.h>
 #include <assert.h>
 #include <errno.h>
@@ -64,7 +66,7 @@
 /* Supported protocol version */
 
 #define PROTOCOL_VERSION_MAJOR 1
-#define PROTOCOL_VERSION_MINOR 3
+#define PROTOCOL_VERSION_MINOR 5
 #define PROTOCOL_VERSION (PROTOCOL_VERSION_MAJOR << 16 | PROTOCOL_VERSION_MINOR)
 
 #if !(PROTOCOL_VERSION_MAJOR == QUBES_GUID_PROTOCOL_VERSION_MAJOR && \
@@ -1604,78 +1606,16 @@ static void mkghandles(Ghandles * g)
     g->clipboard_data_len = 0;
 }
 
-static void handle_keypress(Ghandles * g, XID UNUSED(winid))
+static void handle_xi_key(Ghandles * g, XID UNUSED(winid))
 {
-    struct msg_keypress key;
-    XkbStateRec state;
+    struct msg_xi_key key;
     read_data(g->vchan, (char *) &key, sizeof(key));
-    // sync modifiers state
-    if (XkbGetState(g->display, XkbUseCoreKbd, &state) != Success) {
-        if (g->log_level > 0)
-            fprintf(stderr, "failed to get modifier state\n");
-        state.mods = key.state;
-    }
-    if (!g->sync_all_modifiers) {
-        // ignore all but CapsLock
-        state.mods &= LockMask;
-        key.state &= LockMask;
-    }
-    bool is_press = key.type == KeyPress;
-    bool already_handled = false;
-    if (state.mods != key.state) {
-        XModifierKeymap *modmap;
-        int mod_index;
-        int mod_mask;
-
-        modmap = XGetModifierMapping(g->display);
-        if (!modmap) {
-            if (g->log_level > 0)
-                fprintf(stderr, "failed to get modifier mapping\n");
-        } else {
-            // from X.h:
-            // #define ShiftMapIndex           0
-            // #define LockMapIndex            1
-            // #define ControlMapIndex         2
-            // #define Mod1MapIndex            3
-            // #define Mod2MapIndex            4
-            // #define Mod3MapIndex            5
-            // #define Mod4MapIndex            6
-            // #define Mod5MapIndex            7
-            for (mod_index = 0; mod_index < 8; mod_index++) {
-                uint32_t keycode = modmap->modifiermap[mod_index*modmap->max_keypermod];
-                if (keycode == 0x00) {
-                    if (g->log_level > 1)
-                        fprintf(stderr, "ignoring disabled modifier %d\n", mod_index);
-                    // no key set for this modifier, ignore
-                    continue;
-                }
-                mod_mask = (1<<mod_index);
-                // special case for caps lock switch by press+release
-                if (mod_index == LockMapIndex) {
-                    if ((state.mods & mod_mask) ^ (key.state & mod_mask)) {
-                        feed_xdriver(g, 'K', keycode, 1);
-                        feed_xdriver(g, 'K', keycode, 0);
-                    }
-                } else {
-                    if ((state.mods & mod_mask) && !(key.state & mod_mask)) {
-                        // need to release
-                        if (keycode == key.keycode && !is_press) already_handled = true;
-                        feed_xdriver(g, 'K', keycode, 0);
-                    }
-                    else if (!(state.mods & mod_mask) && (key.state & mod_mask)) {
-                        // need to press
-                        if (keycode == key.keycode && is_press) already_handled = true;
-                        feed_xdriver(g, 'K', keycode, 1);
-                    }
-                }
-            }
-            XFreeModifiermap(modmap);
-        }
-    }
-    if (!already_handled) feed_xdriver(g, 'K', key.keycode, is_press);
+    bool is_press = key.evtype == KeyPress;
+    bool already_handled = reset_modifier_keys(g, key.evtype, key.detail, key.modifier_effective);
+    if (!already_handled) feed_xdriver(g, 'K', key.detail, is_press);
 }
 
-static void handle_focus_helper(Ghandles * g, XID winid, struct msg_focus msg);
+static void handle_focus_helper(Ghandles * g, XID winid, struct msg_xi_focus msg);
 
 static void handle_button(Ghandles * g, XID winid)
 {
@@ -1712,8 +1652,8 @@ static void handle_button(Ghandles * g, XID winid)
         // I'm not sure how this works yet
         bool need_focus = false; 
         if (need_focus) {
-            struct msg_focus msg_focusin;
-            msg_focusin.type = FocusIn;
+            struct msg_xi_focus msg_focusin;
+            msg_focusin.evtype = FocusIn;
             msg_focusin.mode = NotifyNormal;
             msg_focusin.detail = NotifyNonlinear;
             handle_focus_helper(g, winid, msg_focusin);
@@ -1824,7 +1764,79 @@ static void take_focus(Ghandles * g, XID winid)
                 (int) winid);
 }
 
-static void handle_focus_helper(Ghandles * g, XID winid, struct msg_focus msg)
+// return true if the key is already handled
+static bool reset_modifier_keys(Ghandles * g, uint32_t key_evtype, uint32_t key_detail, uint32_t key_modifier)
+{
+    XkbStateRec state;
+    // sync modifiers state
+    if (XkbGetState(g->display, XkbUseCoreKbd, &state) != Success) {
+        if (g->log_level > 0)
+            fprintf(stderr, "failed to get modifier state\n");
+        state.mods = key_modifier;
+    }
+    if (!g->sync_all_modifiers) {
+        // ignore all but CapsLock
+        state.mods &= LockMask;
+        key_modifier &= LockMask;
+    }
+    bool is_press = key_evtype == KeyPress;
+    bool already_handled = false;
+    if (state.mods != key_modifier) {
+        XModifierKeymap *modmap;
+        int mod_index;
+        int mod_mask;
+
+        modmap = XGetModifierMapping(g->display);
+        if (!modmap) {
+            if (g->log_level > 0)
+                fprintf(stderr, "failed to get modifier mapping\n");
+        } else {
+            // from X.h:
+            // #define ShiftMapIndex           0
+            // #define LockMapIndex            1
+            // #define ControlMapIndex         2
+            // #define Mod1MapIndex            3
+            // #define Mod2MapIndex            4
+            // #define Mod3MapIndex            5
+            // #define Mod4MapIndex            6
+            // #define Mod5MapIndex            7
+            for (mod_index = 0; mod_index < 8; mod_index++) {
+                uint32_t keycode = modmap->modifiermap[mod_index*modmap->max_keypermod];
+                if (keycode == 0x00) {
+                    if (g->log_level > 1)
+                        fprintf(stderr, "ignoring disabled modifier %d\n", mod_index);
+                    // no key set for this modifier, ignore
+                    continue;
+                }
+                mod_mask = (1<<mod_index);
+                // special case for caps lock switch by press+release
+                if (mod_index == LockMapIndex) {
+                    if ((state.mods & mod_mask) ^ (key_modifier & mod_mask)) {
+                        feed_xdriver(g, 'K', keycode, 1);
+                        feed_xdriver(g, 'K', keycode, 0);
+                    }
+                } else {
+                    if ((state.mods & mod_mask) && !(key_modifier & mod_mask)) {
+                        // need to release
+                        if (keycode == key_detail && !is_press) already_handled = true;
+                        // todo: feed device id as well
+                        feed_xdriver(g, 'K', keycode, 0);
+                    }
+                    else if (!(state.mods & mod_mask) && (key_modifier & mod_mask)) {
+                        // need to press
+                        if (keycode == key_detail && is_press) already_handled = true;
+                        // todo: feed device id as well
+                        feed_xdriver(g, 'K', keycode, 1);
+                    }
+                }
+            }
+            XFreeModifiermap(modmap);
+        }
+    }
+    return already_handled;
+}
+
+static void handle_focus_helper(Ghandles * g, XID winid, struct msg_xi_focus msg)
 {
     struct genlist *l;
     bool use_take_focus = false;
@@ -1832,11 +1844,11 @@ static void handle_focus_helper(Ghandles * g, XID winid, struct msg_focus msg)
     if ( (l=list_lookup(windows_list, winid)) && (l->data) )
         input_hint = ((struct window_data*)l->data)->input_hint;
     else {
-        fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
+        fprintf(stderr, "WARNING handle_xi_focus: Window 0x%x data not initialized", (int)winid);
         input_hint = true;
     }
     
-    if (msg.type == FocusIn) {
+    if (msg.evtype == FocusIn) {
         if (msg.mode == NotifyNormal) {
             XRaiseWindow(g->display, winid);
             
@@ -1846,7 +1858,7 @@ static void handle_focus_helper(Ghandles * g, XID winid, struct msg_focus msg)
                 if (((struct window_data*)l->data)->is_docked)
                     XRaiseWindow(g->display, ((struct window_data*)l->data)->embeder);
             } else {
-                fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
+                fprintf(stderr, "WARNING handle_xi_focus: Window 0x%x data not initialized", (int)winid);
             }
 
             if (input_hint) {
@@ -1864,7 +1876,7 @@ static void handle_focus_helper(Ghandles * g, XID winid, struct msg_focus msg)
         } else {
             XUngrabPointer(g->display, CurrentTime);
         }
-    } else if (msg.type == FocusOut && input_hint) {
+    } else if (msg.evtype == FocusOut && input_hint) {
         if (msg.mode == NotifyNormal) {
             int ignore;
             XID winid_focused;
@@ -1884,10 +1896,11 @@ static void handle_focus_helper(Ghandles * g, XID winid, struct msg_focus msg)
     }
 }
 
-static void handle_focus(Ghandles * g, XID winid)
+static void handle_xi_focus(Ghandles * g, XID winid)
 {
-    struct msg_focus msg;
+    struct msg_xi_focus msg;
     read_data(g->vchan, (char *) &msg, sizeof(msg));
+    reset_modifier_keys(g, 0, 0, msg.modifier_effective); // release keys when focus out
     return handle_focus_helper(g, winid, msg);
 }
 
@@ -2125,8 +2138,8 @@ static void handle_message(Ghandles * g)
     if (g->log_level > 1)
         fprintf(stderr, "received message type %d for 0x%x\n", hdr.type, hdr.window);
     switch (hdr.type) {
-        case MSG_KEYPRESS:
-            handle_keypress(g, hdr.window);
+        case MSG_XI_KEY:
+            handle_xi_key(g, hdr.window);
             break;
         case MSG_CONFIGURE:
             handle_configure(g, hdr.window);
@@ -2146,8 +2159,8 @@ static void handle_message(Ghandles * g)
         case MSG_CROSSING:
             handle_crossing(g, hdr.window);
             break;
-        case MSG_FOCUS:
-            handle_focus(g, hdr.window);
+        case MSG_XI_FOCUS:
+            handle_xi_focus(g, hdr.window);
             break;
         case MSG_CLIPBOARD_REQ:
             handle_clipboard_req(g, hdr.window);
