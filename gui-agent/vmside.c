@@ -20,6 +20,7 @@
  *
  */
 
+#include <X11/X.h>
 #include <assert.h>
 #include <errno.h>
 #include <stddef.h>
@@ -40,6 +41,7 @@
 #include <X11/Xutil.h>
 #include <X11/extensions/Xcomposite.h>
 #include <X11/extensions/Xdamage.h>
+#include <X11/extensions/XInput2.h>
 #include <X11/XKBlib.h>
 #include <X11/Xatom.h>
 #include <X11/cursorfont.h>
@@ -94,6 +96,7 @@ struct _global_handles {
     Atom wm_class;         /* Atom: WM_CLASS */
     Atom tray_selection;   /* Atom: _NET_SYSTEM_TRAY_SELECTION_S<creen number> */
     Atom tray_opcode;      /* Atom: _NET_SYSTEM_TRAY_OPCODE */
+    int xi_opcode;
     Atom xembed_info;      /* Atom: _XEMBED_INFO */
     Atom utf8_string_atom; /* Atom: UTF8_STRING */
     Atom wm_state;         /* Atom: WM_STATE */
@@ -869,6 +872,7 @@ static void process_xevent_destroy(Ghandles * g, XID window)
     }
 
     SKIP_NONMANAGED_WINDOW;
+    XUngrabPointer(g->display, CurrentTime);
     if (g->log_level > 0)
         fprintf(stderr, "handle destroy 0x%x\n", (int) window);
     hdr.type = MSG_DESTROY;
@@ -1616,6 +1620,8 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
         state.mods &= LockMask;
         key.state &= LockMask;
     }
+    bool is_press = key.type == KeyPress;
+    bool already_handled = false;
     if (state.mods != key.state) {
         XModifierKeymap *modmap;
         int mod_index;
@@ -1636,7 +1642,8 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
             // #define Mod4MapIndex            6
             // #define Mod5MapIndex            7
             for (mod_index = 0; mod_index < 8; mod_index++) {
-                if (modmap->modifiermap[mod_index*modmap->max_keypermod] == 0x00) {
+                uint32_t keycode = modmap->modifiermap[mod_index*modmap->max_keypermod];
+                if (keycode == 0x00) {
                     if (g->log_level > 1)
                         fprintf(stderr, "ignoring disabled modifier %d\n", mod_index);
                     // no key set for this modifier, ignore
@@ -1646,30 +1653,37 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
                 // special case for caps lock switch by press+release
                 if (mod_index == LockMapIndex) {
                     if ((state.mods & mod_mask) ^ (key.state & mod_mask)) {
-                        feed_xdriver(g, 'K', modmap->modifiermap[mod_index*modmap->max_keypermod], 1);
-                        feed_xdriver(g, 'K', modmap->modifiermap[mod_index*modmap->max_keypermod], 0);
+                        feed_xdriver(g, 'K', keycode, 1);
+                        feed_xdriver(g, 'K', keycode, 0);
                     }
                 } else {
-                    if ((state.mods & mod_mask) && !(key.state & mod_mask))
-                        feed_xdriver(g, 'K', modmap->modifiermap[mod_index*modmap->max_keypermod], 0);
-                    else if (!(state.mods & mod_mask) && (key.state & mod_mask))
-                        feed_xdriver(g, 'K', modmap->modifiermap[mod_index*modmap->max_keypermod], 1);
+                    if ((state.mods & mod_mask) && !(key.state & mod_mask)) {
+                        // need to release
+                        if (keycode == key.keycode && !is_press) already_handled = true;
+                        feed_xdriver(g, 'K', keycode, 0);
+                    }
+                    else if (!(state.mods & mod_mask) && (key.state & mod_mask)) {
+                        // need to press
+                        if (keycode == key.keycode && is_press) already_handled = true;
+                        feed_xdriver(g, 'K', keycode, 1);
+                    }
                 }
             }
             XFreeModifiermap(modmap);
         }
     }
-
-    feed_xdriver(g, 'K', key.keycode, key.type == KeyPress ? 1 : 0);
+    if (!already_handled) feed_xdriver(g, 'K', key.keycode, is_press);
 }
+
+static void handle_focus_helper(Ghandles * g, XID winid, struct msg_focus msg);
 
 static void handle_button(Ghandles * g, XID winid)
 {
-    struct msg_button key;
+    struct msg_button msg;
     struct genlist *l = list_lookup(windows_list, winid);
 
 
-    read_data(g->vchan, (char *) &key, sizeof(key));
+    read_data(g->vchan, (char *) &msg, sizeof(msg));
     if (l && l->data && ((struct window_data*)l->data)->is_docked) {
         /* get position of embeder, not icon itself*/
         winid = ((struct window_data*)l->data)->embeder;
@@ -1679,19 +1693,43 @@ static void handle_button(Ghandles * g, XID winid)
     if (g->log_level > 1)
         fprintf(stderr,
                 "send buttonevent, win 0x%x type=%d button=%d\n",
-                (int) winid, key.type, key.button);
-    feed_xdriver(g, 'B', key.button, key.type == ButtonPress ? 1 : 0);
+                (int) winid, msg.type, msg.button);
+
+    bool is_button_press = msg.type == ButtonPress;
+
+    // click first, or some weird race condition may happen
+    // some applications close all context menus when focused, and the click will happen after
+    feed_xdriver(g, 'B', msg.button, is_button_press ? 1 : 0);
+
+    // Fake a "focus in" when mouse down on unfocused window.
+    if (is_button_press) {
+        // int _return_to;
+        // XID focused_winid;
+        // XGetInputFocus(g->display, &focused_winid, &_return_to);
+        // bool a = focused_winid != winid
+        // TODO: check if window is "top-level" (has border), and only focus if it or its child was not focused
+        // some applications get confused if you give focus to its context menu
+        // I'm not sure how this works yet
+        bool need_focus = false; 
+        if (need_focus) {
+            struct msg_focus msg_focusin;
+            msg_focusin.type = FocusIn;
+            msg_focusin.mode = NotifyNormal;
+            msg_focusin.detail = NotifyNonlinear;
+            handle_focus_helper(g, winid, msg_focusin);
+        }
+    }
 }
 
 static void handle_motion(Ghandles * g, XID winid)
 {
-    struct msg_motion key;
+    struct msg_motion msg;
     //      XMotionEvent event;
     XWindowAttributes attr;
     int ret;
     struct genlist *l = list_lookup(windows_list, winid);
 
-    read_data(g->vchan, (char *) &key, sizeof(key));
+    read_data(g->vchan, (char *) &msg, sizeof(msg));
     if (l && l->data && ((struct window_data*)l->data)->is_docked) {
         /* get position of embeder, not icon itself*/
         winid = ((struct window_data*)l->data)->embeder;
@@ -1704,14 +1742,14 @@ static void handle_motion(Ghandles * g, XID winid)
         return;
     };
 
-    feed_xdriver(g, 'M', attr.x + key.x, attr.y + key.y);
+    feed_xdriver(g, 'M', attr.x + msg.x, attr.y + msg.y);
 }
 
 // ensure that LeaveNotify is delivered to the window - if pointer is still
 // above this window, place stub window between pointer and the window
 static void handle_crossing(Ghandles * g, XID winid)
 {
-    struct msg_crossing key;
+    struct msg_crossing msg;
     XWindowAttributes attr;
     int ret;
     struct genlist *l = list_lookup(windows_list, winid);
@@ -1723,9 +1761,9 @@ static void handle_crossing(Ghandles * g, XID winid)
         winid = ((struct window_data*)l->data)->embeder;
     }
 
-    read_data(g->vchan, (char *) &key, sizeof(key));
+    read_data(g->vchan, (char *) &msg, sizeof(msg));
 
-    if (key.mode != NotifyNormal)
+    if (msg.mode != NotifyNormal)
         return;
     ret = XGetWindowAttributes(g->display, winid, &attr);
     if (ret != 1) {
@@ -1735,11 +1773,11 @@ static void handle_crossing(Ghandles * g, XID winid)
         return;
     };
 
-    if (key.type == EnterNotify) {
+    if (msg.type == EnterNotify) {
         // hide stub window
         XUnmapWindow(g->display, g->stub_win);
-        feed_xdriver(g, 'M', attr.x + key.x, attr.y + key.y);
-    } else if (key.type == LeaveNotify) {
+        feed_xdriver(g, 'M', attr.x + msg.x, attr.y + msg.y);
+    } else if (msg.type == LeaveNotify) {
         XID window_under_pointer, root_returned;
         int root_x, root_y, win_x, win_y;
         unsigned int mask_return;
@@ -1763,7 +1801,7 @@ static void handle_crossing(Ghandles * g, XID winid)
             XRaiseWindow(g->display, g->stub_win);
         }
     } else {
-        fprintf(stderr, "Invalid crossing event: %d\n", key.type);
+        fprintf(stderr, "Invalid crossing event: %d\n", msg.type);
     }
 
 }
@@ -1784,59 +1822,73 @@ static void take_focus(Ghandles * g, XID winid)
     if (g->log_level > 0)
         fprintf(stderr, "WM_TAKE_FOCUS sent for 0x%x\n",
                 (int) winid);
+}
 
+static void handle_focus_helper(Ghandles * g, XID winid, struct msg_focus msg)
+{
+    struct genlist *l;
+    bool use_take_focus = false;
+    bool input_hint = false;
+    if ( (l=list_lookup(windows_list, winid)) && (l->data) )
+        input_hint = ((struct window_data*)l->data)->input_hint;
+    else {
+        fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
+        input_hint = true;
+    }
+    
+    if (msg.type == FocusIn) {
+        if (msg.mode == NotifyNormal) {
+            XRaiseWindow(g->display, winid);
+            
+
+            if ( (l=list_lookup(windows_list, winid)) && (l->data) ) {
+                use_take_focus = ((struct window_data*)l->data)->support_take_focus;
+                if (((struct window_data*)l->data)->is_docked)
+                    XRaiseWindow(g->display, ((struct window_data*)l->data)->embeder);
+            } else {
+                fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
+            }
+
+            if (input_hint) {
+                if (g->log_level > 1)
+                    fprintf(stderr, "0x%x gained focus\n", (int) winid);
+                XSetInputFocus(g->display, winid, RevertToParent, g->time);
+            }
+
+            // Do not send WM_TAKE_FOCUS if the window doesn't support it
+            if (use_take_focus)
+                take_focus(g, winid);
+        }
+        if (msg.mode == NotifyGrab) {
+            XGrabPointer(g->display, winid, false, 0, GrabModeSync, GrabModeSync, None, None, CurrentTime);
+        } else {
+            XUngrabPointer(g->display, CurrentTime);
+        }
+    } else if (msg.type == FocusOut && input_hint) {
+        if (msg.mode == NotifyNormal) {
+            int ignore;
+            XID winid_focused;
+            XGetInputFocus(g->display, &winid_focused, &ignore);
+            if (winid_focused == winid) {
+                XSetInputFocus(g->display, None, RevertToParent, g->time);
+                if (g->log_level > 1)
+                    fprintf(stderr, "0x%x lost focus\n", (int) winid);
+            }
+        }
+        if (msg.mode == NotifyGrab) {
+            XGrabPointer(g->display, g->root_win, false, 0, GrabModeSync, GrabModeSync, None, None, CurrentTime);
+        }
+        if (msg.mode == NotifyUngrab) {
+            XUngrabPointer(g->display, CurrentTime);
+        }
+    }
 }
 
 static void handle_focus(Ghandles * g, XID winid)
 {
-    struct msg_focus key;
-    struct genlist *l;
-    int input_hint;
-    int use_take_focus;
-
-    read_data(g->vchan, (char *) &key, sizeof(key));
-    if (key.type == FocusIn
-            && (key.mode == NotifyNormal || key.mode == NotifyUngrab)) {
-
-        XRaiseWindow(g->display, winid);
-
-        if ( (l=list_lookup(windows_list, winid)) && (l->data) ) {
-            input_hint = ((struct window_data*)l->data)->input_hint;
-            use_take_focus = ((struct window_data*)l->data)->support_take_focus;
-            if (((struct window_data*)l->data)->is_docked)
-                XRaiseWindow(g->display, ((struct window_data*)l->data)->embeder);
-        } else {
-            fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
-            input_hint = True;
-            use_take_focus = False;
-        }
-
-        // Give input focus only to window that set the input hint
-        if (input_hint)
-            XSetInputFocus(g->display, winid, RevertToParent, g->time);
-
-        // Do not send take focus if the window doesn't support it
-        if (use_take_focus)
-            take_focus(g, winid);
-
-        if (g->log_level > 1)
-            fprintf(stderr, "0x%x raised\n", (int) winid);
-    } else if (key.type == FocusOut
-            && (key.mode == NotifyNormal
-                || key.mode == NotifyUngrab)) {
-        if ( (l=list_lookup(windows_list, winid)) && (l->data) )
-            input_hint = ((struct window_data*)l->data)->input_hint;
-        else {
-            fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
-            input_hint = True;
-        }
-        if (input_hint)
-            XSetInputFocus(g->display, None, RevertToParent, g->time);
-
-        if (g->log_level > 1)
-            fprintf(stderr, "0x%x lost focus\n", (int) winid);
-    }
-
+    struct msg_focus msg;
+    read_data(g->vchan, (char *) &msg, sizeof(msg));
+    return handle_focus_helper(g, winid, msg);
 }
 
 static int bitset(unsigned char *keys, int num)
@@ -2271,6 +2323,7 @@ int main(int argc, char **argv)
         XSelectInput(g.display, RootWindow(g.display, i),
                 SubstructureNotifyMask);
 
+    
 
     if (!XDamageQueryExtension(g.display, &damage_event,
                 &damage_error)) {
@@ -2291,6 +2344,12 @@ int main(int argc, char **argv)
                                     XFixesDisplayCursorNotifyMask);
     } else
         fprintf(stderr, "XFixes not available, cursor shape handling off");
+    
+    int ev_base, err_base; // ignore those
+    if (!XQueryExtension(g.display, "XInputExtension", &g.xi_opcode, &ev_base, &err_base)) {
+        fprintf(stderr, "X Input extension not available. Key press events not available. Upgrade your X11 server now.");
+        return 1;
+    }
 
     XAutoRepeatOff(g.display);
     signal(SIGCHLD, SIG_IGN);
