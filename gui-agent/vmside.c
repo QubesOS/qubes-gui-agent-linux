@@ -25,9 +25,10 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <stdlib.h>
+#include <inttypes.h>
 #include <signal.h>
+
+#include <unistd.h>
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -65,7 +66,7 @@
 /* Supported protocol version */
 
 #define PROTOCOL_VERSION_MAJOR 1
-#define PROTOCOL_VERSION_MINOR 3
+#define PROTOCOL_VERSION_MINOR 4
 #define PROTOCOL_VERSION (PROTOCOL_VERSION_MAJOR << 16 | PROTOCOL_VERSION_MINOR)
 
 #if !(PROTOCOL_VERSION_MAJOR == QUBES_GUID_PROTOCOL_VERSION_MAJOR && \
@@ -124,6 +125,7 @@ struct _global_handles {
     int composite_redirect_automatic;
     pid_t x_pid;
     uint32_t domid;
+    uint32_t protocol_version;
     Time time;
 };
 
@@ -2153,10 +2155,21 @@ static pid_t get_xconf_and_run_x(Ghandles *g)
     return x_pid;
 }
 
-static void send_protocol_version(libvchan_t *vchan)
+static void handshake(Ghandles *g)
 {
     uint32_t version = PROTOCOL_VERSION;
-    write_struct(vchan, version);
+    write_struct(g->vchan, version);
+    version = 0;
+    read_struct(g->vchan, version);
+    uint16_t major_version = version >> 16, minor_version = version & 0xFFFF;
+    if (version > PROTOCOL_VERSION ||
+        major_version != PROTOCOL_VERSION_MAJOR ||
+        minor_version < 4)
+        err(2, "Incompatible GUI daemon version (offered %" PRIu16 ".%" PRIu16
+                ", got %" PRIu16 ".%" PRIu16 ")",
+                PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR,
+                major_version, minor_version);
+    g->protocol_version = version;
 }
 
 static void handle_guid_disconnect()
@@ -2175,7 +2188,7 @@ static void handle_guid_disconnect()
     /* wait for gui daemon */
     while (libvchan_is_open(g->vchan) == VCHAN_WAITING)
         libvchan_wait(g->vchan);
-    send_protocol_version(g->vchan);
+    handshake(g);
     /* discard */
     read_struct(g->vchan, xconf);
     send_all_windows_info(g);
@@ -2272,7 +2285,7 @@ int main(int argc, char **argv)
         libvchan_wait(g.vchan);
     saved_argv = argv;
     vchan_register_at_eof(handle_guid_disconnect);
-    send_protocol_version(g.vchan);
+    handshake(&g);
     g.x_pid = get_xconf_and_run_x(&g);
     mkghandles(&g);
     ghandles_for_vchan_reinitialize = &g;
