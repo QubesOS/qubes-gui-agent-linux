@@ -1600,11 +1600,17 @@ static void mkghandles(Ghandles * g)
     g->clipboard_data_len = 0;
 }
 
-static void handle_keypress(Ghandles * g, XID UNUSED(winid))
+static void handle_keypress(Ghandles * g, XID winid)
 {
     struct msg_keypress key;
     XkbStateRec state;
     read_data(g->vchan, (char *) &key, sizeof(key));
+
+    // Ignore the input hint.  If the window already has focus, then this is a
+    // no-op other than changing a timestamp.  Otherwise, it is too late to wait
+    // for the window to take focus for itself.
+    XSetInputFocus(g->display, winid, RevertToParent, g->time);
+
     // sync modifiers state
     if (XkbGetState(g->display, XkbUseCoreKbd, &state) != Success) {
         if (g->log_level > 0)
@@ -1673,8 +1679,9 @@ static void handle_button(Ghandles * g, XID winid)
     if (l && l->data && ((struct window_data*)l->data)->is_docked) {
         /* get position of embeder, not icon itself*/
         winid = ((struct window_data*)l->data)->embeder;
-        XRaiseWindow(g->display, winid);
     }
+    /* If the window was not raised before, it sure is now! */
+    XRaiseWindow(g->display, winid);
 
     if (g->log_level > 1)
         fprintf(stderr,
@@ -1790,26 +1797,25 @@ static void take_focus(Ghandles * g, XID winid)
 static void handle_focus(Ghandles * g, XID winid)
 {
     struct msg_focus key;
-    struct genlist *l;
-    int input_hint;
-    int use_take_focus;
-
+    bool input_hint = true, use_take_focus = false, is_docked = false;
+    Window embedder = None;
+    struct genlist *l = list_lookup(windows_list, winid);
+    if (l && l->data) {
+        const struct window_data *data = l->data;
+        input_hint = data->input_hint;
+        use_take_focus = data->support_take_focus;
+        if ((is_docked = data->is_docked))
+            embedder = data->embeder;
+    } else {
+        fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
+    }
     read_data(g->vchan, (char *) &key, sizeof(key));
     if (key.type == FocusIn
             && (key.mode == NotifyNormal || key.mode == NotifyUngrab)) {
 
         XRaiseWindow(g->display, winid);
-
-        if ( (l=list_lookup(windows_list, winid)) && (l->data) ) {
-            input_hint = ((struct window_data*)l->data)->input_hint;
-            use_take_focus = ((struct window_data*)l->data)->support_take_focus;
-            if (((struct window_data*)l->data)->is_docked)
-                XRaiseWindow(g->display, ((struct window_data*)l->data)->embeder);
-        } else {
-            fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
-            input_hint = True;
-            use_take_focus = False;
-        }
+        if (is_docked)
+            XRaiseWindow(g->display, embedder);
 
         // Give input focus only to window that set the input hint
         if (input_hint)
@@ -1824,12 +1830,6 @@ static void handle_focus(Ghandles * g, XID winid)
     } else if (key.type == FocusOut
             && (key.mode == NotifyNormal
                 || key.mode == NotifyUngrab)) {
-        if ( (l=list_lookup(windows_list, winid)) && (l->data) )
-            input_hint = ((struct window_data*)l->data)->input_hint;
-        else {
-            fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
-            input_hint = True;
-        }
         if (input_hint)
             XSetInputFocus(g->display, None, RevertToParent, g->time);
 
