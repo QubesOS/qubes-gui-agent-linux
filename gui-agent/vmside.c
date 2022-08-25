@@ -123,12 +123,13 @@ struct _global_handles {
 };
 
 struct window_data {
-    int is_docked; /* is it docked icon window */
     XID embeder;   /* for docked icon points embeder window */
-    int input_hint; /* the window should get input focus - False=Never */
-    int support_delete_window;
-    int support_take_focus;
-    int window_dump_pending; /* send MSG_WINDOW_DUMP at next damage notification */
+    bool is_docked; /* is it docked icon window */
+    bool input_hint; /* the window should get input focus - False=Never */
+    bool support_delete_window;
+    bool support_take_focus;
+    bool window_dump_pending; /* send MSG_WINDOW_DUMP at next damage notification */
+    bool override_redirect;
 };
 
 struct embeder_data {
@@ -430,6 +431,7 @@ static void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
     wd->support_delete_window = False;
     wd->support_take_focus = False;
     wd->window_dump_pending = False;
+    wd->override_redirect = ev->override_redirect;
     list_insert(windows_list, ev->window, wd);
 
     if (attr.border_width > 0) {
@@ -827,7 +829,7 @@ static void process_xevent_map(Ghandles * g, XID window)
         map_info.transient_for = transient;
     else
         map_info.transient_for = 0;
-    map_info.override_redirect = attr.override_redirect;
+    map_info.override_redirect = wd->override_redirect = attr.override_redirect;
     hdr.type = MSG_MAP;
     hdr.window = window;
     write_message(g->vchan, hdr, map_info);
@@ -914,23 +916,27 @@ static void process_xevent_configure(Ghandles * g, XID window,
                 "handle configure event 0x%x w=%d h=%d ovr=%d\n",
                 (int) window, ev->width, ev->height,
                 (int) ev->override_redirect);
-    if (l && l->data && ((struct window_data*)l->data)->is_docked) {
-        /* for docked icon, ensure that it fills embeder window; don't send any
-         * message to dom0 - it will be done for embeder itself*/
-        XWindowAttributes attr;
-        int ret;
+    if (l && l->data) {
+        struct window_data *wd = l->data;
+        wd->override_redirect = ev->override_redirect;
+        if (wd->is_docked) {
+            /* for docked icon, ensure that it fills embeder window; don't send any
+             * message to dom0 - it will be done for embeder itself*/
+            XWindowAttributes attr;
+            int ret;
 
-        ret = XGetWindowAttributes(g->display, ((struct window_data*)l->data)->embeder, &attr);
-        if (ret != 1) {
-            fprintf(stderr,
-                    "XGetWindowAttributes for 0x%x failed in "
-                    "handle_xevent_configure, ret=0x%x\n", (int) ((struct window_data*)l->data)->embeder, ret);
+            ret = XGetWindowAttributes(g->display, wd->embeder, &attr);
+            if (ret != 1) {
+                fprintf(stderr,
+                        "XGetWindowAttributes for 0x%x failed in "
+                        "handle_xevent_configure, ret=0x%x\n", (int) wd->embeder, ret);
+                return;
+            };
+            if (ev->x != 0 || ev->y != 0 || ev->width != attr.width || ev->height != attr.height) {
+                XMoveResizeWindow(g->display, window, 0, 0, attr.width, attr.height);
+            }
             return;
-        };
-        if (ev->x != 0 || ev->y != 0 || ev->width != attr.width || ev->height != attr.height) {
-            XMoveResizeWindow(g->display, window, 0, 0, attr.width, attr.height);
         }
-        return;
     }
 
     if (ev->border_width > 0) {
@@ -1411,7 +1417,7 @@ static int send_full_window_info(Ghandles *g, XID w, struct window_data *wd)
     crt.parent = parent;
     crt.x = attr.x;
     crt.y = attr.y;
-    crt.override_redirect = attr.override_redirect;
+    crt.override_redirect = wd->override_redirect = attr.override_redirect;
     write_message(g->vchan, hdr, crt);
 
     hdr.type = MSG_CONFIGURE;
@@ -1604,12 +1610,24 @@ static void handle_keypress(Ghandles * g, XID winid)
 {
     struct msg_keypress key;
     XkbStateRec state;
-    read_data(g->vchan, (char *) &key, sizeof(key));
+    bool input_hint = true, use_take_focus = false, override_redirect = false;
 
-    // Ignore the input hint.  If the window already has focus, then this is a
+    read_data(g->vchan, (char *) &key, sizeof(key));
+    struct genlist *l = list_lookup(windows_list, winid);
+    if (l && l->data) {
+        const struct window_data *data = l->data;
+        input_hint = data->input_hint;
+        use_take_focus = data->support_take_focus;
+        override_redirect = data->override_redirect;
+    } else {
+        fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
+    }
+
+    // If the window already has focus, then this is a
     // no-op other than changing a timestamp.  Otherwise, it is too late to wait
     // for the window to take focus for itself.
-    XSetInputFocus(g->display, winid, RevertToParent, g->time);
+    if ((input_hint || use_take_focus) && !override_redirect)
+        XSetInputFocus(g->display, winid, RevertToParent, g->time);
 
     // sync modifiers state
     if (XkbGetState(g->display, XkbUseCoreKbd, &state) != Success) {
@@ -1886,9 +1904,13 @@ static void handle_configure(Ghandles * g, XID winid)
 static void handle_map(Ghandles * g, XID winid)
 {
     struct msg_map_info inf;
+    struct genlist *l;
     XSetWindowAttributes attr;
+
     read_data(g->vchan, (char *) &inf, sizeof(inf));
     attr.override_redirect = inf.override_redirect;
+    if ( (l=list_lookup(windows_list, winid)) && (l->data) )
+        ((struct window_data*)l->data)->override_redirect = inf.override_redirect;
     XChangeWindowAttributes(g->display, winid,
             CWOverrideRedirect, &attr);
     XMapWindow(g->display, winid);
