@@ -705,8 +705,8 @@ static void stream_param_changed(void *data, uint32_t id,
     struct impl *impl = data;
     uint32_t media_type = UINT32_MAX, media_subtype = UINT32_MAX;
     struct spa_audio_info_raw info = { 0 };
+    uint64_t params_buffer[64];
     int res;
-    uint8_t params_buffer[1024];
 
     struct spa_pod_builder b = SPA_POD_BUILDER_INIT(params_buffer, sizeof(params_buffer));
     const struct spa_pod *params[5];
@@ -790,6 +790,8 @@ doit:
 
     params[1] = spa_format_audio_raw_build(&b, SPA_PARAM_Format,
             (struct spa_audio_info_raw *)&qubes_audio_format);
+
+    spa_assert_se(b.state.offset <= sizeof params_buffer);
 
     if ((res = pw_stream_update_params(impl->stream[direction].stream, params, 2)) < 0) {
         errno = -res;
