@@ -180,18 +180,20 @@ static int vchan_error_callback(struct spa_loop *loop,
  */
 static void stop_watching_vchan(struct qubes_stream *stream)
 {
-    if (stream && stream->vchan) {
+    if (stream->vchan) {
         // Must do this first, so that EPOLL_CTL_DEL is called before the
         // file descriptor is closed.
-        spa_loop_remove_source(stream->impl->data_loop, &stream->source);
+        if (stream->impl)
+            spa_loop_remove_source(stream->impl->data_loop, &stream->source);
         stream->closed_vchan = stream->vchan;
         stream->vchan = NULL;
     }
     stream->is_open = false;
     // Update the main-thread state asynchronously.
-    spa_loop_invoke(stream->impl->main_loop,
-                    vchan_error_callback, 0, NULL, 0, false,
-                    stream);
+    if (stream->impl)
+        spa_loop_invoke(stream->impl->main_loop,
+                        vchan_error_callback, 0, NULL, 0, false,
+                        stream);
 }
 
 static int remove_stream_cb(struct spa_loop *loop,
