@@ -787,9 +787,11 @@ doit:
             SPA_PARAM_BUFFERS_size, SPA_POD_Int(2048),
             SPA_PARAM_BUFFERS_stride, SPA_POD_Int((int)impl->frame_size),
             SPA_PARAM_BUFFERS_dataType, SPA_POD_CHOICE_FLAGS_Int((1 << SPA_DATA_MemPtr)));
+    spa_assert_se(params[0]);
 
     params[1] = spa_format_audio_raw_build(&b, SPA_PARAM_Format,
             (struct spa_audio_info_raw *)&qubes_audio_format);
+    spa_assert_se(params[1]);
 
     spa_assert_se(b.state.offset <= sizeof params_buffer);
 
