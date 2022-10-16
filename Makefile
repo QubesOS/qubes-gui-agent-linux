@@ -25,9 +25,7 @@ USRLIBDIR ?= /usr/lib
 SYSLIBDIR ?= /lib
 DATADIR ?= /usr/share
 PA_VER_FULL ?= $(shell pkg-config --modversion libpulse | cut -d "-" -f 1 || echo 0.0)
-PA_VER_MAJOR_MINOR ?= $(shell echo $(PA_VER_FULL) | cut -d "." -f 1,2)
-PA_VER_MAJOR ?= $(shell echo $(PA_VER_MAJOR_MINOR) | cut -d "." -f 1)
-PA_MODULE_DIR ?= $(shell if [ $(PA_VER_MAJOR) -ge 16 ]; then echo pulseaudio; else if [ "$(lsb_release -is)" != "Ubuntu" ]; then echo pulse-$(PA_VER_MAJOR_MINOR); else pulse-$(PA_VER_FULL); fi; fi)
+PA_MODULE_DIR ?= $(shell pkg-config --variable=modlibexecdir libpulse)
 
 help:
 	@echo "Qubes GUI main Makefile:" ;\
@@ -103,7 +101,7 @@ install-pulseaudio:
 	install -m 0644 -D pulse/qubes-default.pa \
 		$(DESTDIR)/etc/pulse/qubes-default.pa
 	install -D pulse/module-vchan-sink.so \
-		$(DESTDIR)$(LIBDIR)/$(PA_MODULE_DIR)/modules/module-vchan-sink.so
+		$(DESTDIR)$(PA_MODULE_DIR)/module-vchan-sink.so
 	install -m 0644 -D appvm-scripts/etc/tmpfiles.d/qubes-pulseaudio.conf \
 		$(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-pulseaudio.conf
 	install -m 0644 -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop \
