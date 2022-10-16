@@ -22,11 +22,6 @@
 
 type pulseaudio >/dev/null 2>&1 || exit 0
 
-if [ -f /etc/this-is-dvm ]; then
-  # ... wait for Dom0 notify
-  qubesdb-watch /qubes-restore-complete
-fi
-
 qubesdb-read -w /qubes-audio-domain-xid >/dev/null
 
 pulseaudio --start \
