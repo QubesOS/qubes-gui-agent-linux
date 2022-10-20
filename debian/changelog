@@ -1,3 +1,22 @@
+qubes-gui-agent (4.1.27-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * Add Qubes Builder v2 integration
+  * .qubesbuilder: replace 'spec' by 'build'
+
+  [ Demi Marie Obenour ]
+  * Use larger vchan buffers
+  * Drop obsolete checks for disposable VM restore
+
+  [ Marek Marczykowski-Górecki ]
+  * rpm: fix pulseaudio version detection
+  * Fix pulseaudio module path
+
+  [ Demi Marie Obenour ]
+  * Remove hanging person image
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 20 Oct 2022 02:05:33 +0200
+
 qubes-gui-agent (4.1.26-1) unstable; urgency=medium
 
   [ Frédéric Pierret (fepitre) ]
