@@ -23,10 +23,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <libvchan.h>
-#include <sys/select.h>
 #include <errno.h>
-#include <qubesdb-client.h>
-#include "txrx.h"
+#include <poll.h>
 
 #include "txrx.h"
 
@@ -84,27 +82,14 @@ int read_data(libvchan_t *vchan, char *buf, int size)
     return size;
 }
 
-static int wait_for_vchan_or_argfd_once(libvchan_t *vchan, int nfd, int *fd, fd_set * retset)
+static int wait_for_vchan_or_argfd_once(libvchan_t *vchan, struct pollfd *const fds, size_t const nfds)
 {
-    fd_set rfds;
-    int vfd, max = 0, ret, i;
-    vfd = libvchan_fd_for_select(vchan);
-    FD_ZERO(&rfds);
-    for (i = 0; i < nfd; i++) {
-        int cfd = fd[i];
-        FD_SET(cfd, &rfds);
-        if (cfd > max)
-            max = cfd;
-    }
-    FD_SET(vfd, &rfds);
-    if (vfd > max)
-        max = vfd;
-    max++;
-    ret = select(max, &rfds, NULL, NULL, NULL);
-    if (ret < 0 && errno == EINTR)
-        return 0;
+    int ret;
+    ret = poll(fds, nfds, 1000);
     if (ret < 0) {
-        perror("select");
+        if (errno == EINTR)
+            return -1;
+        perror("poll");
         exit(1);
     }
     if (!libvchan_is_open(vchan)) {
@@ -115,16 +100,17 @@ static int wait_for_vchan_or_argfd_once(libvchan_t *vchan, int nfd, int *fd, fd_
         } else
             exit(0);
     }
-    if (FD_ISSET(vfd, &rfds))
+    if (fds[0].revents) {
         // the following will never block; we need to do this to
         // clear libvchan_fd pending state 
         libvchan_wait(vchan);
-    if (retset)
-        *retset = rfds;
+    }
     return ret;
 }
 
-void wait_for_vchan_or_argfd(libvchan_t *vchan, int nfd, int *fd, fd_set * retset)
+int wait_for_vchan_or_argfd(libvchan_t *vchan, struct pollfd *const fds, size_t nfds)
 {
-    while (wait_for_vchan_or_argfd_once(vchan, nfd, fd, retset) == 0);
+    int ret;
+    while ((ret=wait_for_vchan_or_argfd_once(vchan, fds, nfds)) == 0);
+    return ret;
 }

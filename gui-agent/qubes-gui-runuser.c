@@ -247,7 +247,7 @@ error:
 /* in no-PAM case, simply switch to the target user and exec in place - there
  * is no need to keep parent process running as there nothing to cleanup
  */
-pid_t do_execute(char *user, char *path, char **argv)
+static pid_t do_execute(char *user, char *path, char **argv)
 {
     pid_t pid;
     int retval;

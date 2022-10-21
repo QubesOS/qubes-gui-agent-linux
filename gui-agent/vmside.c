@@ -52,6 +52,7 @@
 #include "error.h"
 #include "encoding.h"
 #include <libvchan.h>
+#include <poll.h>
 
 /* Time in milliseconds after which the clipboard data should be wiped */
 #define CLIPBOARD_WIPE_TIME 60000
@@ -2277,7 +2278,6 @@ int main(int argc, char **argv)
     int i;
     int xfd;
     Ghandles g;
-    int wait_fds[2];
 
     parse_args(&g, argc, argv);
 
@@ -2370,16 +2370,19 @@ int main(int argc, char **argv)
                     "Acquired MANAGER selection for tray\n");
     }
     xfd = ConnectionNumber(g.display);
-    wait_fds[0] = xfd;
-    wait_fds[1] = g.xserver_fd;
+    struct pollfd fds[] = {
+        { .fd = -1, .events = POLLIN | POLLHUP, .revents = 0 },
+        { .fd = xfd, .events = POLLIN | POLLHUP, .revents = 0 },
+        { .fd = g.xserver_fd, .events = POLLIN | POLLHUP, .revents = 0 },
+    };
     for (;;) {
         int busy;
-        fd_set retset;
 
-        wait_for_vchan_or_argfd(g.vchan, 2, wait_fds, &retset);
+        fds[0].fd = libvchan_fd_for_select(g.vchan);
+        wait_for_vchan_or_argfd(g.vchan, fds, QUBES_ARRAY_SIZE(fds));
         /* first process possible qubes_drv reconnection, otherwise we may be
          * using stale g.xserver_fd */
-        if (FD_ISSET(g.xserver_fd, &retset)) {
+        if (fds[2].revents) {
             char discard[64];
             int ret;
 
@@ -2395,7 +2398,7 @@ int main(int argc, char **argv)
                         "qubes_drv disconnected, waiting for possible reconnection\n");
                 close(g.xserver_fd);
                 wait_for_unix_socket(&g);
-                wait_fds[1] = g.xserver_fd;
+                fds[2].fd = g.xserver_fd;
             } else {
                 perror("reading from qubes_drv");
                 exit(1);
