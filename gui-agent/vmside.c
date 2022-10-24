@@ -2206,14 +2206,14 @@ static void handle_guid_disconnect(void)
     send_all_windows_info(g);
 }
 
-static void handle_sigterm()
+static void handle_sigterm(int UNUSED(signal) )
 {
     Ghandles *g = ghandles_for_vchan_reinitialize;
     terminate_and_cleanup_xorg(g);
     exit(0);
 }
 
-static void usage()
+static void usage(void)
 {
     fprintf(stderr, "Usage: qubes_gui [options]\n");
     fprintf(stderr, "       -v  increase log verbosity\n");
