@@ -69,6 +69,7 @@ xf86-video-dummy/src/.libs/dummyqbs_drv.so: xf86-qubes-common/libxf86-qubes-comm
 	(cd xf86-video-dummy && ./autogen.sh)
 	$(MAKE) -C xf86-video-dummy
 
+.PHONY: pulse/module-vchan-sink.so
 pulse/module-vchan-sink.so:
 	rm -f pulse/pulsecore
 	ln -sf pulsecore-$(PA_VER_FULL) pulse/pulsecore
