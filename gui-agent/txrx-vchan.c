@@ -28,6 +28,8 @@
 #include <qubesdb-client.h>
 #include "txrx.h"
 
+#include "txrx.h"
+
 void (*vchan_at_eof)(void) = NULL;
 
 void vchan_register_at_eof(void (*new_vchan_at_eof)(void))

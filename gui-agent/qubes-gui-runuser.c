@@ -39,7 +39,7 @@
 pid_t child_pid = 0;
 
 #ifdef HAVE_PAM
-int pam_conv_callback(int num_msg, const struct pam_message **msg,
+static int pam_conv_callback(int num_msg, const struct pam_message **msg,
         struct pam_response **resp, void *appdata_ptr __attribute__((__unused__)))
 {
     int i;
@@ -70,7 +70,7 @@ static struct pam_conv conv = {
 /* Start process as given user, register session with PAM (and logind via
  * pam_systemd) first; wait for the process to terminate.
  */
-pid_t do_execute(char *user, char *path, char **argv)
+static pid_t do_execute(char *user, char *path, char **argv)
 {
     char *tty = NULL;
     struct passwd *pw;
@@ -292,12 +292,12 @@ pid_t do_execute(char *user, char *path, char **argv)
 }
 #endif
 
-void propagate_signal(int signal) {
+static void propagate_signal(int signal) {
     if (child_pid)
         kill(child_pid, signal);
 }
 
-void usage(char *argv0) {
+static void usage(char *argv0) {
     fprintf(stderr, "Usage: %s user path arg0 [args ...]\n", argv0);
     fprintf(stderr, "Run a process from *path* with *arg0*, *args*, as user *user*\n");
 #ifdef HAVE_PAM
