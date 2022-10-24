@@ -2196,7 +2196,6 @@ static void handle_guid_disconnect(void)
         exit(1);
     }
     libvchan_close(g->vchan);
-    wait_for_possible_dispvm_resume();
     g->vchan = libvchan_server_init(g->domid, 6000, 4096, 4096);
     /* wait for gui daemon */
     while (libvchan_is_open(g->vchan) == VCHAN_WAITING)
