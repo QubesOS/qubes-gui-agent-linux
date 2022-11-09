@@ -25,22 +25,22 @@
 #include <libvchan.h>
 #include <errno.h>
 #include <poll.h>
+#include <err.h>
 
 #include "txrx.h"
 
-void (*vchan_at_eof)(void) = NULL;
+static void (*vchan_at_eof)(void) = NULL;
 
 void vchan_register_at_eof(void (*new_vchan_at_eof)(void))
 {
     vchan_at_eof = new_vchan_at_eof;
 }
 
-static void handle_vchan_error(libvchan_t *vchan, const char *op)
+static _Noreturn void handle_vchan_error(libvchan_t *vchan, const char *op)
 {
     if (!libvchan_is_open(vchan) && vchan_at_eof)
         vchan_at_eof();
-    fprintf(stderr, "Error while vchan %s\n, terminating", op);
-    exit(1);
+    errx(1, "Error while vchan %s\n, terminating", op);
 }
 
 int real_write_message(libvchan_t *vchan, char *hdr, int size, char *data, int datasize)
@@ -89,8 +89,7 @@ static int wait_for_vchan_or_argfd_once(libvchan_t *vchan, struct pollfd *const 
     if (ret < 0) {
         if (errno == EINTR)
             return -1;
-        perror("poll");
-        exit(1);
+        err(1, "poll");
     }
     if (!libvchan_is_open(vchan)) {
         fprintf(stderr, "libvchan_is_eof\n");

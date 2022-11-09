@@ -28,8 +28,8 @@
 int write_data(libvchan_t *vchan, char *buf, int size);
 int real_write_message(libvchan_t *vchan, char *hdr, int size, char *data, int datasize);
 int read_data(libvchan_t *vchan, char *buf, int size);
-#define read_struct(vchan, x) read_data(vchan, (char*)&x, sizeof(x))
-#define write_struct(vchan, x) write_data(vchan, (char*)&x, sizeof(x))
+#define read_struct(vchan, x) (read_data(vchan, (char*)&(x), sizeof(x)))
+#define write_struct(vchan, x) (write_data(vchan, (char*)&(x), sizeof(x)))
 #define write_message(vchan,x,y) do {\
 	x.untrusted_len = sizeof(y); \
 	real_write_message(vchan, (char*)&x, sizeof(x), (char*)&y, sizeof(y)); \
