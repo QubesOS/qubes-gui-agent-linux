@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef _QUBES_TXRX_H
-#define _QUBES_TXRX_H
+#ifndef QUBES_TXRX_H
+#define QUBES_TXRX_H
 
 #include <poll.h>
 #include <libvchan.h>
@@ -37,4 +37,4 @@ int read_data(libvchan_t *vchan, char *buf, int size);
 int wait_for_vchan_or_argfd(libvchan_t *vchan, struct pollfd *fds, size_t nfds);
 void vchan_register_at_eof(void (*new_vchan_at_eof)(void));
 
-#endif /* _QUBES_TXRX_H */
+#endif /* QUBES_TXRX_H */
