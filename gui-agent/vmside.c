@@ -52,6 +52,9 @@
 #include "encoding.h"
 #include <libvchan.h>
 
+/* Time in milliseconds after which the clipboard data should be wiped */
+#define CLIPBOARD_WIPE_TIME 60000
+
 /* Get the size of an array.  Error out on pointers. */
 #define QUBES_ARRAY_SIZE(x) (0 * sizeof(struct { \
     int tried_to_compute_number_of_array_elements_in_a_pointer: \
@@ -114,6 +117,7 @@ struct _global_handles {
     Window stub_win;    /* window for clipboard operations and to simulate LeaveNotify events */
     unsigned char *clipboard_data;
     unsigned int clipboard_data_len;
+    Time clipboard_last_access;
     int log_level;
     int sync_all_modifiers;
     int composite_redirect_automatic;
@@ -1034,6 +1038,14 @@ static void process_xevent_selection_req(Ghandles * g,
     int convert_style = XConverterNotFound;
     g->time = req->time;
 
+    if (g->time > g->clipboard_last_access + CLIPBOARD_WIPE_TIME) {
+        if (g->log_level > 0)
+            fprintf(stderr, "wiping %ldms old clipboard data\n",
+                    g->time - g->clipboard_last_access);
+        g->clipboard_data[0] = '\x00';
+        g->clipboard_data_len = 1;
+    }
+
     if (g->log_level > 0)
         fprintf(stderr, "selection req event, target=%s\n",
                 XGetAtomName(g->display, req->target));
@@ -1091,6 +1103,7 @@ static void process_xevent_selection_req(Ghandles * g,
     resp.selection = req->selection;
     resp.target = req->target;
     resp.time = req->time;
+    g->clipboard_last_access = g->time;
     XSendEvent(g->display, req->requestor, 0, 0, (XEvent *) & resp);
 }
 
@@ -2006,6 +2019,7 @@ static void handle_clipboard_data(Ghandles * g, XID UNUSED(winid),
     g->clipboard_data_len = len;
     read_data(g->vchan, (char *) g->clipboard_data, len);
     g->clipboard_data[len] = 0;
+    g->clipboard_last_access = g->time;
     XSetSelectionOwner(g->display, XA_PRIMARY, g->stub_win, g->time);
     XSetSelectionOwner(g->display, g->clipboard, g->stub_win, g->time);
 #ifndef CLIPBOARD_4WAY
