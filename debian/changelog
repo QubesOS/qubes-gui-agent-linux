@@ -1,3 +1,11 @@
+qubes-gui-agent (4.1.28-1) unstable; urgency=medium
+
+  [ Ivan Kardykov ]
+  * dummyqbs: Add glamor acceleration
+  * dummyqbs: fix debian build with glamor
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 05 Dec 2022 15:36:29 +0100
+
 qubes-gui-agent (4.1.27-1) unstable; urgency=medium
 
   [ Frédéric Pierret (fepitre) ]
