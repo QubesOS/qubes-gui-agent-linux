@@ -47,6 +47,9 @@ typedef struct _color
     int blue;
 } dummy_colors;
 
+struct gbm_device;
+struct gbm_bo;
+
 typedef struct dummyRec 
 {
     DGAModePtr		DGAModes;
@@ -60,6 +63,11 @@ typedef struct dummyRec
     CloseScreenProcPtr CloseScreen;
     xf86CursorInfoPtr CursorInfo;
     CreateScreenResourcesProcPtr CreateScreenResources;
+    /* DRI support */
+    int fd;
+    Bool glamor;
+    struct gbm_device *gbm;
+    struct gbm_bo *front_bo;
 
     Bool DummyHWCursorShown;
     int cursorX, cursorY;

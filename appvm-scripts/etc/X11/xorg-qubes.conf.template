@@ -1,5 +1,6 @@
 Section "Module"
         Load "fb"
+        Load "glamoregl"
 EndSection
 
 Section "ServerLayout"   
@@ -13,6 +14,8 @@ Section "Device"
         Driver      "dummyqbs"
         VideoRam %MEM%
         Option "GUIDomID" "%GUI_DOMID%"
+        # Render option requires to override default Intel device
+        # Option "Render" "/dev/dri/renderD128"
 EndSection
 
 Section "Monitor"

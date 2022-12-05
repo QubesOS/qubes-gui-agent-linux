@@ -53,6 +53,7 @@ BuildRequires:	qubes-libvchan-devel
 BuildRequires:	qubes-gui-common-devel >= 4.1.0
 BuildRequires:	qubes-db-devel
 BuildRequires:	xen-devel
+BuildRequires: mesa-libgbm-devel
 Requires:	Xorg %(xserver-sdk-abi-requires ansic)
 Requires:	Xorg %(xserver-sdk-abi-requires videodrv)
 Requires:	libXfixes
