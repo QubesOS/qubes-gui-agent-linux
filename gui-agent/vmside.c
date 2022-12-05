@@ -118,6 +118,7 @@ struct _global_handles {
     unsigned char *clipboard_data;
     unsigned int clipboard_data_len;
     Time clipboard_last_access;
+    bool clipboard_wipe;
     int log_level;
     int sync_all_modifiers;
     int composite_redirect_automatic;
@@ -1038,7 +1039,8 @@ static void process_xevent_selection_req(Ghandles * g,
     int convert_style = XConverterNotFound;
     g->time = req->time;
 
-    if (g->time > g->clipboard_last_access + CLIPBOARD_WIPE_TIME) {
+    if (g->clipboard_wipe &&
+            g->time > g->clipboard_last_access + CLIPBOARD_WIPE_TIME) {
         if (g->log_level > 0)
             fprintf(stderr, "wiping %ldms old clipboard data\n",
                     g->time - g->clipboard_last_access);
@@ -2253,6 +2255,12 @@ int main(int argc, char **argv)
     int wait_fds[2];
 
     parse_args(&g, argc, argv);
+
+    /* Clipboard wipe functionality is controlled by the
+     * qubes-gui-agent-clipboard-wipe service
+     */
+    g.clipboard_wipe =
+        access("/run/qubes-service/qubes-gui-agent-clipboard-wipe", F_OK) == 0;
 
     g.vchan = libvchan_server_init(g.domid, 6000, 4096, 4096);
     if (!g.vchan) {
