@@ -151,8 +151,7 @@ struct impl {
 
     uint32_t frame_size, domid;
 
-    unsigned int do_disconnect:1;
-    unsigned int unloading:1;
+    bool do_disconnect, unloading;
 };
 
 static void unload_module(struct impl *impl)
