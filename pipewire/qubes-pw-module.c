@@ -149,9 +149,8 @@ struct impl {
 
     struct qubes_stream stream[2];
 
-    uint32_t frame_size;
+    uint32_t frame_size, domid;
 
-    unsigned int domid: 16;
     unsigned int do_disconnect:1;
     unsigned int unloading:1;
 };
@@ -1103,9 +1102,9 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
 
     {
         size_t domid;
-        if ((res = parse_number(peer_domain_prop, 0x7FEF, &domid, "domain ID")))
+        if ((res = parse_number(peer_domain_prop, INT_MAX / 2, &domid, "domain ID")))
             goto error;
-        impl->domid = (uint16_t)domid;
+        impl->domid = domid;
 
         size_t read_min = 0x8000, write_min = 0x8000;
         const char *record_size = pw_properties_get(props, QUBES_PW_KEY_RECORD_BUFFER_SPACE);
