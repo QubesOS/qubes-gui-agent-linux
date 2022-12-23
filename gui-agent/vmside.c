@@ -2257,10 +2257,10 @@ int main(int argc, char **argv)
     parse_args(&g, argc, argv);
 
     /* Clipboard wipe functionality is controlled by the
-     * qubes-gui-agent-clipboard-wipe service
+     * gui-agent-clipboard-wipe service
      */
     g.clipboard_wipe =
-        access("/run/qubes-service/qubes-gui-agent-clipboard-wipe", F_OK) == 0;
+        access("/run/qubes-service/gui-agent-clipboard-wipe", F_OK) == 0;
 
     g.vchan = libvchan_server_init(g.domid, 6000, 4096, 4096);
     if (!g.vchan) {
