@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh --
 #
 # The Qubes OS Project, http://www.qubes-os.org
 #
@@ -17,10 +17,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-#
-#
+
+set -eu
 
 type pulseaudio >/dev/null 2>&1 || exit 0
+
+if [ -f /lib/systemd/user/pulseaudio.service ]; then
+  # pulseaudio will be managed by systemd, do nothing
+  exit 0
+fi
 
 qubesdb-read -w /qubes-audio-domain-xid >/dev/null
 

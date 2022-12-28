@@ -72,8 +72,9 @@ package_qubes-vm-pulseaudio() {
 
 pkgdesc="Pulseaudio support for Qubes VM"
 depends=('alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'pulseaudio<=16.1')
+conflicts=('qubes-core-agent<4.2.5')
 install=PKGBUILD-pulseaudio.install
-pa_ver=$((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-")
+pa_ver=$( (pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-")
 
 make install-pulseaudio DESTDIR=$pkgdir PA_VER=$pa_ver LIBDIR=/usr/lib USRLIBDIR=/usr/lib SYSLIBDIR=/usr/lib
 
