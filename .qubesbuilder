@@ -6,6 +6,7 @@ vm:
   rpm:
     build:
     - rpm_spec/gui-agent.spec
+    - rpm_spec/gui-agent-vm.spec
   deb:
     build:
     - debian
