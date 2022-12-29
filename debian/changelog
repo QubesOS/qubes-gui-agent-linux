@@ -1,3 +1,16 @@
+qubes-gui-agent (4.2.0-1) unstable; urgency=medium
+
+  [ Mateusz Piórkowski ]
+  * Add automatic clipboard wipe
+  * Make clipboard wipe togglable
+  * Change the clipboard wipe service name to `gui-agent-clipboard-wipe`
+  * Announce support for the clipboard wipe service
+
+  [ Demi Marie Obenour ]
+  * Let systemd manage PulseAudio
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 29 Dec 2022 04:16:09 +0100
+
 qubes-gui-agent (4.1.28-1) unstable; urgency=medium
 
   [ Ivan Kardykov ]
