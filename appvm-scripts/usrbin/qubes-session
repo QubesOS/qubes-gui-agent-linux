@@ -32,7 +32,7 @@ loginctl activate "$XDG_SESSION_ID"
 # Qubes environment using the standard environment.d
 # facility.  Documentation for the facility is at:
 # https://www.freedesktop.org/software/systemd/man/environment.d.html
-eval $(systemctl --user show-environment | sed 's/^/export /')
+env=$(set -o pipefail && { systemctl --user show-environment | sed 's/^/export /';}) && eval "$env" || exit
 
 
 if qsvc guivm-gui-agent; then

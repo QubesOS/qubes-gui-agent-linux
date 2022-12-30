@@ -1,0 +1,78 @@
+# This is the SPEC file for creating binary and source RPMs for the VMs.
+#
+#
+# The Qubes OS Project, http://www.qubes-os.org
+#
+# Copyright (C) 2010  Joanna Rutkowska <joanna@invisiblethingslab.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+Name:		qubes-gui-agent-selinux
+Version:	@VERSION@
+Release:	1%{dist}
+Summary:	The Qubes GUI Agent for AppVMs
+License:	GPLv2+
+URL:		https://www.qubes-os.org
+BuildArch: noarch
+
+BuildRequires: selinux-policy
+BuildRequires: selinux-policy-devel
+BuildRequires: qubes-core-agent-selinux
+Requires(post): qubes-core-agent-selinux
+BuildRequires: qubes-core-qrexec-vm-selinux
+Requires(post): qubes-core-qrexec-vm-selinux
+%{?selinux_requires}
+
+Source0: qubes-gui-agent-%{version}.tar.gz
+
+%description
+SELinux policy for the Qubes GUI Agent.  This allows the Qubes GUI Agent to run
+in a VM with SELinux enforcing, as is the default on Red Hat-family
+distributions.
+
+%prep
+%setup -qn qubes-gui-agent-%{version}
+
+%files
+%_datadir/selinux/packages/qubes-gui-agent.pp
+
+%build
+%{?set_build_flags}
+#make clean
+make selinux
+
+%clean
+rm -rf $RPM_BUILD_ROOT
+rm -f %{name}-%{version}
+
+%install
+make install-selinux DESTDIR=$RPM_BUILD_ROOT \
+                     LIBDIR=%{_libdir} \
+                     DATADIR=%{_datadir} \
+
+%post
+
+%selinux_modules_install %{_datadir}/selinux/packages/qubes-gui-agent.pp
+
+%postun
+if [ "$1" -eq 0 ]; then
+    %selinux_modules_uninstall %{_datadir}/selinux/packages/qubes-gui-agent.pp
+fi || :
+
+%posttrans
+%selinux_relabel_post
+exit 0
+
+%changelog
+@CHANGELOG@

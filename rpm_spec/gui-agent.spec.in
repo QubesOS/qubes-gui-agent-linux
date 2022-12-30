@@ -33,7 +33,7 @@ Summary:	The Qubes GUI Agent for AppVMs
 Group:		Qubes
 Vendor:		Invisible Things Lab
 License:	GPL
-URL:		http://www.qubes-os.org
+URL:		https://www.qubes-os.org
 
 
 %define pa_ver_full %((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -d "-" -f 1)
@@ -78,6 +78,8 @@ Provides:   qubes-gui-vm = %{version}-%{release}
 Obsoletes:  qubes-gui-vm < 4.0.0
 
 Source0: %{name}-%{version}.tar.gz
+
+Requires: (%{name}-selinux if selinux-policy)
 
 %package -n pulseaudio-qubes
 Summary: Audio support for Qubes VM
@@ -127,7 +129,8 @@ rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT \
                      LIBDIR=%{_libdir} \
                      DATADIR=%{_datadir} \
-                     PA_VER_FULL=%{pa_ver_full}
+                     PA_VER_FULL=%{pa_ver_full} \
+                     ENABLE_SELINUX=%{with selinux}
 
 %post
 if [ -x /bin/systemctl ] && readlink /sbin/init | grep -q systemd; then
@@ -188,7 +191,6 @@ echo autospawn=no >> /etc/pulse/client.conf
 rm -rf $RPM_BUILD_ROOT
 rm -f %{name}-%{version}
 
-
 %files
 %defattr(-,root,root,-)
 /usr/bin/qubes-gui
@@ -220,6 +222,7 @@ rm -f %{name}-%{version}
 /usr/lib/sysctl.d/30-qubes-gui-agent.conf
 /usr/lib/qubes/qubes-gui-agent-pre.sh
 /usr/lib/qubes/qubes-keymap.sh
+/usr/lib/qubes/qubes-xorg-wrapper
 %{_datadir}/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
 /usr/lib/qubes/icon-sender
 /etc/xdg/autostart/qubes-icon-sender.desktop

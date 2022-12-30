@@ -19,26 +19,39 @@
 #
 #
 
-VERSION := $(shell cat version)
+VERSION := $(file <version)
 LIBDIR ?= /usr/lib64
 USRLIBDIR ?= /usr/lib
 SYSLIBDIR ?= /lib
 DATADIR ?= /usr/share
+ifneq (,$(filter-out selinux install-selinux,$(MAKECMDGOALS)))
 PA_VER_FULL ?= $(shell pkg-config --modversion libpulse | cut -d "-" -f 1 || echo 0.0)
 PA_MODULE_DIR ?= $(shell pkg-config --variable=modlibexecdir libpulse)
+endif
 
 USER_DROPIN_DIR ?= /usr/lib/systemd/user
 
+.PHONY: help
 help:
 	@echo "Qubes GUI main Makefile:" ;\
 	    echo; \
 	    echo "make clean                <--- clean all the binary files";\
 	    @exit 0;
 
+.PHONY: appvm
 appvm: gui-agent/qubes-gui gui-common/qubes-gui-runuser \
 	xf86-input-mfndev/src/.libs/qubes_drv.so \
 	xf86-video-dummy/src/.libs/dummyqbs_drv.so pulse/module-vchan-sink.so \
 	xf86-qubes-common/libxf86-qubes-common.so
+
+selinux_policies ::= qubes-gui-agent.pp
+selinux: selinux/$(selinux_policies)
+selinux/$(selinux_policies):
+	$(MAKE) -C selinux -f /usr/share/selinux/devel/Makefile
+
+.PHONY: install-selinux
+install-selinux:
+	install -D -t $(DESTDIR)/usr/share/selinux/packages selinux/$(selinux_policies)
 
 gui-agent/qubes-gui:
 	$(MAKE) -C gui-agent
@@ -62,9 +75,11 @@ pulse/module-vchan-sink.so:
 xf86-qubes-common/libxf86-qubes-common.so:
 	$(MAKE) -C xf86-qubes-common libxf86-qubes-common.so
 
+.PHONY: tar
 tar:
 	git archive --format=tar --prefix=qubes-gui/ HEAD -o qubes-gui.tar
 
+.PHONY: clean
 clean:
 	(cd common && $(MAKE) clean)
 	(cd gui-agent && $(MAKE) clean)
@@ -76,9 +91,10 @@ clean:
 	rm -rf debian/changelog.*
 	rm -rf pkgs
 
-
+.PHONY: install
 install: install-rh-agent install-pulseaudio
 
+.PHONY: install-rh-agent
 install-rh-agent: appvm install-common install-systemd
 	install -m 0644 -D appvm-scripts/etc/sysconfig/desktop \
 		$(DESTDIR)/etc/sysconfig/desktop
@@ -91,12 +107,14 @@ install-rh-agent: appvm install-common install-systemd
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/60xfce-desktop.sh \
 		$(DESTDIR)/etc/X11/xinit/xinitrc.d/60xfce-desktop.sh
 
+.PHONY: install-debian
 install-debian: appvm install-common install-pulseaudio install-systemd
 	install -d $(DESTDIR)/etc/X11/Xsession.d
 	install -m 0644 appvm-scripts/etc/X11/Xsession.d/* $(DESTDIR)/etc/X11/Xsession.d/
 	install -d $(DESTDIR)/etc/xdg
 	install -m 0644 appvm-scripts/etc/xdg-debian/* $(DESTDIR)/etc/xdg
 
+.PHONY: install-pulseaudio
 install-pulseaudio:
 	install -D pulse/start-pulseaudio-with-vchan \
 		$(DESTDIR)/usr/bin/start-pulseaudio-with-vchan
@@ -114,10 +132,12 @@ install-pulseaudio:
 	install -D pulse/75-pulseaudio-qubes.preset \
 		$(DESTDIR)$(USER_DROPIN_DIR)-preset/75-pulseaudio-qubes.preset
 
+.PHONY: install-systemd
 install-systemd:
 	install -m 0644 -D appvm-scripts/qubes-gui-agent.service \
 		$(DESTDIR)/$(SYSLIBDIR)/systemd/system/qubes-gui-agent.service
 
+.PHONY: install-common
 install-common:
 	install -D gui-agent/qubes-gui $(DESTDIR)/usr/bin/qubes-gui
 	install -D gui-common/qubes-gui-runuser $(DESTDIR)/usr/bin/qubes-gui-runuser
@@ -183,6 +203,8 @@ endif
 		$(DESTDIR)/usr/lib/qubes/qubes-gui-agent-pre.sh
 	install -D appvm-scripts/usr/lib/qubes/qubes-keymap.sh \
 		$(DESTDIR)/usr/lib/qubes/qubes-keymap.sh
+	install -D appvm-scripts/usr/lib/qubes/qubes-xorg-wrapper \
+		$(DESTDIR)/usr/lib/qubes/qubes-xorg-wrapper
 ifeq ($(shell lsb_release -is), Debian)
 	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent.debian \
 		$(DESTDIR)/etc/pam.d/qubes-gui-agent
