@@ -1,3 +1,17 @@
+qubes-gui-agent (4.2.1-1) unstable; urgency=medium
+
+  [ Demi Marie Obenour ]
+  * SELinux support
+  * Require pam_selinux and pam_loginuid if they exist
+  * Move SELinux to a new spec file
+  * Makefile improvements
+
+  [ Marek Marczykowski-Górecki ]
+  * Add gui-agent-vm spec to .qubesbuilder too
+  * ci: drop R4.1
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 30 Dec 2022 08:43:40 +0100
+
 qubes-gui-agent (4.2.0-1) unstable; urgency=medium
 
   [ Mateusz Piórkowski ]
