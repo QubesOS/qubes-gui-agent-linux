@@ -56,16 +56,23 @@
 #define QUBES_PW_KEY_RECORD_BUFFER_SPACE   "org.qubes-os.record-buffer-size"
 #define QUBES_PW_KEY_PLAYBACK_BUFFER_SPACE   "org.qubes-os.playback-buffer-size"
 
-#include <string.h>
-#include <stdio.h>
+/* C11 headers */
+#include <assert.h>
 #include <errno.h>
+#include <inttypes.h>
+#include <limits.h>
+#include <signal.h>
+#include <stdatomic.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+/* POSIX headers */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <stdlib.h>
-#include <signal.h>
-#include <limits.h>
 
 #include <spa/utils/result.h>
 #include <spa/utils/ringbuffer.h>
@@ -126,11 +133,11 @@ struct qubes_stream {
     struct spa_audio_info_raw info;
     struct libvchan *vchan, *closed_vchan;
     struct impl *impl;
-    _Atomic size_t current_state, last_state;
+    atomic_size_t current_state, last_state;
     struct spa_source source;
     size_t buffer_size;
     bool is_open, direction;
-    _Atomic bool dead;
+    atomic_bool dead, in_use;
 };
 
 struct impl {
@@ -162,8 +169,9 @@ static void unload_module(struct impl *impl)
     }
 }
 
-_Static_assert(PW_DIRECTION_INPUT == 0, "wrong PW_DIRECTION_INPUT");
-_Static_assert(PW_DIRECTION_OUTPUT == 1, "wrong PW_DIRECTION_OUTPUT");
+static_assert(ATOMIC_BOOL_LOCK_FREE, "PipeWire agent requires lock-free atomic booleans");
+static_assert(PW_DIRECTION_INPUT == 0, "wrong PW_DIRECTION_INPUT");
+static_assert(PW_DIRECTION_OUTPUT == 1, "wrong PW_DIRECTION_OUTPUT");
 
 static int vchan_error_callback(struct spa_loop *loop,
                                 bool async,
@@ -315,6 +323,8 @@ static void playback_stream_destroy(void *d)
 /** Called on the main thread to set the stream state */
 static void set_stream_state(struct qubes_stream *stream, bool state)
 {
+    static_assert(atomic_is_lock_free(&stream->current_state),
+                  "PipeWire agent requires lock-free atomic size_t");
     stream->current_state = state;
 }
 
