@@ -59,7 +59,6 @@ Requires:	Xorg %(xserver-sdk-abi-requires videodrv)
 Requires:	libXfixes
 Requires:	qubes-core-vm >= 3.0.14
 Requires:	xorg-x11-xinit
-Requires:	qubes-libvchan
 # qubesdb-read --wait option
 Requires:	qubes-db >= 4.1.4
 Requires:	python%{python3_pkgversion}-xcffib
