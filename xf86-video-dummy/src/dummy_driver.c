@@ -828,6 +828,7 @@ qubes_alloc_pixmap_private(size_t size) {
     struct xf86_qubes_pixmap *priv;
     size_t pages;
 
+    assert(size < PTRDIFF_MAX);
     pages = (size + XC_PAGE_SIZE - 1) >> XC_PAGE_SHIFT;
 
     priv = calloc(1, sizeof(struct xf86_qubes_pixmap) + pages * sizeof(uint32_t));
@@ -929,6 +930,7 @@ qubes_destroy_pixmap(PixmapPtr pixmap) {
     DUMMYPtr dPtr = DUMMYPTR(DUMMYScrn);
     struct xf86_qubes_pixmap *priv;
 
+    assert(pixmap->refcnt > 0);
     priv = xf86_qubes_pixmap_get_private(pixmap);
     if (priv != NULL && pixmap->refcnt == 1) {
         qubes_free_pixmap_private(dPtr, priv);
