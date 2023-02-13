@@ -10,6 +10,8 @@ struct xf86_qubes_pixmap {
     size_t pages; // Number of pages
     uint32_t *refs; // Pointer to grant references
     uint8_t *data; // Local mapping
+    uint32_t refcount; // 1-biased reference count: stores number of references
+                       // minus 1
 };
 
 // Only intended for use in the Qubes xorg modules.

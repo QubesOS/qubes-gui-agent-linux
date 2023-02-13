@@ -837,6 +837,7 @@ qubes_alloc_pixmap_private(size_t size) {
 
     priv->pages = pages;
     priv->refs = (uint32_t *) (((uint8_t *) priv) + sizeof(struct xf86_qubes_pixmap));
+    priv->refcount = 0;
 
     priv->data = xengntshr_share_pages(dPtr->xgs,
                                        dPtr->gui_domid,
@@ -920,9 +921,15 @@ qubes_create_screen_resources(ScreenPtr pScreen) {
 
 static void qubes_free_pixmap_private(DUMMYPtr dPtr,
                                       struct xf86_qubes_pixmap *priv) {
-    xengntshr_unshare(dPtr->xgs, priv->data, priv->pages);
-    // Also frees refs
-    free(priv);
+    uint32_t refcount = priv->refcount;
+    assert(refcount < INT32_MAX && "refcount overflow");
+    if (refcount == 0) {
+        xengntshr_unshare(dPtr->xgs, priv->data, priv->pages);
+        // Also frees refs
+        free(priv);
+    } else {
+        priv->refcount = refcount - 1;
+    }
 }
 
 Bool
