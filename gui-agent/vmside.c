@@ -66,7 +66,7 @@
 /* Supported protocol version */
 
 #define PROTOCOL_VERSION_MAJOR 1
-#define PROTOCOL_VERSION_MINOR 4
+#define PROTOCOL_VERSION_MINOR 7
 #define PROTOCOL_VERSION (PROTOCOL_VERSION_MAJOR << 16 | PROTOCOL_VERSION_MINOR)
 
 #if !(PROTOCOL_VERSION_MAJOR == QUBES_GUID_PROTOCOL_VERSION_MAJOR && \
@@ -410,7 +410,7 @@ static void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
     }
 
     if (ev->parent != g->root_win) {
-        /* GUI daemon won’t support this much longer */
+        /* GUI daemon no longer supports this */
         fprintf(stderr,
                 "CREATE with non-root parent window 0x%x\n",
                 (unsigned int)ev->parent);
@@ -2127,6 +2127,12 @@ static void handle_message(Ghandles * g)
         case MSG_WINDOW_FLAGS:
             handle_window_flags(g, hdr.window);
             break;
+        case MSG_DESTROY:
+            /* currently not used */
+            break;
+        case MSG_WINDOW_DUMP_ACK:
+            /* TODO: use this */
+            break;
         default:
             fprintf(stderr, "got unknown msg type %d, ignoring\n", hdr.type);
             while (hdr.untrusted_len > 0) {
@@ -2165,7 +2171,7 @@ static void handshake(Ghandles *g)
     if (version > PROTOCOL_VERSION ||
         major_version != PROTOCOL_VERSION_MAJOR ||
         minor_version < 4)
-        err(2, "Incompatible GUI daemon version (offered %" PRIu16 ".%" PRIu16
+        errx(2, "Incompatible GUI daemon version (offered %" PRIu16 ".%" PRIu16
                 ", got %" PRIu16 ".%" PRIu16 ")",
                 PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR,
                 major_version, minor_version);
