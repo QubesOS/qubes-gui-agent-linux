@@ -507,7 +507,7 @@ void send_pixmap_grant_refs(Ghandles * g, XID window)
                 window);
         return;
     }
-    wd_msg_buf = alloca(wd_msg_len);
+    wd_msg_buf = malloc(wd_msg_len);
     if (!wd_msg_buf) {
         fprintf(stderr, "Failed to allocate memory for window dump 0x%lx\n",
                 window);
@@ -531,6 +531,7 @@ void send_pixmap_grant_refs(Ghandles * g, XID window)
     hdr.untrusted_len = wd_msg_len;
     write_struct(g->vchan, hdr);
     write_data(g->vchan, (char *) wd_msg_buf, wd_msg_len);
+    free(wd_msg_buf);
 }
 
 /* return 1 on success, 0 otherwise */
