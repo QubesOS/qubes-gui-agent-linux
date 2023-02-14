@@ -29,6 +29,7 @@ AM_CFLAGS = $(XORG_CFLAGS) $(PCIACCESS_CFLAGS) $(GBM_CFLAGS)
 
 dummyqbs_drv_la_LTLIBRARIES = dummyqbs_drv.la
 dummyqbs_drv_la_LDFLAGS = -module -avoid-version
+dummyqbs_drv_la_CPPFLAGS = -I../../include
 dummyqbs_drv_la_LIBADD = $(XORG_LIBS) $(GBM_LIBS) -L../../xf86-qubes-common -lxf86-qubes-common
 dummyqbs_drv_ladir = @moduledir@/drivers
 
@@ -36,7 +37,8 @@ dummyqbs_drv_la_SOURCES = \
          compat-api.h \
          dummy_cursor.c \
          dummy_driver.c \
-         dummy.h
+         dummy.h \
+	 ../../common/list.c
 
 if DGA
 dummyqbs_drv_la_SOURCES +=	\

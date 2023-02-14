@@ -25,7 +25,13 @@ extern _X_EXPORT void xf86_qubes_pixmap_set_private(
 extern _X_EXPORT struct xf86_qubes_pixmap *xf86_qubes_pixmap_get_private(
         PixmapPtr pixmap);
 
-// xenctrl and xorg headeres are not compatible. So define the requires
+_X_EXPORT void xf86_qubes_pixmap_incref(struct xf86_qubes_pixmap *);
+_X_EXPORT void xf86_qubes_free_pixmap_private(struct xf86_qubes_pixmap *);
+_X_EXPORT void xf86_qubes_pixmap_add_to_list(struct xf86_qubes_pixmap *);
+_X_EXPORT void xf86_qubes_pixmap_remove_list_head(void);
+_X_EXPORT void xf86_qubes_pixmap_remove_list_all(void);
+
+// xenctrl and xorg headeres are not compatible, so define the required
 // constants here.
 #ifndef XC_PAGE_SHIFT
 #define XC_PAGE_SHIFT           12

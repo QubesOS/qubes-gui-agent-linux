@@ -490,8 +490,6 @@ static WindowPtr id2winptr(unsigned int xid)
         return NULL;
 }
 
-static void dump_window_grant_refs(int window_id, int fd);
-
 static void dump_window_grant_refs(int window_id, int fd)
 {
     ScreenPtr screen;
@@ -513,6 +511,8 @@ static void dump_window_grant_refs(int window_id, int fd)
         xf86Msg(X_ERROR, "can't dump window without grant table allocation\n");
         goto send_response;
     }
+
+    xf86_qubes_pixmap_add_to_list(priv);
 
     wd_hdr.type = WINDOW_DUMP_TYPE_GRANT_REFS;
     wd_hdr.width = pixmap->drawable.width;
@@ -633,6 +633,12 @@ static void process_request(int fd, InputInfoPtr pInfo)
         break;
     case 'K':
         xf86PostKeyboardEvent(pInfo->dev, cmd.arg1, cmd.arg2);
+        break;
+    case 'a':
+        xf86_qubes_pixmap_remove_list_head();
+        break;
+    case 'A':
+        xf86_qubes_pixmap_remove_list_all();
         break;
     default:
         xf86Msg(X_INFO, "randdev: unknown command %u\n", cmd.type);

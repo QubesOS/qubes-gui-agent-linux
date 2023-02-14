@@ -532,6 +532,8 @@ void send_pixmap_grant_refs(Ghandles * g, XID window)
     write_struct(g->vchan, hdr);
     write_data(g->vchan, (char *) wd_msg_buf, wd_msg_len);
     free(wd_msg_buf);
+    if (g->protocol_version < QUBES_GUID_MIN_MSG_WINDOW_DUMP_ACK)
+        feed_xdriver(g, 'a', 0, 0);
 }
 
 /* return 1 on success, 0 otherwise */
@@ -1463,6 +1465,7 @@ static void send_all_windows_info(Ghandles *g) {
     struct genlist *curr = windows_list->next;
     int ret;
 
+    feed_xdriver(g, 'A', 0, 0);
     while (curr != windows_list) {
         ret = send_full_window_info(g, curr->key, (struct window_data *)curr->data);
         curr = curr->next;
@@ -2132,8 +2135,11 @@ static void handle_message(Ghandles * g)
             /* currently not used */
             break;
         case MSG_WINDOW_DUMP_ACK:
-            /* TODO: use this */
-            break;
+            if (g->protocol_version >= QUBES_GUID_MIN_MSG_WINDOW_DUMP_ACK) {
+                feed_xdriver(g, 'a', 0, 0);
+                break;
+            }
+            __attribute__((fallthrough));
         default:
             fprintf(stderr, "got unknown msg type %d, ignoring\n", hdr.type);
             while (hdr.untrusted_len > 0) {
@@ -2179,7 +2185,7 @@ static void handshake(Ghandles *g)
     g->protocol_version = version;
 }
 
-static void handle_guid_disconnect()
+static void handle_guid_disconnect(void)
 {
     Ghandles *g = ghandles_for_vchan_reinitialize;
     struct msg_xconf xconf;

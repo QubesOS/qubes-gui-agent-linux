@@ -59,6 +59,7 @@
 #include <gbm.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include "../../include/list.h"
 
 /* Mandatory functions */
 static const OptionInfoRec *DUMMYAvailableOptions(int chipid, int busid);
@@ -473,11 +474,14 @@ DUMMYGetRec(ScrnInfoPtr pScrn)
      */
     if (pScrn->driverPrivate != NULL)
         return TRUE;
+    DUMMYPtr p = xnfcalloc(sizeof(DUMMYRec), 1);
 
-    pScrn->driverPrivate = xnfcalloc(sizeof(DUMMYRec), 1);
-
+    pScrn->driverPrivate = p;
     if (pScrn->driverPrivate == NULL)
         return FALSE;
+
+    p->queue.next = &p->queue;
+    p->queue.prev = &p->queue;
     return TRUE;
 }
 
@@ -919,11 +923,12 @@ qubes_create_screen_resources(ScreenPtr pScreen) {
     return ret;
 }
 
-static void qubes_free_pixmap_private(DUMMYPtr dPtr,
-                                      struct xf86_qubes_pixmap *priv) {
+void xf86_qubes_free_pixmap_private(struct xf86_qubes_pixmap *priv) {
+    assert(priv != NULL);
     uint32_t refcount = priv->refcount;
     assert(refcount < INT32_MAX && "refcount overflow");
     if (refcount == 0) {
+        DUMMYPtr dPtr = DUMMYPTR(DUMMYScrn);
         xengntshr_unshare(dPtr->xgs, priv->data, priv->pages);
         // Also frees refs
         free(priv);
@@ -931,6 +936,44 @@ static void qubes_free_pixmap_private(DUMMYPtr dPtr,
         priv->refcount = refcount - 1;
     }
 }
+
+void
+xf86_qubes_pixmap_add_to_list(struct xf86_qubes_pixmap *priv) {
+    assert(priv->refcount < INT32_MAX && "refcount overflow");
+    priv->refcount++;
+    DUMMYPtr dPtr = DUMMYPTR(DUMMYScrn);
+    struct genlist *q = list_insert(&dPtr->queue, 0, priv);
+    if (q == NULL) {
+        xf86DrvMsg(DUMMYScrn->scrnIndex, X_ERROR,
+                   "malloc failed!\n");
+        abort(); /* FIXME handle error */
+    }
+}
+
+void
+xf86_qubes_pixmap_remove_list_head(void) {
+    struct genlist *l = &DUMMYPTR(DUMMYScrn)->queue;
+    struct genlist *prev = l->prev;
+    if (l == prev) {
+        /* empty list */
+        xf86DrvMsg(DUMMYScrn->scrnIndex, X_ERROR,
+                   "GUI daemon sent too many MSG_WINDOW_DUMP_ACK messages\n");
+        return;
+    }
+    assert(l->next != l);
+    assert(prev->next == l);
+    assert(l->next->prev == l);
+    xf86_qubes_free_pixmap_private(prev->data);
+    list_remove(prev);
+}
+
+void
+xf86_qubes_pixmap_remove_list_all(void) {
+    struct genlist *l = &DUMMYPTR(DUMMYScrn)->queue;
+    while (l != l->prev)
+        xf86_qubes_pixmap_remove_list_head();
+}
+
 
 Bool
 qubes_destroy_pixmap(PixmapPtr pixmap) {
@@ -940,7 +983,7 @@ qubes_destroy_pixmap(PixmapPtr pixmap) {
     assert(pixmap->refcnt > 0);
     priv = xf86_qubes_pixmap_get_private(pixmap);
     if (priv != NULL && pixmap->refcnt == 1) {
-        qubes_free_pixmap_private(dPtr, priv);
+        xf86_qubes_free_pixmap_private(priv);
     }
 
     return fbDestroyPixmap(pixmap);
@@ -1245,7 +1288,7 @@ DUMMYCloseScreen(CLOSE_SCREEN_ARGS_DECL)
     if(pScrn->vtSema){
         dummyRestore(pScrn, TRUE);
         if (dPtr->FBBasePriv) {
-            qubes_free_pixmap_private(dPtr, dPtr->FBBasePriv);
+            xf86_qubes_free_pixmap_private(dPtr->FBBasePriv);
             dPtr->FBBasePriv = NULL;
             dPtr->FBBase = NULL;
         }

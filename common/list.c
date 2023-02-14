@@ -20,6 +20,7 @@
  */
 
 #include "list.h"
+#include <assert.h>
 #include <malloc.h>
 struct genlist *list_new(void)
 {
@@ -59,6 +60,9 @@ struct genlist *list_insert(struct genlist *l, long key, void *data)
 
 void list_remove(struct genlist *l)
 {
+    assert(l->prev != l && l->next != l && "Attempt to remove node from empty list?");
+    assert(l->prev->next == l && "corrupt list");
+    assert(l->next->prev == l && "corrupt list");
     l->next->prev = l->prev;
     l->prev->next = l->next;
     free(l);
