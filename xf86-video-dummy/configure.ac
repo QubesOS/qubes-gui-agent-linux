@@ -22,10 +22,7 @@
 
 # Initialize Autoconf
 AC_PREREQ([2.60])
-AC_INIT([xf86-video-dummy-qubes],
-        [0.3.6],
-        [http://wiki.qubes-os.org/trac],
-        [xf86-video-dummy-qubes])
+AC_INIT([xf86-video-dummy-qubes],[4.2.2],[https://github.com/QubesOS/qubes-issues],[xf86-video-dummy-qubes])
 AC_CONFIG_SRCDIR([Makefile.am])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_AUX_DIR(.)
@@ -42,7 +39,7 @@ XORG_DEFAULT_OPTIONS
 
 # Initialize libtool
 AC_DISABLE_STATIC
-AC_PROG_LIBTOOL
+LT_INIT
 
 AH_TOP([#include "xorg-server.h"])
 
@@ -72,8 +69,6 @@ PKG_CHECK_MODULES(XORG, [xorg-server >= 1.0.99.901] xproto fontsproto $REQUIRED_
 # Checks for libraries.
 AC_CHECK_LIB([xengnttab], [xengntshr_open])
 
-# Checks for header files.
-AC_HEADER_STDC
 AC_CHECK_HEADER([xengnttab.h])
 
 

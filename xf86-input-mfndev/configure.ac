@@ -66,6 +66,7 @@ AC_SUBST([sdkdir])
 DRIVER_NAME=qubes
 AC_SUBST([DRIVER_NAME])
 
-AC_OUTPUT([Makefile
+AC_CONFIG_FILES([Makefile
            src/Makefile
            xorg-qubes.pc])
+AC_OUTPUT
