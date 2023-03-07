@@ -1983,7 +1983,15 @@ static pid_t do_execute_xorg(
 static void *xorg_waitpid_thread(void *p) {
     Ghandles *g = p;
     int status;
-    waitpid(g->x_pid, &status, 0);
+    while (waitpid(g->x_pid, &status, 0) < 0) {
+        if (errno != EINTR) {
+            /* Looking at waitpid(2), everything other than EINTR would
+             * indicate a logic error; log this and give up. */
+            perror("waitpid");
+            abort();
+        }
+    }
+
     if (atomic_load(&terminating)) {
         exit(0);
     } else {
@@ -2297,8 +2305,9 @@ int main(int argc, char **argv)
     vchan_register_at_eof(handle_guid_disconnect);
     send_protocol_version(g.vchan);
     g.x_pid = get_xconf_and_run_x(&g);
-    if (pthread_create(&waitpid_thread, NULL, xorg_waitpid_thread, &g) < 0) {
+    if ((errno = pthread_create(&waitpid_thread, NULL, xorg_waitpid_thread, &g)) != 0) {
         perror("pthread_create");
+        kill(g.x_pid, SIGTERM);
         exit(1);
     }
     mkghandles(&g);
