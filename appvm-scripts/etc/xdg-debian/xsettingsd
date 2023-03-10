@@ -5,6 +5,7 @@ Gtk/KeyThemeName "Adwaita"
 Gtk/MenuImages 1
 Gtk/ToolbarIconSize 2
 Gtk/ToolbarStyle "Icons"
+Gtk/DecorationLayout ":"
 
 Net/EnableEventSounds 0
 Net/EnableInputFeedbackSounds 0
