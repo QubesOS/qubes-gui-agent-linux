@@ -158,6 +158,9 @@ install-pipewire:
 	   $(DESTDIR)$(USERUNITDIR)/pipewire.socket.d/30_qubes.conf
 	ln $(DESTDIR)$(USERUNITDIR)/pipewire.service.d/30_qubes.conf \
 	   $(DESTDIR)$(USERUNITDIR)/wireplumber.service.d/30_qubes.conf
+	install -d $(DESTDIR)/etc/qubes/post-install.d
+	install -m 0755 appvm-scripts/etc/qubes/post-install.d/20-qubes-pipewire.sh \
+                $(DESTDIR)/etc/qubes/post-install.d/20-qubes-pipewire.sh
 
 .PHONY: install-systemd
 install-systemd:

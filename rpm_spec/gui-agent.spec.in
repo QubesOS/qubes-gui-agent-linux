@@ -272,6 +272,8 @@ rm -f %{name}-%{version}
 %_userpresetdir/74-qubes-vm.preset
 %_libdir/pipewire-0.3/libpipewire-module-qubes.so
 %_defaultlicensedir/pipewire-qubes/COPYING
+/etc/qubes/post-install.d/20-qubes-pipewire.sh
+
 # Works with ordinary PipeWire service :)
 
 %files xfce
