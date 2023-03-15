@@ -13,6 +13,7 @@ etc/qubes/post-install.d/20-qubes-guivm-gui-agent.sh
 etc/xdg/autostart/qubes-icon-sender.desktop
 etc/xdg/autostart/qubes-qrexec-fork-server.desktop
 etc/xdg/autostart/qubes-keymap.desktop
+etc/xdg/autostart/qubes-gtk4-disable-box-shadow.desktop
 etc/xdg/Trolltech.conf
 etc/xdg/Xresources
 etc/xdg/fonts.conf
@@ -32,5 +33,6 @@ usr/lib/sysctl.d/30-qubes-gui-agent.conf
 usr/lib/qubes/qubes-gui-agent-pre.sh
 usr/lib/qubes/qubes-keymap.sh
 usr/lib/qubes/qubes-xorg-wrapper
+usr/lib/qubes/qubes-gtk4-disable-box-shadow.sh
 usr/share/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
 var/log/qubes

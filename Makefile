@@ -195,6 +195,8 @@ endif
 		$(DESTDIR)/etc/xdg/autostart/qubes-qrexec-fork-server.desktop
 	install -m 0644 -D appvm-scripts/etc/xdgautostart/qubes-keymap.desktop \
 		$(DESTDIR)/etc/xdg/autostart/qubes-keymap.desktop
+	install -m 0644 -D appvm-scripts/etc/xdgautostart/qubes-gtk4-disable-box-shadow.desktop \
+		$(DESTDIR)/etc/xdg/autostart/qubes-gtk4-disable-box-shadow.desktop
 	install -D -m 0644 appvm-scripts/usr/lib/sysctl.d/30-qubes-gui-agent.conf \
 		$(DESTDIR)/usr/lib/sysctl.d/30-qubes-gui-agent.conf
 	install -D -m 0644 appvm-scripts/lib/udev/rules.d/70-master-of-seat.rules \
@@ -205,6 +207,8 @@ endif
 		$(DESTDIR)/usr/lib/qubes/qubes-keymap.sh
 	install -D appvm-scripts/usr/lib/qubes/qubes-xorg-wrapper \
 		$(DESTDIR)/usr/lib/qubes/qubes-xorg-wrapper
+	install -D appvm-scripts/usr/lib/qubes/qubes-gtk4-disable-box-shadow.sh \
+		$(DESTDIR)/usr/lib/qubes/qubes-gtk4-disable-box-shadow.sh
 ifeq ($(shell lsb_release -is), Debian)
 	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent.debian \
 		$(DESTDIR)/etc/pam.d/qubes-gui-agent

@@ -222,11 +222,13 @@ rm -f %{name}-%{version}
 /usr/lib/qubes/qubes-gui-agent-pre.sh
 /usr/lib/qubes/qubes-keymap.sh
 /usr/lib/qubes/qubes-xorg-wrapper
+/usr/lib/qubes/qubes-gtk4-disable-box-shadow.sh
 %{_datadir}/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
 /usr/lib/qubes/icon-sender
 /etc/xdg/autostart/qubes-icon-sender.desktop
 /etc/xdg/autostart/qubes-qrexec-fork-server.desktop
 /etc/xdg/autostart/qubes-keymap.desktop
+/etc/xdg/autostart/qubes-gtk4-disable-box-shadow.desktop
 %dir /var/log/qubes
 
 %files -n pulseaudio-qubes
