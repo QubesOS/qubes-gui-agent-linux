@@ -73,7 +73,7 @@ xf86-video-dummy/src/.libs/dummyqbs_drv.so: xf86-qubes-common/libxf86-qubes-comm
 
 pulse/module-vchan-sink.so:
 	rm -f pulse/pulsecore
-	ln -s pulsecore-$(PA_VER_FULL) pulse/pulsecore
+	ln -sf pulsecore-$(PA_VER_FULL) pulse/pulsecore
 	$(MAKE) -C pulse module-vchan-sink.so
 
 pipewire/qubes-pw-module.so:
@@ -154,9 +154,9 @@ install-pipewire:
 	mkdir -p -m 0755 $(DESTDIR)$(USERUNITDIR)/pipewire.service.d \
 	                 $(DESTDIR)$(USERUNITDIR)/pipewire.socket.d \
 	                 $(DESTDIR)$(USERUNITDIR)/wireplumber.service.d
-	ln $(DESTDIR)$(USERUNITDIR)/pipewire.service.d/30_qubes.conf \
+	ln -f $(DESTDIR)$(USERUNITDIR)/pipewire.service.d/30_qubes.conf \
 	   $(DESTDIR)$(USERUNITDIR)/pipewire.socket.d/30_qubes.conf
-	ln $(DESTDIR)$(USERUNITDIR)/pipewire.service.d/30_qubes.conf \
+	ln -f $(DESTDIR)$(USERUNITDIR)/pipewire.service.d/30_qubes.conf \
 	   $(DESTDIR)$(USERUNITDIR)/wireplumber.service.d/30_qubes.conf
 	install -d $(DESTDIR)/etc/qubes/post-install.d
 	install -m 0755 appvm-scripts/etc/qubes/post-install.d/20-qubes-pipewire.sh \
@@ -213,9 +213,9 @@ endif
 	install -m 0644 -D appvm-scripts/qubes-gui-vm.gschema.override \
 		$(DESTDIR)$(DATADIR)/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
 	install -d $(DESTDIR)/etc/qubes-rpc
-	ln -s ../../usr/bin/qubes-set-monitor-layout \
+	ln -sf ../../usr/bin/qubes-set-monitor-layout \
 		$(DESTDIR)/etc/qubes-rpc/qubes.SetMonitorLayout
-	ln -s ../../usr/bin/qubes-start-xephyr \
+	ln -sf ../../usr/bin/qubes-start-xephyr \
 		$(DESTDIR)/etc/qubes-rpc/qubes.GuiVMSession
 	install -D window-icon-updater/icon-sender \
 		$(DESTDIR)/usr/lib/qubes/icon-sender
