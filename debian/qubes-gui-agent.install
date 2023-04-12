@@ -10,6 +10,7 @@ etc/security/limits.d/90-qubes-gui.conf
 etc/qubes-rpc/qubes.SetMonitorLayout
 etc/qubes-rpc/qubes.GuiVMSession
 etc/qubes/post-install.d/20-qubes-guivm-gui-agent.sh
+etc/xdg/autostart/qubes-gtk4-workarounds.desktop
 etc/xdg/autostart/qubes-icon-sender.desktop
 etc/xdg/autostart/qubes-qrexec-fork-server.desktop
 etc/xdg/autostart/qubes-keymap.desktop
@@ -29,6 +30,7 @@ usr/bin/qubes-session
 usr/bin/qubes-set-monitor-layout
 usr/lib/qubes/icon-sender
 usr/lib/sysctl.d/30-qubes-gui-agent.conf
+usr/lib/qubes/gtk4-workarounds.sh
 usr/lib/qubes/qubes-gui-agent-pre.sh
 usr/lib/qubes/qubes-keymap.sh
 usr/lib/qubes/qubes-xorg-wrapper
