@@ -189,10 +189,12 @@ rm -f %{name}-%{version}
 /lib/systemd/system/qubes-gui-agent.service
 /lib/udev/rules.d/70-master-of-seat.rules
 /usr/lib/sysctl.d/30-qubes-gui-agent.conf
+/usr/lib/qubes/gtk4-workarounds.sh
 /usr/lib/qubes/qubes-gui-agent-pre.sh
 /usr/lib/qubes/qubes-keymap.sh
 %{_datadir}/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
 /usr/lib/qubes/icon-sender
+/etc/xdg/autostart/qubes-gtk4-workarounds.desktop
 /etc/xdg/autostart/qubes-icon-sender.desktop
 /etc/xdg/autostart/qubes-qrexec-fork-server.desktop
 /etc/xdg/autostart/qubes-keymap.desktop

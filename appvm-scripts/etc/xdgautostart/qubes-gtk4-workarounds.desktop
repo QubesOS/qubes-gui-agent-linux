@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=Apply Qubes GTK4 workarounds
+Exec=/usr/lib/qubes/gtk4-workarounds.sh
+Terminal=false
+Type=Application
+OnlyShowIn=X-QUBES;
