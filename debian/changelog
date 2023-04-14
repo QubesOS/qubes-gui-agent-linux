@@ -1,3 +1,14 @@
+qubes-gui-agent (4.2.3-1) unstable; urgency=medium
+
+  [ noskb ]
+  * Remove duplicated button from titlebar of gnome applications
+
+  [ Marek Marczykowski-Górecki ]
+  * Workaround software rendering issues in GTK4
+  * Do not exit from qubes-run-xorg after starting Xorg
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 14 Apr 2023 04:17:31 +0200
+
 qubes-gui-agent (4.2.2-1) unstable; urgency=medium
 
   * rpm: remove explicit dependency on libvchan
