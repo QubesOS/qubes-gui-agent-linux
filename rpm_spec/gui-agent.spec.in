@@ -97,7 +97,8 @@ Conflicts:  qubes-gui-vm < 4.0.0
 Pulseaudio module to enable sound support in Qubes VM
 
 %package -n pipewire-qubes
-Summary: Experimental PipeWire audio support for Qubes VMs
+Summary:       Experimental PipeWire audio support for Qubes VMs
+Requires:      pipewire
 BuildRequires: pipewire-devel
 BuildRequires: qubes-db-devel
 BuildRequires: qubes-libvchan-devel
