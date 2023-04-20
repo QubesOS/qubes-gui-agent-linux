@@ -1,3 +1,16 @@
+qubes-gui-agent (4.1.29-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * Do not exit from qubes-run-xorg after starting Xorg
+
+  [ noskb ]
+  * Remove duplicated button from titlebar of gnome applications
+
+  [ Marek Marczykowski-Górecki ]
+  * Workaround software rendering issues in GTK4
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 20 Apr 2023 14:40:04 +0200
+
 qubes-gui-agent (4.1.27-1) unstable; urgency=medium
 
   [ Frédéric Pierret (fepitre) ]
