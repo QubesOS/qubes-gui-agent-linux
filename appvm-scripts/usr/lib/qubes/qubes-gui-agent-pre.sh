@@ -2,8 +2,10 @@
 
 . /usr/lib/qubes/init/functions
 
+user=$(qubesdb-read /default-user) || exit
 # pretend tha user is at local console
-mkdir -p /var/run/console ; /bin/touch /var/run/console/user
+mkdir -p /var/run/console
+: > "/var/run/console/$user"
 
 # set corresponding display for guivm
 if qsvc guivm-gui-agent; then
