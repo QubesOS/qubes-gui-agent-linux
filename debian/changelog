@@ -1,3 +1,9 @@
+qubes-gui-agent (4.1.30-1) unstable; urgency=medium
+
+  * ci: drop R4.2 builds
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 25 Apr 2023 02:37:20 +0200
+
 qubes-gui-agent (4.1.29-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
