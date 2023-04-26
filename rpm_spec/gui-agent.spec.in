@@ -53,7 +53,8 @@ BuildRequires:	qubes-libvchan-devel
 BuildRequires:	qubes-gui-common-devel >= 4.1.0
 BuildRequires:	qubes-db-devel
 BuildRequires:	xen-devel
-BuildRequires: mesa-libgbm-devel
+BuildRequires:	mesa-libgbm-devel
+BuildRequires:	systemd-rpm-macros
 Requires:	Xorg %(xserver-sdk-abi-requires ansic)
 Requires:	Xorg %(xserver-sdk-abi-requires videodrv)
 Requires:	libXfixes
@@ -95,6 +96,20 @@ Conflicts:  qubes-gui-vm < 4.0.0
 %description -n pulseaudio-qubes
 Pulseaudio module to enable sound support in Qubes VM
 
+%package -n pipewire-qubes
+Summary:       Experimental PipeWire audio support for Qubes VMs
+Requires:      pipewire
+BuildRequires: pipewire-devel
+BuildRequires: qubes-db-devel
+BuildRequires: qubes-libvchan-devel
+
+%description -n pipewire-qubes
+Experimental PipeWire module to enable sound support in Qubes VMs.
+Unlike the PulseAudio support in the pulseaudio-qubes package, this
+works with the stock PipeWire service and does not depend on internal
+PipeWire headers.  It also promises lower latency than PulseAudio,
+at least once the audio daemon supports low latency.
+
 %package xfce
 Summary: XFCE desktop support for Qubes VM
 
@@ -124,12 +139,17 @@ ln -s pulsecore-%{pa_ver_full} pulse/pulsecore
 make appvm
 
 %install
-rm -rf $RPM_BUILD_ROOT
-make install DESTDIR=$RPM_BUILD_ROOT \
+rm -rf -- "$RPM_BUILD_ROOT"
+make install "DESTDIR=$RPM_BUILD_ROOT" \
                      LIBDIR=%{_libdir} \
                      DATADIR=%{_datadir} \
+                     SYSLIBDIR=/usr/lib \
                      PA_VER_FULL=%{pa_ver_full} \
-                     ENABLE_SELINUX=%{with selinux}
+                     ENABLE_SELINUX=%{with selinux} \
+                     UNITDIR=%{_unitdir} \
+                     USERUNITDIR=%{_userunitdir} \
+                     USERPRESETDIR=%{_userpresetdir} \
+                     UDEVRULESDIR=%{_udevrulesdir}
 
 %post
 if [ -x /bin/systemctl ] && readlink /sbin/init | grep -q systemd; then
@@ -167,6 +187,12 @@ else
     preset_units /usr/lib/systemd/user-preset/75-pulseaudio-qubes.preset upgrade
 fi
 
+%post -n pipewire-qubes
+%systemd_user_post pipewire.service pipewire.socket wireplumber.service
+
+%preun -n pipewire-qubes
+%systemd_user_preun pipewire.service pipewire.socket wireplumber.service
+
 %preun
 if [ "$1" = 0 ] ; then
 	chkconfig qubes-gui-agent off
@@ -192,17 +218,17 @@ rm -f %{name}-%{version}
 
 %files
 %defattr(-,root,root,-)
-/usr/bin/qubes-gui
-/usr/bin/qubes-gui-runuser
-/usr/bin/qubes-session
-/usr/bin/qubes-run-xorg
-/usr/bin/qubes-run-xephyr
-/usr/bin/qubes-start-xephyr
-/usr/bin/qubes-change-keyboard-layout
-/usr/bin/qubes-set-monitor-layout
-%{_libdir}/xorg/modules/drivers/qubes_drv.so
-%{_libdir}/xorg/modules/drivers/dummyqbs_drv.so
-%{_libdir}/libxf86-qubes-common.so
+%_bindir/qubes-gui
+%_bindir/qubes-gui-runuser
+%_bindir/qubes-session
+%_bindir/qubes-run-xorg
+%_bindir/qubes-run-xephyr
+%_bindir/qubes-start-xephyr
+%_bindir/qubes-change-keyboard-layout
+%_bindir/qubes-set-monitor-layout
+%_libdir/xorg/modules/drivers/qubes_drv.so
+%_libdir/xorg/modules/drivers/dummyqbs_drv.so
+%_libdir/libxf86-qubes-common.so
 %attr(0644,root,root) /etc/X11/xorg-qubes.conf.template
 /etc/profile.d/qubes-gui.sh
 /etc/profile.d/qubes-gui.csh
@@ -216,9 +242,9 @@ rm -f %{name}-%{version}
 /etc/qubes-rpc/qubes.GuiVMSession
 /etc/qubes/post-install.d/20-qubes-guivm-gui-agent.sh
 %config /etc/sysconfig/desktop
-/lib/systemd/system/qubes-gui-agent.service
-/lib/udev/rules.d/70-master-of-seat.rules
-/usr/lib/sysctl.d/30-qubes-gui-agent.conf
+%_unitdir/qubes-gui-agent.service
+%_udevrulesdir/70-master-of-seat.rules
+%_sysctldir/30-qubes-gui-agent.conf
 /usr/lib/qubes/gtk4-workarounds.sh
 /usr/lib/qubes/qubes-gui-agent-pre.sh
 /usr/lib/qubes/qubes-keymap.sh
@@ -232,13 +258,25 @@ rm -f %{name}-%{version}
 %dir /var/log/qubes
 
 %files -n pulseaudio-qubes
-/usr/lib/tmpfiles.d/qubes-pulseaudio.conf
+%_tmpfilesdir/qubes-pulseaudio.conf
 /etc/pulse/qubes-default.pa
-/usr/bin/start-pulseaudio-with-vchan
+%_bindir/start-pulseaudio-with-vchan
 %{pa_module_dir}/module-vchan-sink.so
 /etc/xdg/autostart/qubes-pulseaudio.desktop
 /usr/lib/systemd/user-preset/75-pulseaudio-qubes.preset
 /usr/lib/systemd/user/pulseaudio.service.d/30_qubes.conf
+
+%files -n pipewire-qubes
+%_datadir/pipewire/pipewire.conf.d/30_qubes.conf
+%_userunitdir/pipewire.service.d/30_qubes.conf
+%_userunitdir/pipewire.socket.d/30_qubes.conf
+%_userunitdir/wireplumber.service.d/30_qubes.conf
+%_userpresetdir/74-qubes-vm.preset
+%_libdir/pipewire-0.3/libpipewire-module-qubes.so
+%_defaultlicensedir/pipewire-qubes/COPYING
+/etc/qubes/post-install.d/20-qubes-pipewire.sh
+
+# Works with ordinary PipeWire service :)
 
 %files xfce
 /etc/X11/xinit/xinitrc.d/60xfce-desktop.sh
@@ -247,7 +285,7 @@ rm -f %{name}-%{version}
 #/lib/systemd/system/qubes-gui-vncserver.service
 %attr(0644,root,root) /etc/X11/xorg-qubes-x11vnc.conf.template
 %attr(0644,root,root) /etc/systemd/system/lightdm.service.d/qubes-guivm-vnc.conf
-/usr/bin/qubes-run-x11vnc
+%_bindir/qubes-run-x11vnc
 
 %changelog
 @CHANGELOG@

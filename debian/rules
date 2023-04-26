@@ -26,7 +26,13 @@ override_dh_systemd_start:
 	dh_systemd_start --no-restart-after-upgrade --no-restart-on-upgrade
 
 override_dh_install:
-	dh_install --fail-missing
+	dh_install
+
+override_dh_missing:
+	dh_missing --fail-missing
+
+override_dh_installsystemduser:
+	dh_installsystemduser pipewire.socket pipewire-pulse.socket pipewire.service pipewire-pulse.service wireplumber.service
 
 override_dh_gencontrol:
 	echo "pulse:Depends=pulseaudio (>= $(PA_VER)), pulseaudio (<< $(PA_VER).1)" >> debian/pulseaudio-qubes.substvars

@@ -23,6 +23,10 @@ VERSION := $(file <version)
 LIBDIR ?= /usr/lib64
 USRLIBDIR ?= /usr/lib
 SYSLIBDIR ?= /lib
+UNITDIR ?= $(SYSLIBDIR)/systemd/system
+USERUNITDIR ?= $(SYSLIBDIR)/systemd/user
+USERPRESETDIR ?= $(SYSLIBDIR)/systemd/user-preset
+UDEVRULESDIR ?= $(SYSLIBDIR)/udev/rules.d
 DATADIR ?= /usr/share
 ifneq (,$(filter-out selinux install-selinux,$(MAKECMDGOALS)))
 PA_VER_FULL ?= $(shell pkg-config --modversion libpulse | cut -d "-" -f 1 || echo 0.0)
@@ -36,13 +40,13 @@ help:
 	@echo "Qubes GUI main Makefile:" ;\
 	    echo; \
 	    echo "make clean                <--- clean all the binary files";\
-	    @exit 0;
+	    exit 0;
 
 .PHONY: appvm
 appvm: gui-agent/qubes-gui gui-common/qubes-gui-runuser \
 	xf86-input-mfndev/src/.libs/qubes_drv.so \
 	xf86-video-dummy/src/.libs/dummyqbs_drv.so pulse/module-vchan-sink.so \
-	xf86-qubes-common/libxf86-qubes-common.so
+	xf86-qubes-common/libxf86-qubes-common.so pipewire/qubes-pw-module.so
 
 selinux_policies ::= qubes-gui-agent.pp
 selinux: selinux/$(selinux_policies)
@@ -69,8 +73,11 @@ xf86-video-dummy/src/.libs/dummyqbs_drv.so: xf86-qubes-common/libxf86-qubes-comm
 
 pulse/module-vchan-sink.so:
 	rm -f pulse/pulsecore
-	ln -s pulsecore-$(PA_VER_FULL) pulse/pulsecore
+	ln -sf pulsecore-$(PA_VER_FULL) pulse/pulsecore
 	$(MAKE) -C pulse module-vchan-sink.so
+
+pipewire/qubes-pw-module.so:
+	$(MAKE) -C pipewire qubes-pw-module.so
 
 xf86-qubes-common/libxf86-qubes-common.so:
 	$(MAKE) -C xf86-qubes-common libxf86-qubes-common.so
@@ -92,7 +99,7 @@ clean:
 	rm -rf pkgs
 
 .PHONY: install
-install: install-rh-agent install-pulseaudio
+install: install-rh-agent install-pulseaudio install-pipewire
 
 .PHONY: install-rh-agent
 install-rh-agent: appvm install-common install-systemd
@@ -108,7 +115,7 @@ install-rh-agent: appvm install-common install-systemd
 		$(DESTDIR)/etc/X11/xinit/xinitrc.d/60xfce-desktop.sh
 
 .PHONY: install-debian
-install-debian: appvm install-common install-pulseaudio install-systemd
+install-debian: appvm install-common install-pulseaudio install-systemd install-pipewire
 	install -d $(DESTDIR)/etc/X11/Xsession.d
 	install -m 0644 appvm-scripts/etc/X11/Xsession.d/* $(DESTDIR)/etc/X11/Xsession.d/
 	install -d $(DESTDIR)/etc/xdg
@@ -123,7 +130,7 @@ install-pulseaudio:
 	install -D pulse/module-vchan-sink.so \
 		$(DESTDIR)$(PA_MODULE_DIR)/module-vchan-sink.so
 	install -m 0644 -D appvm-scripts/etc/tmpfiles.d/qubes-pulseaudio.conf \
-		$(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-pulseaudio.conf
+		$(DESTDIR)$(USRLIBDIR)/tmpfiles.d/qubes-pulseaudio.conf
 	install -m 0644 -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop \
 		$(DESTDIR)/etc/xdg/autostart/qubes-pulseaudio.desktop
 	install -d $(DESTDIR)$(USER_DROPIN_DIR)/pulseaudio.service.d
@@ -132,10 +139,33 @@ install-pulseaudio:
 	install -D pulse/75-pulseaudio-qubes.preset \
 		$(DESTDIR)$(USER_DROPIN_DIR)-preset/75-pulseaudio-qubes.preset
 
+.PHONY: install-pipewire
+install-pipewire:
+	install -m 0755 -D pipewire/qubes-pw-module.so \
+		$(DESTDIR)$(LIBDIR)/pipewire-0.3/libpipewire-module-qubes.so
+	install -m 0644 -D pipewire/30_qubes.conf \
+		$(DESTDIR)$(DATADIR)/pipewire/pipewire.conf.d/30_qubes.conf
+	install -m 0644 -D pipewire/COPYING \
+		$(DESTDIR)$(DATADIR)/licenses/pipewire-qubes/COPYING
+	install -m 0644 -D appvm-scripts/lib/systemd/user/pipewire.service.d/30_qubes.conf \
+		$(DESTDIR)$(USERUNITDIR)/pipewire.service.d/30_qubes.conf
+	install -m 0644 -D appvm-scripts/lib/systemd/user-preset/74-qubes-vm.preset \
+		$(DESTDIR)$(USERPRESETDIR)/74-qubes-vm.preset
+	mkdir -p -m 0755 $(DESTDIR)$(USERUNITDIR)/pipewire.service.d \
+	                 $(DESTDIR)$(USERUNITDIR)/pipewire.socket.d \
+	                 $(DESTDIR)$(USERUNITDIR)/wireplumber.service.d
+	ln -f $(DESTDIR)$(USERUNITDIR)/pipewire.service.d/30_qubes.conf \
+	   $(DESTDIR)$(USERUNITDIR)/pipewire.socket.d/30_qubes.conf
+	ln -f $(DESTDIR)$(USERUNITDIR)/pipewire.service.d/30_qubes.conf \
+	   $(DESTDIR)$(USERUNITDIR)/wireplumber.service.d/30_qubes.conf
+	install -d $(DESTDIR)/etc/qubes/post-install.d
+	install -m 0755 appvm-scripts/etc/qubes/post-install.d/20-qubes-pipewire.sh \
+                $(DESTDIR)/etc/qubes/post-install.d/20-qubes-pipewire.sh
+
 .PHONY: install-systemd
 install-systemd:
 	install -m 0644 -D appvm-scripts/qubes-gui-agent.service \
-		$(DESTDIR)/$(SYSLIBDIR)/systemd/system/qubes-gui-agent.service
+		$(DESTDIR)$(UNITDIR)/qubes-gui-agent.service
 
 .PHONY: install-common
 install-common:
@@ -183,9 +213,9 @@ endif
 	install -m 0644 -D appvm-scripts/qubes-gui-vm.gschema.override \
 		$(DESTDIR)$(DATADIR)/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
 	install -d $(DESTDIR)/etc/qubes-rpc
-	ln -s ../../usr/bin/qubes-set-monitor-layout \
+	ln -sf ../../usr/bin/qubes-set-monitor-layout \
 		$(DESTDIR)/etc/qubes-rpc/qubes.SetMonitorLayout
-	ln -s ../../usr/bin/qubes-start-xephyr \
+	ln -sf ../../usr/bin/qubes-start-xephyr \
 		$(DESTDIR)/etc/qubes-rpc/qubes.GuiVMSession
 	install -D window-icon-updater/icon-sender \
 		$(DESTDIR)/usr/lib/qubes/icon-sender
@@ -200,7 +230,7 @@ endif
 	install -D -m 0644 appvm-scripts/usr/lib/sysctl.d/30-qubes-gui-agent.conf \
 		$(DESTDIR)/usr/lib/sysctl.d/30-qubes-gui-agent.conf
 	install -D -m 0644 appvm-scripts/lib/udev/rules.d/70-master-of-seat.rules \
-		$(DESTDIR)/$(SYSLIBDIR)/udev/rules.d/70-master-of-seat.rules
+		$(DESTDIR)/$(UDEVRULESDIR)/70-master-of-seat.rules
 	install -D appvm-scripts/usr/lib/qubes/qubes-gui-agent-pre.sh \
 		$(DESTDIR)/usr/lib/qubes/qubes-gui-agent-pre.sh
 	install -D appvm-scripts/usr/lib/qubes/qubes-keymap.sh \
