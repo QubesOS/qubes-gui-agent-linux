@@ -1,3 +1,89 @@
+qubes-gui-agent (4.2.4-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * Rework Archlinux packaging
+
+  [ Marek Marczykowski-Górecki ]
+  * Add pulse 15.99.1 headers for jammy build
+
+  [ Demi Marie Obenour ]
+  * PipeWire audio support for Qubes OS
+  * Clean up the Arch PKGBUILD
+  * Use proper RPM macros for paths
+  * Avoid a deprecated use of dh_install
+  * Add RPM post-install and pre-uninstall scriptlets
+  * Add Debian postinstall script
+  * Add Arch post-install scripts
+  * Raise priority of PipeWire preset files
+  * Try to fix linker errors
+  * Shrink quantum to reduce latency
+  * Implement reconnection and fix bugs
+  * Fix requested size calculation
+  * Avoid blocking realtime thread
+  * Avoid potential race conditions and use-after-free
+  * Recover from temporary overruns
+  * Reduce excessive log verbosity
+  * Always dequeue at least one buffer
+  * Record silence during underruns
+  * Fix race between PipeWire and this module
+  * Handle playback to a seemingly-paused stream
+  * Prevent NULL pointer dereference on disconnect
+  * Make playback and record buffers tunable
+  * Obtain PipeWire resources before parsing config
+  * Implement format negotiation for the capture stream
+  * Fix build on old PipeWire versions
+  * Replace assert() with spa_assert()
+  * Provide buffer information to pw_stream_update_params()
+  * Fix segfault on startup
+  * Fix manual configuration of buffer sizes
+  * Document how to change buffer sizes
+  * Use the standard Makefile name
+  * Avoid abusing EFAULT
+  * Remove pointless _Static_assert()
+  * Add some documentation
+  * Remove useless forward declarations
+  * Use common function to stop watching for vchan events
+  * Stop watching the vchan during shutdown
+  * Fix comment
+  * Set the correct vchan to NULL
+  * Remove some useless code
+  * Ensure all control commands are sent eventually
+  * Reduce logging verbosity
+  * Remove wrong assert
+  * Use less strict number parsing
+  * Packaging fixups
+  * Distribute license text with package
+  * Try to handle configuration overrides
+  * Fix build with old PipeWire
+  * Ensure that assertions are enabled
+  * Update usage information
+  * Shorten the name of the module
+  * Report stream states on vchan connect
+  * Do not rely on asserts for error handling
+  * Only use pw_log_error() for true errors
+  * Do not disable streams if control vchan is closed
+  * Sync stream states after vchan open
+  * Process control commands if an overrun occurs
+  * Provide default buffer sizes
+  * Use common code for stream shutdown
+  * Remove shutting_down global variable
+  * Shut down dead streams
+  * Fix NULL pointer dereference if vchan connection fails
+  * Use a smaller SPA builder buffer
+  * Assert that SPA builder succeeded
+  * Debian packaging fixups
+  * Use (C) instead of © in COPYING
+  * Allow domain IDs up to INT_MAX/2
+  * Avoid using bitfields
+  * Check that atomics are lock-free
+  * Turn off PulseAudio if PipeWire is enabled
+  * Advertise the PipeWire service to dom0
+  * Fix 'make install'
+  * PipeWire agent: Add dependency on PipeWire
+  * PipeWire agent is not less code
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 26 Apr 2023 14:45:39 +0200
+
 qubes-gui-agent (4.2.3-1) unstable; urgency=medium
 
   [ noskb ]
