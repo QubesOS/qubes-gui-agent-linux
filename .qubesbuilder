@@ -18,6 +18,6 @@ vm:
       - debian
     source:
       commands:
-      - "sed -i 's/$$(PA_VER)/1:$$(PA_VER)/g' @SOURCE_DIR@/debian/rules"
+      - "sed -i 's/$(PA_VER)/1:$(PA_VER)/g' @SOURCE_DIR@/debian/rules"
       - 'sed -i /Trolltech.conf/d @SOURCE_DIR@/debian/qubes-gui-agent.install'
       - '@PLUGINS_DIR@/source_deb/scripts/debian-quilt @SOURCE_DIR@/series-debian-vm.conf @SOURCE_DIR@/debian/patches'
