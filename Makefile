@@ -28,6 +28,7 @@ USERUNITDIR ?= $(SYSLIBDIR)/systemd/user
 USERPRESETDIR ?= $(SYSLIBDIR)/systemd/user-preset
 UDEVRULESDIR ?= $(SYSLIBDIR)/udev/rules.d
 DATADIR ?= /usr/share
+PIPEWIRE_MODULES ?= $(LIBDIR)/pipewire-0.3
 ifneq (,$(filter-out selinux install-selinux,$(MAKECMDGOALS)))
 PA_VER_FULL ?= $(shell pkg-config --modversion libpulse | cut -d "-" -f 1 || echo 0.0)
 PA_MODULE_DIR ?= $(shell pkg-config --variable=modlibexecdir libpulse)
@@ -142,7 +143,7 @@ install-pulseaudio:
 .PHONY: install-pipewire
 install-pipewire:
 	install -m 0755 -D pipewire/qubes-pw-module.so \
-		$(DESTDIR)$(LIBDIR)/pipewire-0.3/libpipewire-module-qubes.so
+		$(DESTDIR)$(PIPEWIRE_MODULES)/libpipewire-module-qubes.so
 	install -m 0644 -D pipewire/30_qubes.conf \
 		$(DESTDIR)$(DATADIR)/pipewire/pipewire.conf.d/30_qubes.conf
 	install -m 0644 -D pipewire/COPYING \

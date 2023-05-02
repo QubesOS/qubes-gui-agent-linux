@@ -10,6 +10,7 @@ DPKG_EXPORT_BUILDFLAGS = 1
 include /usr/share/dpkg/default.mk
 export DESTDIR=$(shell pwd)/debian/tmp
 export LIBDIR=/usr/lib
+export PIPEWIRE_MODULES=/usr/lib/$(DEB_HOST_MULTIARCH)/pipewire-0.3
 
 PA_VER=$(shell pkg-config --modversion libpulse | cut -d "-" -f 1 || echo 0.0)
 
