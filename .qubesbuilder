@@ -10,6 +10,9 @@ vm:
   deb:
     build:
     - debian
+    source:
+      commands:
+      - 'sed -i "s/, pulseaudio-qubes/, pipewire-qubes/" @SOURCE_DIR@/debian/control'
   archlinux:
     build:
     - archlinux
@@ -22,3 +25,7 @@ vm:
       - 'sed -i /Trolltech.conf/d @SOURCE_DIR@/debian/qubes-gui-agent.install'
       - '@PLUGINS_DIR@/source_deb/scripts/debian-quilt @SOURCE_DIR@/series-debian-vm.conf @SOURCE_DIR@/debian/patches'
       - 'sed -i "s/, pulseaudio-qubes/, pipewire-qubes/" @SOURCE_DIR@/debian/control'
+
+vm-bullseye:
+  build:
+    - debian
