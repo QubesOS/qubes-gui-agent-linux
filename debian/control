@@ -114,9 +114,9 @@ Package: pipewire-qubes
 Architecture: any
 Depends:
  qubesdb-vm (>= 4.1.4),
- pipewire-pulse,
  ${shlibs:Depends},
  ${misc:Depends}
+Recommends: pipewire-pulse
 Description: PipeWire module to enable sound support in Qubes VM
  Experimental PipeWire module to enable sound support in Qubes VMs.
  Unlike the PulseAudio support in the pulseaudio-qubes package, this
