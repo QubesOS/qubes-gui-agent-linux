@@ -1,7 +1,7 @@
 Source: qubes-gui-agent
 Section: admin
 Priority: extra
-Maintainer: Davíð Steinn Geirsson <david@dsg.is>
+Maintainer: Qubes OS Team <qubes-devel@googlegroups.com>
 Build-Depends:
     debhelper,
     libpam0g-dev,
