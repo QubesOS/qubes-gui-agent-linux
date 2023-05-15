@@ -148,17 +148,8 @@ install-pipewire:
 		$(DESTDIR)$(DATADIR)/pipewire/pipewire.conf.d/30_qubes.conf
 	install -m 0644 -D pipewire/COPYING \
 		$(DESTDIR)$(DATADIR)/licenses/pipewire-qubes/COPYING
-	install -m 0644 -D appvm-scripts/lib/systemd/user/pipewire.service.d/30_qubes.conf \
-		$(DESTDIR)$(USERUNITDIR)/pipewire.service.d/30_qubes.conf
 	install -m 0644 -D appvm-scripts/lib/systemd/user-preset/74-qubes-vm.preset \
 		$(DESTDIR)$(USERPRESETDIR)/74-qubes-vm.preset
-	mkdir -p -m 0755 $(DESTDIR)$(USERUNITDIR)/pipewire.service.d \
-	                 $(DESTDIR)$(USERUNITDIR)/pipewire.socket.d \
-	                 $(DESTDIR)$(USERUNITDIR)/wireplumber.service.d
-	ln -f $(DESTDIR)$(USERUNITDIR)/pipewire.service.d/30_qubes.conf \
-	   $(DESTDIR)$(USERUNITDIR)/pipewire.socket.d/30_qubes.conf
-	ln -f $(DESTDIR)$(USERUNITDIR)/pipewire.service.d/30_qubes.conf \
-	   $(DESTDIR)$(USERUNITDIR)/wireplumber.service.d/30_qubes.conf
 	install -d $(DESTDIR)/etc/qubes/post-install.d
 	install -m 0755 appvm-scripts/etc/qubes/post-install.d/20-qubes-pipewire.sh \
                 $(DESTDIR)/etc/qubes/post-install.d/20-qubes-pipewire.sh
