@@ -6,4 +6,4 @@ include:
 - file: /r4.2/gitlab-vm.yml
   project: QubesOS/qubes-continuous-integration
 variables:
-  TRAVIS_INSTALL_EXCLUDE_DOM0: qubes-gui-agent
+  CI_INSTALL_EXCLUDE: pulseaudio-qubes
