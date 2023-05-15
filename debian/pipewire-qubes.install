@@ -1,8 +1,5 @@
 usr/share/pipewire/pipewire.conf.d/30_qubes.conf
 usr/share/licenses/pipewire-qubes/COPYING
 usr/lib/x86_64-linux-gnu/pipewire-0.3/libpipewire-module-qubes.so
-lib/systemd/user/pipewire.socket.d/30_qubes.conf
-lib/systemd/user/pipewire.service.d/30_qubes.conf
-lib/systemd/user/wireplumber.service.d/30_qubes.conf
 lib/systemd/user-preset/74-qubes-vm.preset
 etc/qubes/post-install.d/20-qubes-pipewire.sh

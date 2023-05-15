@@ -102,6 +102,7 @@ Depends:
     ${shlibs:Depends},
     ${pulse:Depends},
     ${misc:Depends},
+Conflicts: pipewire-qubes
 Replaces:
  qubes-gui-agent (<< 4.1.9-1),
  qubes-core-agent (<< 4.2.5-1),
@@ -117,6 +118,7 @@ Depends:
  qubesdb-vm (>= 4.1.4),
  ${shlibs:Depends},
  ${misc:Depends}
+Conflicts: pulseaudio-qubes
 Recommends: pipewire-pulse
 Description: PipeWire module to enable sound support in Qubes VM
  Experimental PipeWire module to enable sound support in Qubes VMs.
