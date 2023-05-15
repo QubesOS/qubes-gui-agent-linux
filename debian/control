@@ -43,6 +43,7 @@ Depends:
     libxfixes3,
     libxt6,
     libx11-6,
+    libpam-systemd,
     python3,
     python3-xcffib,
     xserver-xorg-video-dummyqbs (= ${binary:Version}),
