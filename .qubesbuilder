@@ -28,3 +28,5 @@ vm:
 vm-bullseye:
   build:
     - debian
+  source:
+    commands: []
