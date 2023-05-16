@@ -1,3 +1,15 @@
+qubes-gui-agent (4.2.6-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * Step back for jammy on pipewire
+  * pipewire: drop service vm to be set
+  * Update CI exclude for install
+
+  [ Marek Marczykowski-Górecki ]
+  * Cleanup unused file
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 16 May 2023 04:23:02 +0200
+
 qubes-gui-agent (4.2.5-1) unstable; urgency=medium
 
   [ Frédéric Pierret (fepitre) ]
