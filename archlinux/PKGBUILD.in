@@ -106,8 +106,8 @@ package_pipewire-qubes () {
 
     cd "${_pkgnvr}"
     make install-pipewire \
-        "DESTDIR=$pkgdir"
-        LIBDIR=/usr/lib
-        USRLIBDIR=/usr/lib
+        "DESTDIR=$pkgdir" \
+        LIBDIR=/usr/lib \
+        USRLIBDIR=/usr/lib \
         SYSLIBDIR=/usr/lib
 }
