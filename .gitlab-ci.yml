@@ -1,9 +1,12 @@
 include:
 - file: /r4.2/gitlab-base.yml
   project: QubesOS/qubes-continuous-integration
+  ref: $CI_BRANCH_REF
 - file: /r4.2/gitlab-host.yml
   project: QubesOS/qubes-continuous-integration
+  ref: $CI_BRANCH_REF
 - file: /r4.2/gitlab-vm.yml
   project: QubesOS/qubes-continuous-integration
+  ref: $CI_BRANCH_REF
 variables:
   CI_INSTALL_EXCLUDE: pulseaudio-qubes
