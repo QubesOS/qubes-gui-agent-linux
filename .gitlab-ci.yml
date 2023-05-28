@@ -9,4 +9,5 @@ include:
   project: QubesOS/qubes-continuous-integration
   ref: $CI_BRANCH_REF
 variables:
-  CI_INSTALL_EXCLUDE: pulseaudio-qubes
+  CI_INSTALL_EXCLUDE: pulseaudio-qubes pulseaudio-qubes-dbgsym
+  CI_INSTALL_EXCLUDE_DOM0: pulseaudio-qubes qubes-gui-agent
