@@ -3,3 +3,4 @@ etc/xdg/autostart/qubes-pulseaudio.desktop
 usr/bin/start-pulseaudio-with-vchan
 usr/lib/pulse-*/modules/module-vchan-sink.so
 usr/lib/tmpfiles.d/qubes-pulseaudio.conf
+usr/lib/systemd/user-preset/75-pulseaudio-qubes.preset

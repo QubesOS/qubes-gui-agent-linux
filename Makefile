@@ -27,6 +27,8 @@ DATADIR ?= /usr/share
 PA_VER_FULL ?= $(shell pkg-config --modversion libpulse | cut -d "-" -f 1 || echo 0.0)
 PA_MODULE_DIR ?= $(shell pkg-config --variable=modlibexecdir libpulse)
 
+USER_DROPIN_DIR ?= /usr/lib/systemd/user
+
 help:
 	@echo "Qubes GUI main Makefile:" ;\
 	    echo; \
@@ -106,6 +108,8 @@ install-pulseaudio:
 		$(DESTDIR)/$(USRLIBDIR)/tmpfiles.d/qubes-pulseaudio.conf
 	install -m 0644 -D appvm-scripts/etc/xdgautostart/qubes-pulseaudio.desktop \
 		$(DESTDIR)/etc/xdg/autostart/qubes-pulseaudio.desktop
+	install -D pulse/75-pulseaudio-qubes.preset \
+		$(DESTDIR)$(USER_DROPIN_DIR)-preset/75-pulseaudio-qubes.preset
 
 install-systemd:
 	install -m 0644 -D appvm-scripts/qubes-gui-agent.service \
