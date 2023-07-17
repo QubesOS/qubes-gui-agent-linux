@@ -162,6 +162,14 @@ else
     preset_units /usr/lib/systemd/user-preset/75-pulseaudio-qubes.preset upgrade
 fi
 
+%postun -n pulseaudio-qubes
+
+for unit_name in pipewire.socket pipewire.service \
+                 pipewire-pulse.socket pipewire-pulse.service \
+                 wireplumber.service; do
+    systemctl --no-reload --global preset "$unit_name" >/dev/null 2>&1 || :
+done
+
 %preun
 if [ "$1" = 0 ] ; then
 	chkconfig qubes-gui-agent off
