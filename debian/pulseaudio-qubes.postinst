@@ -19,10 +19,37 @@ set -e
 # https://www.debian.org/doc/debian-policy/ch-maintainerscripts.html or
 # the debian-policy package
 
+# simplified version of preset_units() from core-agent-linux
+preset_units() {
+    local represet=
+    cat "$1" | while read action unit_name
+    do
+        if [ "$action" = "#" -a "$unit_name" = "Units below this line will be re-preset on package upgrade" ]
+        then
+            represet=1
+            continue
+        fi
+        echo "$action $unit_name" | grep -q '^[[:space:]]*[^#;]' || continue
+        [ -n "$action" -a -n "$unit_name" ] || continue
+        if [ "$2" = "initial" -o "$represet" = "1" ]
+        then
+            systemctl --no-reload --global preset "$unit_name" >/dev/null 2>&1 || :
+        fi
+    done
+}
+
+
 case "${1}" in
     configure)
         sed -i '/^autospawn/d' /etc/pulse/client.conf
         echo autospawn=no >> /etc/pulse/client.conf
+
+        # ($2 contains version number on update; nothing on initial installation)
+        if [ -z "${2}" ]; then
+            preset_units /usr/lib/systemd/user-preset/75-pulseaudio-qubes.preset initial
+        else
+            preset_units /usr/lib/systemd/user-preset/75-pulseaudio-qubes.preset upgrade
+        fi
         ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

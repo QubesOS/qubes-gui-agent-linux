@@ -137,7 +137,7 @@ install-pulseaudio:
 	install -d $(DESTDIR)$(USER_DROPIN_DIR)/pulseaudio.service.d
 	install -m 0644 pulse/pulseaudio.service.d/*.conf \
 		$(DESTDIR)$(USER_DROPIN_DIR)/pulseaudio.service.d
-	install -D pulse/75-pulseaudio-qubes.preset \
+	install -D -m 0644 pulse/75-pulseaudio-qubes.preset \
 		$(DESTDIR)$(USER_DROPIN_DIR)-preset/75-pulseaudio-qubes.preset
 
 .PHONY: install-pipewire
