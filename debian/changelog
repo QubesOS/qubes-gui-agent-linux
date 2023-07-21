@@ -1,3 +1,17 @@
+qubes-gui-agent (4.1.31-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * debian: preset user services on pulseaudio-qubes install/uninstall
+  * pulseaudio: disable pipewire to avoid conflicts
+  * rpm: restore pipewire units on pulseaudio-qubes removal
+  * pulseaudio: disable pipewire-pulse too
+
+  [ Solar Designer ]
+  * qubes-keymap.sh: Avoid xkb option accumulation
+  * qubes-keymap.sh: Don't add ",us" for layout "si"
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 21 Jul 2023 05:07:54 +0200
+
 qubes-gui-agent (4.1.30-1) unstable; urgency=medium
 
   * ci: drop R4.2 builds
