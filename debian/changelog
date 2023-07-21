@@ -1,3 +1,41 @@
+qubes-gui-agent (4.2.8-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * archlinux: fix install-pipewire call
+  * ci: use CI_BRANCH_REF
+  * ci: extend exclude list
+
+  [ Augsch123 ]
+  * Add libpam-systemd dependency
+
+  [ Demi Marie Obenour ]
+  * Switch to protocol 1.4
+  * Initial protocol 1.7 support
+  * Add a couple of assertions
+  * Add simple reference counting of pixmaps
+  * Use malloc instead of alloca
+  * Support MSG_WINDOW_DUMP_ACK
+  * Autotools modernization
+
+  [ Solar Designer ]
+  * qubes-keymap.sh: Avoid xkb option accumulation
+  * qubes-keymap.sh: Don't add ",us" for layout "si"
+
+  [ Demi Marie Obenour ]
+  * Update comment to reflect current GUI agent
+  * Increase locked memory limit for "qubes" group
+  * Do not hardcode "user" as the GUI user
+  * Use set -a instead of sed
+
+  [ Marek Marczykowski-Górecki ]
+  * debian: preset user services on pulseaudio-qubes install/uninstall
+  * pulseaudio: disable pipewire-pulse too
+  * rpm: restore pipewire units on pulseaudio-qubes removal
+  * Remove trailing space in 75-pulseaudio-qubes.preset
+  * Fix mode of 75-pulseaudio-qubes.preset
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 21 Jul 2023 04:25:14 +0200
+
 qubes-gui-agent (4.2.7-1) unstable; urgency=medium
 
   * deb: Fix clearing source commands
