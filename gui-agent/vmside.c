@@ -22,6 +22,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <stdatomic.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,6 +31,7 @@
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/stat.h>
@@ -146,6 +148,7 @@ struct genlist *windows_list;
 struct genlist *embeder_list;
 typedef struct _global_handles Ghandles;
 Ghandles *ghandles_for_vchan_reinitialize;
+atomic_bool terminating;
 
 #define SKIP_NONMANAGED_WINDOW do {                                    \
     if (!list_lookup(windows_list, window)) {                          \
@@ -1982,13 +1985,40 @@ static pid_t do_execute_xorg(
     }
 }
 
-static void terminate_and_cleanup_xorg(Ghandles *g) {
+/* this cannot be a SIGCHLD signal handler because of signal safety */
+static void *xorg_waitpid_thread(void *p) {
+    Ghandles *g = p;
     int status;
+    while (waitpid(g->x_pid, &status, 0) < 0) {
+        if (errno != EINTR) {
+            /* Looking at waitpid(2), everything other than EINTR would
+             * indicate a logic error; log this and give up. */
+            perror("waitpid");
+            abort();
+        }
+    }
 
+    if (atomic_load(&terminating)) {
+        exit(0);
+    } else {
+        if (WIFEXITED(status)) {
+            fprintf(stderr, "Xorg exited unexpectedly (exit code %d)\n",
+                    WEXITSTATUS(status));
+        } else if (WIFSIGNALED(status)) {
+            fprintf(stderr, "Xorg terminated unexpectedly (signal %d)\n",
+                    WTERMSIG(status));
+        } else {
+            fprintf(stderr, "Xorg terminated unexpectedly\n");
+        }
+
+        exit(1);
+    }
+}
+
+static void terminate_and_cleanup_xorg(Ghandles *g) {
     if (g->x_pid != (pid_t)-1) {
+        atomic_store(&terminating, true);
         kill(g->x_pid, SIGTERM);
-        waitpid(g->x_pid, &status, 0);
-        g->x_pid = -1;
     }
 }
 
@@ -2211,7 +2241,7 @@ static void handle_sigterm()
 {
     Ghandles *g = ghandles_for_vchan_reinitialize;
     terminate_and_cleanup_xorg(g);
-    exit(0);
+    while (1) pause();
 }
 
 static void usage()
@@ -2279,6 +2309,7 @@ int main(int argc, char **argv)
     int xfd;
     Ghandles g;
     int wait_fds[2];
+    pthread_t waitpid_thread;
 
     parse_args(&g, argc, argv);
 
@@ -2300,6 +2331,11 @@ int main(int argc, char **argv)
     vchan_register_at_eof(handle_guid_disconnect);
     handshake(&g);
     g.x_pid = get_xconf_and_run_x(&g);
+    if ((errno = pthread_create(&waitpid_thread, NULL, xorg_waitpid_thread, &g)) != 0) {
+        perror("pthread_create");
+        kill(g.x_pid, SIGTERM);
+        exit(1);
+    }
     mkghandles(&g);
     ghandles_for_vchan_reinitialize = &g;
     /* Turn on Composite for all children of root window. This way X server
@@ -2341,7 +2377,6 @@ int main(int argc, char **argv)
         fprintf(stderr, "XFixes not available, cursor shape handling off");
 
     XAutoRepeatOff(g.display);
-    signal(SIGCHLD, SIG_IGN);
     signal(SIGTERM, handle_sigterm);
     windows_list = list_new();
     embeder_list = list_new();
