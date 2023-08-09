@@ -163,6 +163,9 @@ pid_t do_execute(char *user, char *path, char **argv)
         if (retval != PAM_SUCCESS)
             goto error;
     }
+    retval = pam_putenv(pamh, "XDG_CURRENT_DESKTOP=X-QUBES");
+    if (retval != PAM_SUCCESS)
+        goto error;
     retval = pam_putenv(pamh, "XDG_SESSION_DESKTOP=X-QUBES");
     if (retval != PAM_SUCCESS)
         goto error;
