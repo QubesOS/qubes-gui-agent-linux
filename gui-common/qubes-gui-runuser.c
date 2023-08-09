@@ -108,36 +108,46 @@ pid_t do_execute(char *user, char *path, char **argv)
         goto error;
 
     /* provide env variables to PAM and the X session */
-    snprintf(env_buf, sizeof(env_buf), "HOME=%s", pw->pw_dir);
+    retval = snprintf(env_buf, sizeof(env_buf), "HOME=%s", pw->pw_dir);
+    if ((unsigned int)retval >= sizeof(env_buf))
+        goto error;
     retval = pam_putenv(pamh, env_buf);
     if (retval != PAM_SUCCESS)
         goto error;
-    snprintf(env_buf, sizeof(env_buf), "SHELL=%s", pw->pw_shell);
+    retval = snprintf(env_buf, sizeof(env_buf), "SHELL=%s", pw->pw_shell);
+    if ((unsigned int)retval >= sizeof(env_buf))
+        goto error;
     retval = pam_putenv(pamh, env_buf);
     if (retval != PAM_SUCCESS)
         goto error;
-    snprintf(env_buf, sizeof(env_buf), "USER=%s", pw->pw_name);
+    retval = snprintf(env_buf, sizeof(env_buf), "USER=%s", pw->pw_name);
+    if ((unsigned int)retval >= sizeof(env_buf))
+        goto error;
     retval = pam_putenv(pamh, env_buf);
     if (retval != PAM_SUCCESS)
         goto error;
-    snprintf(env_buf, sizeof(env_buf), "LOGNAME=%s", pw->pw_name);
+    retval = snprintf(env_buf, sizeof(env_buf), "LOGNAME=%s", pw->pw_name);
+    if ((unsigned int)retval >= sizeof(env_buf))
+        goto error;
     retval = pam_putenv(pamh, env_buf);
     if (retval != PAM_SUCCESS)
         goto error;
     if (getenv("ENV_PATH"))
-        snprintf(env_buf, sizeof(env_buf), "PATH=%s", getenv("ENV_PATH"));
+        retval = snprintf(env_buf, sizeof(env_buf), "PATH=%s", getenv("ENV_PATH"));
     else if (getenv("PATH"))
-        snprintf(env_buf, sizeof(env_buf), "PATH=%s", getenv("PATH"));
+        retval = snprintf(env_buf, sizeof(env_buf), "PATH=%s", getenv("PATH"));
     else
-        snprintf(env_buf, sizeof(env_buf), "PATH=%s", "/usr/local/bin:/usr/bin:/bin");
+        retval = snprintf(env_buf, sizeof(env_buf), "PATH=%s", "/usr/local/bin:/usr/bin:/bin");
+    if ((unsigned int)retval >= sizeof(env_buf))
+        goto error;
     retval = pam_putenv(pamh, env_buf);
     if (retval != PAM_SUCCESS)
         goto error;
 
     char *seat = getenv("XDG_SEAT");
     if (seat != NULL) {
-        if ((unsigned int)snprintf(env_buf, sizeof(env_buf), "XDG_SEAT=%s", seat) >=
-                sizeof(env_buf))
+        retval = snprintf(env_buf, sizeof(env_buf), "XDG_SEAT=%s", seat);
+        if ((unsigned int) retval >= sizeof(env_buf))
             goto error;
         retval = pam_putenv(pamh, env_buf);
         if (retval != PAM_SUCCESS)
@@ -145,8 +155,9 @@ pid_t do_execute(char *user, char *path, char **argv)
     }
     char *session_type = getenv("XDG_SESSION_TYPE");
     if (session_type) {
-        if ((unsigned int) snprintf(env_buf, sizeof(env_buf), "XDG_SESSION_TYPE=%s",
-                                    session_type) >= sizeof(env_buf))
+        retval = snprintf(env_buf, sizeof(env_buf), "XDG_SESSION_TYPE=%s",
+                          session_type);
+        if ((unsigned int)retval >= sizeof(env_buf))
             goto error;
         retval = pam_putenv(pamh, env_buf);
         if (retval != PAM_SUCCESS)
@@ -157,8 +168,9 @@ pid_t do_execute(char *user, char *path, char **argv)
         goto error;
     char *session_class = getenv("XDG_SESSION_CLASS");
     if (session_class) {
-        if ((unsigned int) snprintf(env_buf, sizeof(env_buf), "XDG_SESSION_CLASS=%s",
-                                    session_class) >= sizeof(env_buf))
+        retval = snprintf(env_buf, sizeof(env_buf), "XDG_SESSION_CLASS=%s",
+                          session_class);
+        if ((unsigned int)retval >= sizeof(env_buf))
             goto error;
         retval = pam_putenv(pamh, env_buf);
         if (retval != PAM_SUCCESS)
@@ -175,8 +187,8 @@ pid_t do_execute(char *user, char *path, char **argv)
         if (retval != PAM_SUCCESS)
             goto error;
         if (strncmp(tty, "/dev/tty", 8) == 0) {
-            if ((unsigned int)snprintf(env_buf, sizeof(env_buf), "XDG_VTNR=%s", tty+8)
-                 >= sizeof(env_buf))
+            retval = snprintf(env_buf, sizeof(env_buf), "XDG_VTNR=%s", tty+8);
+            if ((unsigned int)retval >= sizeof(env_buf))
                 goto error;
             retval = pam_putenv(pamh, env_buf);
             if (retval != PAM_SUCCESS)
