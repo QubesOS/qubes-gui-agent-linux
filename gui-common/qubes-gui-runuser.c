@@ -152,6 +152,9 @@ pid_t do_execute(char *user, char *path, char **argv)
         if (retval != PAM_SUCCESS)
             goto error;
     }
+    retval = pam_putenv(pamh, "XDG_SESSION_DESKTOP=X-QUBES");
+    if (retval != PAM_SUCCESS)
+        goto error;
     char *session_class = getenv("XDG_SESSION_CLASS");
     if (session_class) {
         if ((unsigned int) snprintf(env_buf, sizeof(env_buf), "XDG_SESSION_CLASS=%s",
