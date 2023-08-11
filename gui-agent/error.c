@@ -22,8 +22,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include  <X11/Xlib.h>
+#include <X11/Xlib.h>
 #include <X11/Xlibint.h>
+#include "error.h"
 
 int print_x11_errors = 0;
 

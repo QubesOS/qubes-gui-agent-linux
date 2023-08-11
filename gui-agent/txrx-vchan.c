@@ -26,6 +26,7 @@
 #include <sys/select.h>
 #include <errno.h>
 #include <qubesdb-client.h>
+#include "txrx.h"
 
 void (*vchan_at_eof)(void) = NULL;
 
@@ -34,7 +35,7 @@ void vchan_register_at_eof(void (*new_vchan_at_eof)(void))
     vchan_at_eof = new_vchan_at_eof;
 }
 
-void handle_vchan_error(libvchan_t *vchan, const char *op)
+static void handle_vchan_error(libvchan_t *vchan, const char *op)
 {
     if (!libvchan_is_open(vchan) && vchan_at_eof)
         vchan_at_eof();
@@ -81,7 +82,7 @@ int read_data(libvchan_t *vchan, char *buf, int size)
     return size;
 }
 
-int wait_for_vchan_or_argfd_once(libvchan_t *vchan, int nfd, int *fd, fd_set * retset)
+static int wait_for_vchan_or_argfd_once(libvchan_t *vchan, int nfd, int *fd, fd_set * retset)
 {
     fd_set rfds;
     int vfd, max = 0, ret, i;
