@@ -97,10 +97,13 @@ static pid_t do_execute(char *user, char *path, char **argv)
      */
     pw_copy = *pw;
     pw = &pw_copy;
-    pw->pw_name = strdup(pw->pw_name);
-    pw->pw_passwd = strdup(pw->pw_passwd);
-    pw->pw_dir = strdup(pw->pw_dir);
-    pw->pw_shell = strdup(pw->pw_shell);
+    if ((pw->pw_name = strdup(pw->pw_name)) == NULL ||
+        (pw->pw_passwd = strdup(pw->pw_passwd)) == NULL ||
+        (pw->pw_dir = strdup(pw->pw_dir)) == NULL ||
+        (pw->pw_shell = strdup(pw->pw_shell)) == NULL)
+    {
+        err(1, "strdup");
+    }
     endpwent();
 
     retval = pam_start("qubes-gui-agent", user, &conv, &pamh);
