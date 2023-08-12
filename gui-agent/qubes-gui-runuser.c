@@ -31,6 +31,7 @@
 #include <grp.h>
 #include <pwd.h>
 #include <err.h>
+#include <qubesdb-client.h>
 
 #ifdef HAVE_PAM
 #include <security/pam_appl.h>
@@ -303,6 +304,7 @@ static void propagate_signal(int signal) {
 static void usage(char *argv0) {
     fprintf(stderr, "Usage: %s user path arg0 [args ...]\n", argv0);
     fprintf(stderr, "Run a process from *path* with *arg0*, *args*, as user *user*\n");
+    fprintf(stderr, "If *user* is the empty string, the user is obtained from /default-user in qubesdb.\n");
 #ifdef HAVE_PAM
     fprintf(stderr, "The user session will be registered in pam/logind as graphical one\n");
     fprintf(stderr, "This require the following environment variables to be set:\n");
@@ -323,5 +325,18 @@ int main(int argc, char **argv) {
     signal(SIGTERM, propagate_signal);
     signal(SIGHUP, propagate_signal);
 
-    return do_execute(argv[1], argv[2], argv+3);
+    char *user = argv[1];
+    unsigned int len = 0;
+    if (user[0] == 0) {
+        qdb_handle_t qdb = qdb_open(NULL);
+        if (qdb == NULL)
+            err(1, "qdb_open()");
+        user = qdb_read(qdb, "/default-user", &len);
+        if (user == NULL)
+            err(1, "qdb_read(\"/default-user\")");
+        if (len == 0)
+            errx(1, "username cannot be empty");
+    }
+
+    return do_execute(user, argv[2], argv+3);
 }

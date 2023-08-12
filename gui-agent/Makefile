@@ -32,7 +32,7 @@ qubes-gui: $(OBJS)
 	$(CC) $(LDFLAGS) -pie -g -o qubes-gui $(OBJS) \
 		$(LIBS)
 qubes-gui-runuser: CFLAGS += -g -Wall -Wextra -Werror -pie -fPIC
-qubes-gui-runuser: LDLIBS += -lpam
+qubes-gui-runuser: LDLIBS += -lpam -lqubesdb
 qubes-gui-runuser: qubes-gui-runuser.c
 clean:
 	rm -f qubes-gui qubes-gui-runuser ./*.o ./*~
