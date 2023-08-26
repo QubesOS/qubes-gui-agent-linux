@@ -309,7 +309,9 @@ static int compare_supported_cursors(const void *a,
 void send_event(Ghandles * g, const struct input_event *iev) {
     int status = write(g->output_fd, iev, sizeof(struct input_event));
     if ( status < 0 ) {
-        printf("write failed, falling back to xdriver. TYPE:%d CODE:%d VALUE: %d WRITE ERROR CODE: %d\n", iev->type, iev->code, iev->value, status);
+        if (g->log_level > 0) {
+            fprintf(stderr, "write failed, falling back to xdriver. TYPE:%d CODE:%d VALUE: %d WRITE ERROR CODE: %d\n", iev->type, iev->code, iev->value, status);
+        }
         g->createdInputDevice = 0;
     }
     
@@ -318,7 +320,9 @@ void send_event(Ghandles * g, const struct input_event *iev) {
     status = write(g->output_fd, &(syn), sizeof(struct input_event));
     
     if ( status < 0 ) {
-        printf("writing SYN failed, falling back to xdriver. WRITE ERROR CODE: %d\n", status);
+        if (g->log_level > 0) {
+            fprintf(stderr, "writing SYN failed, falling back to xdriver. WRITE ERROR CODE: %d\n", status);
+        }
         g->createdInputDevice = 0;
     }
 }
@@ -2345,17 +2349,17 @@ int main(int argc, char **argv)
     if(g.createdInputDevice) {
         
         if (ioctl(g.output_fd, UI_SET_EVBIT, EV_SYN) < 0) {
-            printf("error setting EVBIT for EV_SYN, falling back to xdriver\n");
+            fprintf(stderr, "error setting EVBIT for EV_SYN, falling back to xdriver\n");
             g.createdInputDevice = 0;
         }
 
         if (ioctl(g.output_fd, UI_SET_EVBIT, EV_KEY) < 0) {
-            printf("error setting EVBIT for EV_KEY, falling back to xdriver\n");
+            fprintf(stderr, "error setting EVBIT for EV_KEY, falling back to xdriver\n");
             g.createdInputDevice = 0;
         }
         
         if (ioctl(g.output_fd, UI_SET_EVBIT, EV_REL) < 0) {
-            printf("error setting EVBIT for EV_REL, falling back to xdriver\n");
+            fprintf(stderr, "error setting EVBIT for EV_REL, falling back to xdriver\n");
             g.createdInputDevice = 0;
         }
         
