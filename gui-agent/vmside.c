@@ -1729,7 +1729,6 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
         iev.code = key.keycode-8;
         iev.value = (key.type == KeyPress ? 1 : 0);
         send_event(g, &iev);
-        // send_syn();
     }
 }
 
