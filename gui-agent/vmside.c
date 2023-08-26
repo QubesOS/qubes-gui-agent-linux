@@ -59,17 +59,6 @@
 #include <time.h>
 
 
-// int output_fd;
-// int createdInputDevice = 1;
-
-
-
-
-
-
-
-
-
 
 /* Time in milliseconds after which the clipboard data should be wiped */
 #define CLIPBOARD_WIPE_TIME 60000
