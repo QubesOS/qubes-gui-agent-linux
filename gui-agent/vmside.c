@@ -2360,6 +2360,7 @@ int main(int argc, char **argv)
             g.createdInputDevice = 0;
         }
         
+        
 
         // set all keys
         for(int i = 1; i < KEY_MAX; i++) {
