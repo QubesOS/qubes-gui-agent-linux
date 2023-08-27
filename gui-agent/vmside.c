@@ -2321,18 +2321,20 @@ int main(int argc, char **argv)
     Ghandles g;
     int wait_fds[2];
     
-        
-    // open uinput, if it fails, falls back to xdriver to not break input to the qube
-    g.output_fd = open("/dev/uinput", O_WRONLY | O_NDELAY);
-    if(g.output_fd < 0) {
-        g.output_fd = open("/dev/input/uinput", O_WRONLY | O_NDELAY);
-        
+    g.createdInputDevice = access("/run/qubes-service/gui-agent-virtual-input-device", F_OK) == 0;
+
+    if(g.createdInputDevice) {
+        // open uinput, if it fails, falls back to xdriver to not break input to the qube
+        g.output_fd = open("/dev/uinput", O_WRONLY | O_NDELAY);
         if(g.output_fd < 0) {
-            fprintf(stderr, "Couldn't open uinput, falling back to xdriver\n");
-            g.createdInputDevice = 0;
+            g.output_fd = open("/dev/input/uinput", O_WRONLY | O_NDELAY);
+            
+            if(g.output_fd < 0) {
+                fprintf(stderr, "Couldn't open uinput, falling back to xdriver\n");
+                g.createdInputDevice = 0;
+            }
         }
     }
-
     
     // input device creation
     if(g.createdInputDevice) {
