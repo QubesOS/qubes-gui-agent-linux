@@ -46,6 +46,7 @@ BuildRequires:	libXdamage-devel
 BuildRequires:	libXfixes-devel
 BuildRequires:	libXt-devel
 BuildRequires:	libtool-ltdl-devel
+BuildRequires:	libtool
 BuildRequires:	pulseaudio-libs-devel >= 0.9.21, pulseaudio-libs-devel <= 16.1
 BuildRequires:	xorg-x11-server-devel
 BuildRequires:	pam-devel
