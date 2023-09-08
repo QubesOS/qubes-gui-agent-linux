@@ -134,7 +134,7 @@ struct _global_handles {
     uint32_t domid;
     uint32_t protocol_version;
     Time time;
-    int output_fd;
+    int uinput_fd;
     int createdInputDevice;
 };
 
@@ -296,7 +296,7 @@ static int compare_supported_cursors(const void *a,
 
 
 void send_event(Ghandles * g, const struct input_event *iev) {
-    int status = write(g->output_fd, iev, sizeof(struct input_event));
+    int status = write(g->uinput_fd, iev, sizeof(struct input_event));
     if ( status < 0 ) {
         if (g->log_level > 0) {
             fprintf(stderr, "write failed, falling back to xdriver. TYPE:%d CODE:%d VALUE: %d WRITE ERROR CODE: %d\n", iev->type, iev->code, iev->value, status);
@@ -306,7 +306,7 @@ void send_event(Ghandles * g, const struct input_event *iev) {
     
     // send syn
     const struct input_event syn = {.type = EV_SYN, .code = 0, .value = 0};
-    status = write(g->output_fd, &(syn), sizeof(struct input_event));
+    status = write(g->uinput_fd, &(syn), sizeof(struct input_event));
     
     if ( status < 0 ) {
         if (g->log_level > 0) {
@@ -2325,11 +2325,11 @@ int main(int argc, char **argv)
 
     if(g.createdInputDevice) {
         // open uinput, if it fails, falls back to xdriver to not break input to the qube
-        g.output_fd = open("/dev/uinput", O_WRONLY | O_NDELAY);
-        if(g.output_fd < 0) {
-            g.output_fd = open("/dev/input/uinput", O_WRONLY | O_NDELAY);
+        g.uinput_fd = open("/dev/uinput", O_WRONLY | O_NDELAY);
+        if(g.uinput_fd < 0) {
+            g.uinput_fd = open("/dev/input/uinput", O_WRONLY | O_NDELAY);
             
-            if(g.output_fd < 0) {
+            if(g.uinput_fd < 0) {
                 fprintf(stderr, "Couldn't open uinput, falling back to xdriver\n");
                 g.createdInputDevice = 0;
             }
@@ -2339,12 +2339,12 @@ int main(int argc, char **argv)
     // input device creation
     if(g.createdInputDevice) {
         
-        if (ioctl(g.output_fd, UI_SET_EVBIT, EV_SYN) < 0) {
+        if (ioctl(g.uinput_fd, UI_SET_EVBIT, EV_SYN) < 0) {
             fprintf(stderr, "error setting EVBIT for EV_SYN, falling back to xdriver\n");
             g.createdInputDevice = 0;
         }
 
-        if (ioctl(g.output_fd, UI_SET_EVBIT, EV_KEY) < 0) {
+        if (ioctl(g.uinput_fd, UI_SET_EVBIT, EV_KEY) < 0) {
             fprintf(stderr, "error setting EVBIT for EV_KEY, falling back to xdriver\n");
             g.createdInputDevice = 0;
         }
@@ -2355,7 +2355,7 @@ int main(int argc, char **argv)
 
         // set all keys
         for(int i = 1; i < KEY_MAX; i++) {
-            if(i != KEY_RESERVED && ioctl(g.output_fd, UI_SET_KEYBIT, i) < 0) {
+            if(i != KEY_RESERVED && ioctl(g.uinput_fd, UI_SET_KEYBIT, i) < 0) {
                 fprintf(stderr, "Not able to set KEYBIT %d\n", i);
             }
         }
@@ -2365,12 +2365,12 @@ int main(int argc, char **argv)
         memset(&usetup, 0, sizeof(usetup));
         strcpy(usetup.name, "Qubes Virtual Input Device");
         
-        if(ioctl(g.output_fd, UI_DEV_SETUP, &usetup) < 0) {
+        if(ioctl(g.uinput_fd, UI_DEV_SETUP, &usetup) < 0) {
             fprintf(stderr, "Input device setup failed, falling back to xdriver\n");
             g.createdInputDevice = 0;
         } else {
             
-            if(ioctl(g.output_fd, UI_DEV_CREATE) < 0) {
+            if(ioctl(g.uinput_fd, UI_DEV_CREATE) < 0) {
                 fprintf(stderr, "Input device creation failed, falling back to xdriver\n");
                 g.createdInputDevice = 0;
             }
