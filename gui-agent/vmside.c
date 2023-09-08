@@ -2349,10 +2349,7 @@ int main(int argc, char **argv)
             g.createdInputDevice = 0;
         }
         
-        if (ioctl(g.output_fd, UI_SET_EVBIT, EV_REL) < 0) {
-            fprintf(stderr, "error setting EVBIT for EV_REL, falling back to xdriver\n");
-            g.createdInputDevice = 0;
-        }
+
         
         
 
@@ -2363,12 +2360,6 @@ int main(int argc, char **argv)
             }
         }
 
-        // set all rel bits
-        for(int i = 0; i <= REL_MAX; i++) {
-            if (i != REL_RESERVED && ioctl(g.output_fd, UI_SET_RELBIT, i) < 0) {
-                fprintf(stderr, "Not able to set RELBIT %d\n", i);
-            }
-        }
         
         struct uinput_setup usetup;
         memset(&usetup, 0, sizeof(usetup));
