@@ -1722,11 +1722,9 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
         int mod_index;
         struct input_event iev;
         iev.type = EV_KEY;
-        
         // only used in here to see if modifier is disabled
         XModifierKeymap *modmap;
         modmap = XGetModifierMapping(g->display);
-        
         
         for(mod_index = 0; mod_index < 8; mod_index++) {
             if (modmap->modifiermap[mod_index*modmap->max_keypermod] == 0x00) {
@@ -1742,7 +1740,6 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
                     iev.code = modmap->modifiermap[mod_index*modmap->max_keypermod] - 8;
                     iev.value = 1;
                     send_event(g, &iev);
-                    
                     iev.value = 0;
                     send_event(g, &iev);
                 }
@@ -1752,10 +1749,8 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
                 if ((g->last_known_modifier_states & mod_mask) && !(key.state & mod_mask)) {
                     iev.code = modmap->modifiermap[mod_index*modmap->max_keypermod] - 8;
                     iev.value = 0;
-                    
                     // send modifier release
                     send_event(g, &iev);
-                    
                     // update state for this modifier
                     g->last_known_modifier_states ^= mod_mask;
                 }
@@ -1764,23 +1759,17 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
                 else if (!(g->last_known_modifier_states & mod_mask) && (key.state & mod_mask)) {
                     iev.code = modmap->modifiermap[mod_index*modmap->max_keypermod] - 8;
                     iev.value = 1;
-                    
                     // send modifier press
                     send_event(g, &iev);
-                    
                     // update state for this modifier
                     g->last_known_modifier_states ^= mod_mask;
                 }
             }
         }
         XFreeModifiermap(modmap);
-
-        
         iev.code = key.keycode-8;
         iev.value = (key.type == KeyPress ? 1 : 0);
         send_event(g, &iev);
-        
-        
     }
 }
 
@@ -2407,10 +2396,6 @@ int main(int argc, char **argv)
             fprintf(stderr, "error setting EVBIT for EV_KEY, falling back to xdriver\n");
             g.created_input_device = 0;
         }
-        
-
-        
-        
 
         // set all keys
         for(int i = 1; i < KEY_MAX; i++) {
@@ -2418,7 +2403,6 @@ int main(int argc, char **argv)
                 fprintf(stderr, "Not able to set KEYBIT %d\n", i);
             }
         }
-
         
         struct uinput_setup usetup;
         memset(&usetup, 0, sizeof(usetup));
