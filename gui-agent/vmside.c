@@ -2414,7 +2414,7 @@ int main(int argc, char **argv)
 
         // set all keys
         for(int i = 1; i < KEY_MAX; i++) {
-            if(i != KEY_RESERVED && ioctl(g.uinput_fd, UI_SET_KEYBIT, i) < 0) {
+            if((i < BTN_MISC || i > BTN_GEAR_UP) && i != KEY_RESERVED && ioctl(g.uinput_fd, UI_SET_KEYBIT, i) < 0) {
                 fprintf(stderr, "Not able to set KEYBIT %d\n", i);
             }
         }
