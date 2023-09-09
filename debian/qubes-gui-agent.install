@@ -20,6 +20,7 @@ etc/xdg/fonts.conf
 etc/xdg/xsettingsd
 lib/systemd/system/qubes-gui-agent.service
 lib/udev/rules.d/70-master-of-seat.rules
+lib/udev/rules.d/90-qubes-virtual-input-device.rules
 usr/bin/qubes-change-keyboard-layout
 usr/bin/qubes-gui
 usr/bin/qubes-gui-runuser

@@ -252,6 +252,7 @@ rm -f %{name}-%{version}
 %config /etc/sysconfig/desktop
 %_unitdir/qubes-gui-agent.service
 %_udevrulesdir/70-master-of-seat.rules
+%_udevrulesdir/90-qubes-virtual-input-device.rules
 %_sysctldir/30-qubes-gui-agent.conf
 /usr/lib/qubes/gtk4-workarounds.sh
 /usr/lib/qubes/qubes-gui-agent-pre.sh
