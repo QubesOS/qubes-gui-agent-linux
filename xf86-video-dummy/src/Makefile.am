@@ -38,7 +38,7 @@ dummyqbs_drv_la_SOURCES = \
          dummy_cursor.c \
          dummy_driver.c \
          dummy.h \
-	 ../../common/list.c
+	 ../../gui-agent/list.c
 
 if DGA
 dummyqbs_drv_la_SOURCES +=	\

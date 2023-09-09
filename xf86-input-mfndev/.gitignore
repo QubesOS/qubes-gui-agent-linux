@@ -13,3 +13,7 @@ missing
 xorg-qubes.pc
 stamp-h1
 aclocal.m4
+compile
+config.h.in
+depcomp
+ltmain.sh

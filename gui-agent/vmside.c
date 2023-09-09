@@ -52,6 +52,7 @@
 #include "error.h"
 #include "encoding.h"
 #include <libvchan.h>
+#include <poll.h>
 
 
 #include <linux/input.h>
@@ -65,8 +66,8 @@
 
 /* Get the size of an array.  Error out on pointers. */
 #define QUBES_ARRAY_SIZE(x) (0 * sizeof(struct { \
-    int tried_to_compute_number_of_array_elements_in_a_pointer: \
-        1 - 2*__builtin_types_compatible_p(__typeof__(x), __typeof__(&((x)[0]))); \
+    uint8_t tried_to_compute_number_of_array_elements_in_a_pointer: \
+        8 - 16*__builtin_types_compatible_p(__typeof__(x), __typeof__(&((x)[0]))); \
     }) + sizeof(x)/sizeof((x)[0]))
 #define SOCKET_ADDRESS  "/var/run/xf86-qubes-socket"
 
@@ -87,14 +88,14 @@
 #  define UNUSED(x) UNUSED_ ## x
 #endif
 
-int damage_event, damage_error;
-int xfixes_event, xfixes_error;
+static int damage_event, damage_error;
+static int xfixes_event, xfixes_error;
 /* from gui-common/error.c */
 extern int print_x11_errors;
 
-char **saved_argv;
+static char **saved_argv;
 
-struct _global_handles {
+typedef struct {
     Display *display;
     int screen;            /* shortcut to the default screen */
     Window root_win;       /* root attributes */
@@ -137,7 +138,7 @@ struct _global_handles {
     int uinput_fd;
     int created_input_device;
     uint8_t last_known_modifier_states;
-};
+} Ghandles;
 
 struct window_data {
     int is_docked; /* is it docked icon window */
@@ -152,10 +153,9 @@ struct embeder_data {
     XID icon_window;
 };
 
-struct genlist *windows_list;
-struct genlist *embeder_list;
-typedef struct _global_handles Ghandles;
-Ghandles *ghandles_for_vchan_reinitialize;
+static struct genlist *windows_list;
+static struct genlist *embeder_list;
+static Ghandles *ghandles_for_vchan_reinitialize;
 
 #define SKIP_NONMANAGED_WINDOW do {                                    \
     if (!list_lookup(windows_list, window)) {                          \
@@ -289,10 +289,9 @@ static struct supported_cursor supported_cursors[] = {
 
 #define NUM_SUPPORTED_CURSORS (QUBES_ARRAY_SIZE(supported_cursors))
 
-static int compare_supported_cursors(const void *a,
-                              const void *b) {
-    return strcmp(((struct supported_cursor *)a)->name,
-                  ((struct supported_cursor *)b)->name);
+static int compare_supported_cursors(const void *a, const void *b) {
+    return strcmp(((const struct supported_cursor *)a)->name,
+                  ((const struct supported_cursor *)b)->name);
 }
 
 
@@ -431,7 +430,7 @@ static void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
                 "handle_create, ret=0x%x\n", (int) ev->window,
                 ret);
         return;
-    };
+    }
 
     if (g->log_level > 0)
         fprintf(stderr, "Create for 0x%x class 0x%x\n",
@@ -502,23 +501,19 @@ static void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
 static void feed_xdriver(Ghandles * g, int type, int arg1, int arg2)
 {
     char ans;
-    int ret;
+    ssize_t ret;
     struct xdriver_cmd cmd;
 
     cmd.type = type;
     cmd.arg1 = arg1;
     cmd.arg2 = arg2;
-    if (write(g->xserver_fd, &cmd, sizeof(cmd)) != sizeof(cmd)) {
-        perror("unix write");
-        exit(1);
-    }
+    if (write(g->xserver_fd, &cmd, sizeof(cmd)) != sizeof(cmd))
+        err(1, "unix write");
     ans = '1';
     ret = read(g->xserver_fd, &ans, 1);
     if (ret != 1 || ans != '0') {
         perror("unix read");
-        fprintf(stderr, "read returned %d, char read=0x%x\n", ret,
-                (int) ans);
-        exit(1);
+        err(1, "read returned %zd, char read=0x%x\n", ret, (int) ans);
     }
 }
 
@@ -531,10 +526,8 @@ void send_pixmap_grant_refs(Ghandles * g, XID window)
     int ret;
 
     feed_xdriver(g, 'W', (int) window, 0);
-    if (read(g->xserver_fd, &wd_msg_len, sizeof(wd_msg_len)) != sizeof(wd_msg_len)) {
-        perror("unix read wd_msg_len");
-        exit(1);
-    }
+    if (read(g->xserver_fd, &wd_msg_len, sizeof(wd_msg_len)) != sizeof(wd_msg_len))
+        err(1, "unix read wd_msg_len");
     if (wd_msg_len == 0) {
         fprintf(stderr, "Failed to get window dump for window 0x%lx\n",
                 window);
@@ -549,14 +542,10 @@ void send_pixmap_grant_refs(Ghandles * g, XID window)
     rcvd = 0;
     while (rcvd < wd_msg_len) {
         ret = read(g->xserver_fd, wd_msg_buf + rcvd, wd_msg_len - rcvd);
-        if (ret == 0) {
-            fprintf(stderr, "unix read EOF\n");
-            exit(1);
-        }
-        if (ret < 0) {
-            perror("unix read error");
-            exit(1);
-        }
+        if (ret == 0)
+            errx(1, "unix read EOF");
+        if (ret < 0)
+            err(1, "unix read error");
         rcvd += ret;
     }
     hdr.type = MSG_WINDOW_DUMP;
@@ -969,7 +958,7 @@ static void process_xevent_configure(Ghandles * g, XID window,
                     "XGetWindowAttributes for 0x%x failed in "
                     "handle_xevent_configure, ret=0x%x\n", (int) ((struct window_data*)l->data)->embeder, ret);
             return;
-        };
+        }
         if (ev->x != 0 || ev->y != 0 || ev->width != attr.width || ev->height != attr.height) {
             XMoveResizeWindow(g->display, window, 0, 0, attr.width, attr.height);
         }
@@ -1273,7 +1262,7 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
                             "handle_dock, ret=0x%x\n", (int) w,
                             ret);
                     return;
-                };
+                }
 
                 memset(&resp, 0, sizeof(resp));
                 resp.type = ClientMessage;
@@ -1426,14 +1415,14 @@ static int send_full_window_info(Ghandles *g, XID w, struct window_data *wd)
                 "send_window_state, ret=0x%x\n", (int) w,
                 ret);
         return 0;
-    };
+    }
     ret = XQueryTree(g->display, window_to_query, &root, &parent, &children_list, &children_count);
     if (ret != 1) {
         fprintf(stderr, "XQueryTree for 0x%x failed in "
                 "send_window_state, ret=0x%x\n", (int) w,
                 ret);
         return 0;
-    };
+    }
     if (children_list)
         XFree(children_list);
     if (parent != g->root_win) {
@@ -1812,7 +1801,7 @@ static void handle_motion(Ghandles * g, XID winid)
                 "XGetWindowAttributes for 0x%x failed in "
                 "do_button, ret=0x%x\n", (int) winid, ret);
         return;
-    };
+    }
 
     feed_xdriver(g, 'M', attr.x + key.x, attr.y + key.y);
 }
@@ -1843,7 +1832,7 @@ static void handle_crossing(Ghandles * g, XID winid)
                 "XGetWindowAttributes for 0x%x failed in "
                 "handle_crossing, ret=0x%x\n", (int) winid, ret);
         return;
-    };
+    }
 
     if (key.type == EnterNotify) {
         // hide stub window
@@ -2285,7 +2274,6 @@ static void handle_guid_disconnect(void)
         exit(1);
     }
     libvchan_close(g->vchan);
-    wait_for_possible_dispvm_resume();
     g->vchan = libvchan_server_init(g->domid, 6000, 4096, 4096);
     /* wait for gui daemon */
     while (libvchan_is_open(g->vchan) == VCHAN_WAITING)
@@ -2296,14 +2284,15 @@ static void handle_guid_disconnect(void)
     send_all_windows_info(g);
 }
 
-static void handle_sigterm()
+static _Noreturn void handle_sigterm(int UNUSED(sig),
+        siginfo_t *UNUSED(info), void *UNUSED(context))
 {
     Ghandles *g = ghandles_for_vchan_reinitialize;
     terminate_and_cleanup_xorg(g);
     exit(0);
 }
 
-static void usage()
+static void usage(void)
 {
     fprintf(stderr, "Usage: qubes_gui [options]\n");
     fprintf(stderr, "       -v  increase log verbosity\n");
@@ -2367,6 +2356,7 @@ int main(int argc, char **argv)
     int i;
     int xfd;
     Ghandles g;
+
     int wait_fds[2];
     
     g.created_input_device = access("/run/qubes-service/gui-agent-virtual-input-device", F_OK) == 0;
@@ -2422,7 +2412,6 @@ int main(int argc, char **argv)
         g.last_known_modifier_states = 0;
     }
 
-    
 
     parse_args(&g, argc, argv);
 
@@ -2486,7 +2475,13 @@ int main(int argc, char **argv)
 
     XAutoRepeatOff(g.display);
     signal(SIGCHLD, SIG_IGN);
-    signal(SIGTERM, handle_sigterm);
+    struct sigaction sigterm_handler = {
+        .sa_sigaction = handle_sigterm,
+        .sa_flags = SA_SIGINFO,
+    };
+    sigemptyset(&sigterm_handler.sa_mask);
+    if (sigaction(SIGTERM, &sigterm_handler, NULL))
+        err(1, "sigaction");
     windows_list = list_new();
     embeder_list = list_new();
     XSetErrorHandler(dummy_handler);
@@ -2515,16 +2510,19 @@ int main(int argc, char **argv)
                     "Acquired MANAGER selection for tray\n");
     }
     xfd = ConnectionNumber(g.display);
-    wait_fds[0] = xfd;
-    wait_fds[1] = g.xserver_fd;
+    struct pollfd fds[] = {
+        { .fd = -1, .events = POLLIN | POLLHUP, .revents = 0 },
+        { .fd = xfd, .events = POLLIN | POLLHUP, .revents = 0 },
+        { .fd = g.xserver_fd, .events = POLLIN | POLLHUP, .revents = 0 },
+    };
     for (;;) {
         int busy;
-        fd_set retset;
 
-        wait_for_vchan_or_argfd(g.vchan, 2, wait_fds, &retset);
+        fds[0].fd = libvchan_fd_for_select(g.vchan);
+        wait_for_vchan_or_argfd(g.vchan, fds, QUBES_ARRAY_SIZE(fds));
         /* first process possible qubes_drv reconnection, otherwise we may be
          * using stale g.xserver_fd */
-        if (FD_ISSET(g.xserver_fd, &retset)) {
+        if (fds[2].revents) {
             char discard[64];
             int ret;
 
@@ -2540,7 +2538,7 @@ int main(int argc, char **argv)
                         "qubes_drv disconnected, waiting for possible reconnection\n");
                 close(g.xserver_fd);
                 wait_for_unix_socket(&g);
-                wait_fds[1] = g.xserver_fd;
+                fds[2].fd = g.xserver_fd;
             } else {
                 perror("reading from qubes_drv");
                 exit(1);

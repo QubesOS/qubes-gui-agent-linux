@@ -57,7 +57,6 @@
 #include <limits.h>
 #include <sys/ioctl.h>
 #include <poll.h>
-#include <sys/select.h>
 
 #include <pulse/xmalloc.h>
 
@@ -307,14 +306,11 @@ static int source_process_msg(pa_msgobject * o, int code, void *data,
 static int write_to_vchan(libvchan_t *ctrl, char *buf, int size)
 {
     ssize_t l;
-    fd_set rfds;
-    struct timeval tv = { 0, 0 };
     int ret, fd = libvchan_fd_for_select(ctrl);
-    FD_ZERO(&rfds);
-    FD_SET(fd, &rfds);
-    ret = select(fd + 1, &rfds, NULL, NULL, &tv);
+    struct pollfd fds = { fd, POLLIN | POLLHUP, 0 };
+    ret = poll(&fds, 1, 0);
     if (ret == -1) {
-        pa_log("Failed to select() in vchan: %s",
+        pa_log("Failed to poll() in vchan: %s",
                pa_cstrerror(errno));
         return -1;
     }

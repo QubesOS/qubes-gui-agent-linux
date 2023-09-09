@@ -20,15 +20,19 @@
 #
 
 CC ?= gcc
-CFLAGS += -I../include/ `pkg-config --cflags vchan` -g -Wall -Wextra -Werror -fPIC
-OBJS = vmside.o \
-	../gui-common/txrx-vchan.o ../gui-common/error.o ../common/list.o ../gui-common/encoding.o 
+CFLAGS += -I../include/ `pkg-config --cflags vchan` -g -Wall -Wextra -Werror -fPIC \
+	  -Wmissing-prototypes -Wstrict-prototypes -Wold-style-declaration \
+	  -Wold-style-definition
+OBJS = vmside.o txrx-vchan.o error.o list.o encoding.o
 LIBS = -lX11 -lXdamage -lXcomposite -lXfixes `pkg-config --libs vchan` -lqubesdb
 
 
-all: qubes-gui
+all: qubes-gui qubes-gui-runuser
 qubes-gui: $(OBJS)
 	$(CC) $(LDFLAGS) -pie -g -o qubes-gui $(OBJS) \
 		$(LIBS)
+qubes-gui-runuser: CFLAGS += -g -Wall -Wextra -Werror -pie -fPIC
+qubes-gui-runuser: LDLIBS += -lpam -lqubesdb
+qubes-gui-runuser: qubes-gui-runuser.c
 clean:
-	rm -f qubes-gui *.o *~
+	rm -f qubes-gui qubes-gui-runuser ./*.o ./*~

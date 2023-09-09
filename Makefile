@@ -44,7 +44,7 @@ help:
 	    exit 0;
 
 .PHONY: appvm
-appvm: gui-agent/qubes-gui gui-common/qubes-gui-runuser \
+appvm: gui-agent/qubes-gui gui-agent/qubes-gui-runuser \
 	xf86-input-mfndev/src/.libs/qubes_drv.so \
 	xf86-video-dummy/src/.libs/dummyqbs_drv.so pulse/module-vchan-sink.so \
 	xf86-qubes-common/libxf86-qubes-common.so pipewire/qubes-pw-module.so
@@ -58,11 +58,8 @@ selinux/$(selinux_policies):
 install-selinux:
 	install -D -t $(DESTDIR)/usr/share/selinux/packages selinux/$(selinux_policies)
 
-gui-agent/qubes-gui:
+gui-agent/qubes-gui gui-agent/qubes-gui-runuser:
 	$(MAKE) -C gui-agent
-
-gui-common/qubes-gui-runuser:
-	$(MAKE) -C gui-common
 
 xf86-input-mfndev/src/.libs/qubes_drv.so: xf86-qubes-common/libxf86-qubes-common.so
 	(cd xf86-input-mfndev && ./autogen.sh && ./configure)
@@ -72,6 +69,7 @@ xf86-video-dummy/src/.libs/dummyqbs_drv.so: xf86-qubes-common/libxf86-qubes-comm
 	(cd xf86-video-dummy && ./autogen.sh)
 	$(MAKE) -C xf86-video-dummy
 
+.PHONY: pulse/module-vchan-sink.so
 pulse/module-vchan-sink.so:
 	rm -f pulse/pulsecore
 	ln -sf pulsecore-$(PA_VER_FULL) pulse/pulsecore
@@ -89,9 +87,7 @@ tar:
 
 .PHONY: clean
 clean:
-	(cd common && $(MAKE) clean)
 	(cd gui-agent && $(MAKE) clean)
-	(cd gui-common && $(MAKE) clean)
 	$(MAKE) -C pulse clean
 	$(MAKE) -C xf86-qubes-common clean
 	(cd xf86-input-mfndev; if [ -e Makefile ] ; then \
@@ -162,7 +158,7 @@ install-systemd:
 .PHONY: install-common
 install-common:
 	install -D gui-agent/qubes-gui $(DESTDIR)/usr/bin/qubes-gui
-	install -D gui-common/qubes-gui-runuser $(DESTDIR)/usr/bin/qubes-gui-runuser
+	install -D gui-agent/qubes-gui-runuser $(DESTDIR)/usr/bin/qubes-gui-runuser
 	install -d $(DESTDIR)/etc/qubes/post-install.d
 	install -m 0755 appvm-scripts/etc/qubes/post-install.d/20-qubes-guivm-gui-agent.sh \
                 $(DESTDIR)/etc/qubes/post-install.d/20-qubes-guivm-gui-agent.sh

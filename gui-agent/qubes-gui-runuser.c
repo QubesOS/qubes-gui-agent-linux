@@ -31,6 +31,7 @@
 #include <grp.h>
 #include <pwd.h>
 #include <err.h>
+#include <qubesdb-client.h>
 
 #ifdef HAVE_PAM
 #include <security/pam_appl.h>
@@ -39,7 +40,7 @@
 pid_t child_pid = 0;
 
 #ifdef HAVE_PAM
-int pam_conv_callback(int num_msg, const struct pam_message **msg,
+static int pam_conv_callback(int num_msg, const struct pam_message **msg,
         struct pam_response **resp, void *appdata_ptr __attribute__((__unused__)))
 {
     int i;
@@ -70,7 +71,7 @@ static struct pam_conv conv = {
 /* Start process as given user, register session with PAM (and logind via
  * pam_systemd) first; wait for the process to terminate.
  */
-pid_t do_execute(char *user, char *path, char **argv)
+static pid_t do_execute(char *user, char *path, char **argv)
 {
     char *tty = NULL;
     struct passwd *pw;
@@ -97,10 +98,13 @@ pid_t do_execute(char *user, char *path, char **argv)
      */
     pw_copy = *pw;
     pw = &pw_copy;
-    pw->pw_name = strdup(pw->pw_name);
-    pw->pw_passwd = strdup(pw->pw_passwd);
-    pw->pw_dir = strdup(pw->pw_dir);
-    pw->pw_shell = strdup(pw->pw_shell);
+    if ((pw->pw_name = strdup(pw->pw_name)) == NULL ||
+        (pw->pw_passwd = strdup(pw->pw_passwd)) == NULL ||
+        (pw->pw_dir = strdup(pw->pw_dir)) == NULL ||
+        (pw->pw_shell = strdup(pw->pw_shell)) == NULL)
+    {
+        err(1, "strdup");
+    }
     endpwent();
 
     retval = pam_start("qubes-gui-agent", user, &conv, &pamh);
@@ -247,7 +251,7 @@ error:
 /* in no-PAM case, simply switch to the target user and exec in place - there
  * is no need to keep parent process running as there nothing to cleanup
  */
-pid_t do_execute(char *user, char *path, char **argv)
+static pid_t do_execute(char *user, char *path, char **argv)
 {
     pid_t pid;
     int retval;
@@ -292,14 +296,15 @@ pid_t do_execute(char *user, char *path, char **argv)
 }
 #endif
 
-void propagate_signal(int signal) {
+static void propagate_signal(int signal) {
     if (child_pid)
         kill(child_pid, signal);
 }
 
-void usage(char *argv0) {
+static void usage(char *argv0) {
     fprintf(stderr, "Usage: %s user path arg0 [args ...]\n", argv0);
     fprintf(stderr, "Run a process from *path* with *arg0*, *args*, as user *user*\n");
+    fprintf(stderr, "If *user* is the empty string, the user is obtained from /default-user in qubesdb.\n");
 #ifdef HAVE_PAM
     fprintf(stderr, "The user session will be registered in pam/logind as graphical one\n");
     fprintf(stderr, "This require the following environment variables to be set:\n");
@@ -320,5 +325,18 @@ int main(int argc, char **argv) {
     signal(SIGTERM, propagate_signal);
     signal(SIGHUP, propagate_signal);
 
-    return do_execute(argv[1], argv[2], argv+3);
+    char *user = argv[1];
+    unsigned int len = 0;
+    if (user[0] == 0) {
+        qdb_handle_t qdb = qdb_open(NULL);
+        if (qdb == NULL)
+            err(1, "qdb_open()");
+        user = qdb_read(qdb, "/default-user", &len);
+        if (user == NULL)
+            err(1, "qdb_read(\"/default-user\")");
+        if (len == 0)
+            errx(1, "username cannot be empty");
+    }
+
+    return do_execute(user, argv[2], argv+3);
 }

@@ -23,23 +23,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <libvchan.h>
-#include <sys/select.h>
 #include <errno.h>
-#include <qubesdb-client.h>
+#include <poll.h>
+#include <err.h>
 
-void (*vchan_at_eof)(void) = NULL;
+#include "txrx.h"
+
+static void (*vchan_at_eof)(void) = NULL;
 
 void vchan_register_at_eof(void (*new_vchan_at_eof)(void))
 {
     vchan_at_eof = new_vchan_at_eof;
 }
 
-void handle_vchan_error(libvchan_t *vchan, const char *op)
+static _Noreturn void handle_vchan_error(libvchan_t *vchan, const char *op)
 {
     if (!libvchan_is_open(vchan) && vchan_at_eof)
         vchan_at_eof();
-    fprintf(stderr, "Error while vchan %s\n, terminating", op);
-    exit(1);
+    errx(1, "Error while vchan %s\n, terminating", op);
 }
 
 int real_write_message(libvchan_t *vchan, char *hdr, int size, char *data, int datasize)
@@ -81,28 +82,14 @@ int read_data(libvchan_t *vchan, char *buf, int size)
     return size;
 }
 
-int wait_for_vchan_or_argfd_once(libvchan_t *vchan, int nfd, int *fd, fd_set * retset)
+static int wait_for_vchan_or_argfd_once(libvchan_t *vchan, struct pollfd *const fds, size_t const nfds)
 {
-    fd_set rfds;
-    int vfd, max = 0, ret, i;
-    vfd = libvchan_fd_for_select(vchan);
-    FD_ZERO(&rfds);
-    for (i = 0; i < nfd; i++) {
-        int cfd = fd[i];
-        FD_SET(cfd, &rfds);
-        if (cfd > max)
-            max = cfd;
-    }
-    FD_SET(vfd, &rfds);
-    if (vfd > max)
-        max = vfd;
-    max++;
-    ret = select(max, &rfds, NULL, NULL, NULL);
-    if (ret < 0 && errno == EINTR)
-        return 0;
+    int ret;
+    ret = poll(fds, nfds, 1000);
     if (ret < 0) {
-        perror("select");
-        exit(1);
+        if (errno == EINTR)
+            return -1;
+        err(1, "poll");
     }
     if (!libvchan_is_open(vchan)) {
         fprintf(stderr, "libvchan_is_eof\n");
@@ -112,55 +99,17 @@ int wait_for_vchan_or_argfd_once(libvchan_t *vchan, int nfd, int *fd, fd_set * r
         } else
             exit(0);
     }
-    if (FD_ISSET(vfd, &rfds))
+    if (fds[0].revents) {
         // the following will never block; we need to do this to
         // clear libvchan_fd pending state 
         libvchan_wait(vchan);
-    if (retset)
-        *retset = rfds;
+    }
     return ret;
 }
 
-void wait_for_vchan_or_argfd(libvchan_t *vchan, int nfd, int *fd, fd_set * retset)
+int wait_for_vchan_or_argfd(libvchan_t *vchan, struct pollfd *const fds, size_t nfds)
 {
-    while (wait_for_vchan_or_argfd_once(vchan, nfd, fd, retset) == 0);
-}
-
-void wait_for_possible_dispvm_resume() {
-    qdb_handle_t qdb;
-    char *tmp;
-
-    qdb = qdb_open(NULL);
-    if (!qdb) {
-        perror("qdb_open");
-        exit(1);
-    }
-    tmp = qdb_read(qdb, "/qubes-save-request", NULL);
-    if (tmp) {
-        free(tmp);
-    } else
-        goto out;
-
-    qdb_watch(qdb, "/qubes-restore-complete");
-    tmp = qdb_read(qdb, "/qubes-restore-complete", NULL);
-    if (tmp) {
-        free(tmp);
-        goto out;
-    }
-    do {
-        tmp = qdb_read_watch(qdb);
-        if (tmp) {
-            free(tmp);
-        } else if (errno == EPIPE) {
-            /* QubesDB connection closed (crashed?), assume DispVM was
-             * restored, as it is safer option than aborting the whole
-             * gui-agent
-             */
-            break;
-        }
-
-    }
-    while (!tmp); // wait for dom0 to create qubesdb entry
-out:
-    qdb_close(qdb);
+    int ret;
+    while ((ret=wait_for_vchan_or_argfd_once(vchan, fds, nfds)) == 0);
+    return ret;
 }
