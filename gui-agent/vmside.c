@@ -296,7 +296,7 @@ static int compare_supported_cursors(const void *a,
 }
 
 
-void send_event(Ghandles * g, const struct input_event *iev) {
+static void send_event(Ghandles * g, const struct input_event *iev) {
     int status = write(g->uinput_fd, iev, sizeof(struct input_event));
     if ( status < 0 ) {
         if (g->log_level > 0) {
