@@ -2357,8 +2357,6 @@ int main(int argc, char **argv)
     int xfd;
     Ghandles g;
 
-    int wait_fds[2];
-    
     g.created_input_device = access("/run/qubes-service/gui-agent-virtual-input-device", F_OK) == 0;
 
     if(g.created_input_device) {
