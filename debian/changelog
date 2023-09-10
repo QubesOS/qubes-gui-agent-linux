@@ -1,3 +1,34 @@
+qubes-gui-agent (4.2.9-1) unstable; urgency=medium
+
+  [ Demi Marie Obenour ]
+  * Consolodate gui-common/ and common/ into gui-agent/
+  * Ensure that all function declarations have prototypes
+  * Fix missing prototypes
+  * Update .gitignore files
+  * Remove obsolete checks for disposable VM resume
+  * Ban old-style declarations and definitions
+  * Switch from select(2) to poll(2).
+  * Always see if module-vchan-sink.so must be rebuilt
+  * fix some clang warnings
+  * Avoid reserved identifier violation
+  * Fix unchecked malloc()
+  * qubes-gui-runuser: obtain default user from qubesdb
+
+  [ Frédéric Pierret (fepitre) ]
+  * Update for Fedora 39
+
+  [ fepitre-bot ]
+  * Add pulseaudio-16.99.1 headers
+
+  [ Demi Marie Obenour ]
+  * Better error checking
+  * Add XDG_SESSION_TYPE support
+  * Set XDG_SESSION_DESKTOP
+  * Protect against more unlikely errors
+  * Set XDG_CURRENT_DESKTOP
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 10 Sep 2023 18:25:01 +0200
+
 qubes-gui-agent (4.2.8-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
