@@ -1723,9 +1723,6 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
                     continue;
             }
             mod_mask = (1<<mod_index);
-            if(mod_index == LockMapIndex) {
-                fprintf(stderr, "Last known and current %d %d\n", (g->last_known_modifier_states & mod_mask), (key.state & mod_mask));
-            }
             // special case for caps lock switch by press+release
             if (mod_index == LockMapIndex) {
                 if ((g->last_known_modifier_states & mod_mask) ^ (key.state & mod_mask)) {
