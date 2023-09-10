@@ -1723,6 +1723,9 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
                     continue;
             }
             mod_mask = (1<<mod_index);
+            if(mod_index == LockMapIndex) {
+                fprintf(stderr, "Last known and current %d %d\n", (g->last_known_modifier_states & mod_mask), (key.state & mod_mask));
+            }
             // special case for caps lock switch by press+release
             if (mod_index == LockMapIndex) {
                 if ((g->last_known_modifier_states & mod_mask) ^ (key.state & mod_mask)) {
@@ -1731,6 +1734,8 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
                     send_event(g, &iev);
                     iev.value = 0;
                     send_event(g, &iev);
+                    // update state for caps_lock
+                    g->last_known_modifier_states ^= mod_mask;
                 }
             } else {
                 
@@ -1755,10 +1760,14 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
                 }
             }
         }
-        XFreeModifiermap(modmap);
-        iev.code = key.keycode-8;
-        iev.value = (key.type == KeyPress ? 1 : 0);
-        send_event(g, &iev);
+        
+        if(key.keycode-8 != KEY_CAPSLOCK) {
+            XFreeModifiermap(modmap);
+            iev.code = key.keycode-8;
+            iev.value = (key.type == KeyPress ? 1 : 0);
+            send_event(g, &iev);
+        }
+        
     }
 }
 
