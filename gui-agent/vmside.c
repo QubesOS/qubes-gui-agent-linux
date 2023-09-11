@@ -1711,7 +1711,6 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
         int mod_index;
         struct input_event iev;
         iev.type = EV_KEY;
-        // only used in here to see if modifier is disabled
         XModifierKeymap *modmap;
         modmap = XGetModifierMapping(g->display);
         
