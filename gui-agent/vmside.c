@@ -1715,51 +1715,57 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
         XModifierKeymap *modmap;
         modmap = XGetModifierMapping(g->display);
         
-        for(mod_index = 0; mod_index < 8; mod_index++) {
-            if (modmap->modifiermap[mod_index*modmap->max_keypermod] == 0x00) {
-                    if (g->log_level > 1)
-                        fprintf(stderr, "ignoring disabled modifier %d\n", mod_index);
-                    // no key set for this modifier, ignore
-                    continue;
-            }
-            mod_mask = (1<<mod_index);
-            // special case for caps lock switch by press+release
-            if (mod_index == LockMapIndex) {
-                if ((g->last_known_modifier_states & mod_mask) ^ (key.state & mod_mask)) {
-                    iev.code = modmap->modifiermap[mod_index*modmap->max_keypermod] - 8;
-                    iev.value = 1;
-                    send_event(g, &iev);
-                    iev.value = 0;
-                    send_event(g, &iev);
-                    // update state for caps_lock
-                    g->last_known_modifier_states ^= mod_mask;
+        if (!modmap) {
+                if (g->log_level > 0)
+                    fprintf(stderr, "failed to get modifier mapping\n");
+        } else {
+            for(mod_index = 0; mod_index < 8; mod_index++) {
+                if (modmap->modifiermap[mod_index*modmap->max_keypermod] == 0x00) {
+                        if (g->log_level > 1)
+                            fprintf(stderr, "ignoring disabled modifier %d\n", mod_index);
+                        // no key set for this modifier, ignore
+                        continue;
                 }
-            } else {
-                
-                // last modifier state was pressed down, modifier has since been released
-                if ((g->last_known_modifier_states & mod_mask) && !(key.state & mod_mask)) {
-                    iev.code = modmap->modifiermap[mod_index*modmap->max_keypermod] - 8;
-                    iev.value = 0;
-                    // send modifier release
-                    send_event(g, &iev);
-                    // update state for this modifier
-                    g->last_known_modifier_states ^= mod_mask;
-                }
-                
-                // last modifier state was up, modifier has since been pressed down
-                else if (!(g->last_known_modifier_states & mod_mask) && (key.state & mod_mask)) {
-                    iev.code = modmap->modifiermap[mod_index*modmap->max_keypermod] - 8;
-                    iev.value = 1;
-                    // send modifier press
-                    send_event(g, &iev);
-                    // update state for this modifier
-                    g->last_known_modifier_states ^= mod_mask;
+                mod_mask = (1<<mod_index);
+                // special case for caps lock switch by press+release
+                if (mod_index == LockMapIndex) {
+                    if ((g->last_known_modifier_states & mod_mask) ^ (key.state & mod_mask)) {
+                        iev.code = modmap->modifiermap[mod_index*modmap->max_keypermod] - 8;
+                        iev.value = 1;
+                        send_event(g, &iev);
+                        iev.value = 0;
+                        send_event(g, &iev);
+                        // update state for caps_lock
+                        g->last_known_modifier_states ^= mod_mask;
+                    }
+                } else {
+                    
+                    // last modifier state was pressed down, modifier has since been released
+                    if ((g->last_known_modifier_states & mod_mask) && !(key.state & mod_mask)) {
+                        iev.code = modmap->modifiermap[mod_index*modmap->max_keypermod] - 8;
+                        iev.value = 0;
+                        // send modifier release
+                        send_event(g, &iev);
+                        // update state for this modifier
+                        g->last_known_modifier_states ^= mod_mask;
+                    }
+                    
+                    // last modifier state was up, modifier has since been pressed down
+                    else if (!(g->last_known_modifier_states & mod_mask) && (key.state & mod_mask)) {
+                        iev.code = modmap->modifiermap[mod_index*modmap->max_keypermod] - 8;
+                        iev.value = 1;
+                        // send modifier press
+                        send_event(g, &iev);
+                        // update state for this modifier
+                        g->last_known_modifier_states ^= mod_mask;
+                    }
                 }
             }
         }
         
+        XFreeModifiermap(modmap);
+
         if(key.keycode-8 != KEY_CAPSLOCK) {
-            XFreeModifiermap(modmap);
             iev.code = key.keycode-8;
             iev.value = (key.type == KeyPress ? 1 : 0);
             send_event(g, &iev);
