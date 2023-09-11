@@ -1738,7 +1738,6 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
                         g->last_known_modifier_states ^= mod_mask;
                     }
                 } else {
-                    
                     // last modifier state was pressed down, modifier has since been released
                     if ((g->last_known_modifier_states & mod_mask) && !(key.state & mod_mask)) {
                         iev.code = modmap->modifiermap[mod_index*modmap->max_keypermod] - 8;
@@ -1764,6 +1763,7 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
         
         XFreeModifiermap(modmap);
 
+        // caps lock needs to be excluded to not send down, up, down or down, up, up on a caps lock sync instead of down, up
         if(key.keycode-8 != KEY_CAPSLOCK) {
             iev.code = key.keycode-8;
             iev.value = (key.type == KeyPress ? 1 : 0);
