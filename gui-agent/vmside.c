@@ -54,6 +54,13 @@
 #include <libvchan.h>
 #include <poll.h>
 
+
+#include <linux/input.h>
+#include <linux/uinput.h>
+#include <time.h>
+
+
+
 /* Time in milliseconds after which the clipboard data should be wiped */
 #define CLIPBOARD_WIPE_TIME 60000
 
@@ -128,6 +135,9 @@ typedef struct {
     uint32_t domid;
     uint32_t protocol_version;
     Time time;
+    int uinput_fd;
+    int created_input_device;
+    uint8_t last_known_modifier_states;
 } Ghandles;
 
 struct window_data {
@@ -283,6 +293,29 @@ static int compare_supported_cursors(const void *a, const void *b) {
     return strcmp(((const struct supported_cursor *)a)->name,
                   ((const struct supported_cursor *)b)->name);
 }
+
+
+static void send_event(Ghandles * g, const struct input_event *iev) {
+    int status = write(g->uinput_fd, iev, sizeof(struct input_event));
+    if ( status < 0 ) {
+        if (g->log_level > 0) {
+            fprintf(stderr, "write failed, falling back to xdriver. TYPE:%d CODE:%d VALUE: %d WRITE ERROR CODE: %d\n", iev->type, iev->code, iev->value, status);
+        }
+        g->created_input_device = 0;
+    }
+    
+    // send syn
+    const struct input_event syn = {.type = EV_SYN, .code = 0, .value = 0};
+    status = write(g->uinput_fd, &(syn), sizeof(struct input_event));
+    
+    if ( status < 0 ) {
+        if (g->log_level > 0) {
+            fprintf(stderr, "writing SYN failed, falling back to xdriver. WRITE ERROR CODE: %d\n", status);
+        }
+        g->created_input_device = 0;
+    }
+}
+
 
 static void send_wmname(Ghandles * g, XID window);
 static void send_wmnormalhints(Ghandles * g, XID window, int ignore_fail);
@@ -1615,62 +1648,129 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
     struct msg_keypress key;
     XkbStateRec state;
     read_data(g->vchan, (char *) &key, sizeof(key));
-    // sync modifiers state
-    if (XkbGetState(g->display, XkbUseCoreKbd, &state) != Success) {
-        if (g->log_level > 0)
-            fprintf(stderr, "failed to get modifier state\n");
-        state.mods = key.state;
-    }
-    if (!g->sync_all_modifiers) {
-        // ignore all but CapsLock
-        state.mods &= LockMask;
-        key.state &= LockMask;
-    }
-    if (state.mods != key.state) {
-        XModifierKeymap *modmap;
-        int mod_index;
-        int mod_mask;
 
-        modmap = XGetModifierMapping(g->display);
-        if (!modmap) {
+    if(!g->created_input_device) {
+        // sync modifiers state
+        if (XkbGetState(g->display, XkbUseCoreKbd, &state) != Success) {
             if (g->log_level > 0)
-                fprintf(stderr, "failed to get modifier mapping\n");
+                fprintf(stderr, "failed to get modifier state\n");
+            state.mods = key.state;
+        }
+        if (!g->sync_all_modifiers) {
+            // ignore all but CapsLock
+            state.mods &= LockMask;
+            key.state &= LockMask;
+        }
+        if (state.mods != key.state) {
+            XModifierKeymap *modmap;
+            int mod_index;
+            int mod_mask;
+
+            modmap = XGetModifierMapping(g->display);
+            if (!modmap) {
+                if (g->log_level > 0)
+                    fprintf(stderr, "failed to get modifier mapping\n");
+            } else {
+                // from X.h:
+                // #define ShiftMapIndex           0
+                // #define LockMapIndex            1
+                // #define ControlMapIndex         2
+                // #define Mod1MapIndex            3
+                // #define Mod2MapIndex            4
+                // #define Mod3MapIndex            5
+                // #define Mod4MapIndex            6
+                // #define Mod5MapIndex            7
+                for (mod_index = 0; mod_index < 8; mod_index++) {
+                    if (modmap->modifiermap[mod_index*modmap->max_keypermod] == 0x00) {
+                        if (g->log_level > 1)
+                            fprintf(stderr, "ignoring disabled modifier %d\n", mod_index);
+                        // no key set for this modifier, ignore
+                        continue;
+                    }
+                    mod_mask = (1<<mod_index);
+                    // special case for caps lock switch by press+release
+                    if (mod_index == LockMapIndex) {
+                        if ((state.mods & mod_mask) ^ (key.state & mod_mask)) {
+                            feed_xdriver(g, 'K', modmap->modifiermap[mod_index*modmap->max_keypermod], 1);
+                            feed_xdriver(g, 'K', modmap->modifiermap[mod_index*modmap->max_keypermod], 0);
+                        }
+                    } else {
+                        if ((state.mods & mod_mask) && !(key.state & mod_mask))
+                            feed_xdriver(g, 'K', modmap->modifiermap[mod_index*modmap->max_keypermod], 0);
+                        else if (!(state.mods & mod_mask) && (key.state & mod_mask))
+                            feed_xdriver(g, 'K', modmap->modifiermap[mod_index*modmap->max_keypermod], 1);
+                    }
+                }
+                XFreeModifiermap(modmap);
+            }
+        }
+        
+        feed_xdriver(g, 'K', key.keycode, key.type == KeyPress ? 1 : 0);
+    } else {
+        int mod_mask;
+        int mod_index;
+        struct input_event iev;
+        iev.type = EV_KEY;
+        XModifierKeymap *modmap;
+        modmap = XGetModifierMapping(g->display);
+        
+        if (!modmap) {
+                if (g->log_level > 0)
+                    fprintf(stderr, "failed to get modifier mapping\n");
         } else {
-            // from X.h:
-            // #define ShiftMapIndex           0
-            // #define LockMapIndex            1
-            // #define ControlMapIndex         2
-            // #define Mod1MapIndex            3
-            // #define Mod2MapIndex            4
-            // #define Mod3MapIndex            5
-            // #define Mod4MapIndex            6
-            // #define Mod5MapIndex            7
-            for (mod_index = 0; mod_index < 8; mod_index++) {
+            for(mod_index = 0; mod_index < 8; mod_index++) {
                 if (modmap->modifiermap[mod_index*modmap->max_keypermod] == 0x00) {
-                    if (g->log_level > 1)
-                        fprintf(stderr, "ignoring disabled modifier %d\n", mod_index);
-                    // no key set for this modifier, ignore
-                    continue;
+                        if (g->log_level > 1)
+                            fprintf(stderr, "ignoring disabled modifier %d\n", mod_index);
+                        // no key set for this modifier, ignore
+                        continue;
                 }
                 mod_mask = (1<<mod_index);
                 // special case for caps lock switch by press+release
                 if (mod_index == LockMapIndex) {
-                    if ((state.mods & mod_mask) ^ (key.state & mod_mask)) {
-                        feed_xdriver(g, 'K', modmap->modifiermap[mod_index*modmap->max_keypermod], 1);
-                        feed_xdriver(g, 'K', modmap->modifiermap[mod_index*modmap->max_keypermod], 0);
+                    if ((g->last_known_modifier_states & mod_mask) ^ (key.state & mod_mask)) {
+                        iev.code = modmap->modifiermap[mod_index*modmap->max_keypermod] - 8;
+                        iev.value = 1;
+                        send_event(g, &iev);
+                        iev.value = 0;
+                        send_event(g, &iev);
+                        // update state for caps_lock
+                        g->last_known_modifier_states ^= mod_mask;
                     }
                 } else {
-                    if ((state.mods & mod_mask) && !(key.state & mod_mask))
-                        feed_xdriver(g, 'K', modmap->modifiermap[mod_index*modmap->max_keypermod], 0);
-                    else if (!(state.mods & mod_mask) && (key.state & mod_mask))
-                        feed_xdriver(g, 'K', modmap->modifiermap[mod_index*modmap->max_keypermod], 1);
+                    // last modifier state was pressed down, modifier has since been released
+                    if ((g->last_known_modifier_states & mod_mask) && !(key.state & mod_mask)) {
+                        iev.code = modmap->modifiermap[mod_index*modmap->max_keypermod] - 8;
+                        iev.value = 0;
+                        // send modifier release
+                        send_event(g, &iev);
+                        // update state for this modifier
+                        g->last_known_modifier_states ^= mod_mask;
+                    }
+                    
+                    // last modifier state was up, modifier has since been pressed down
+                    else if (!(g->last_known_modifier_states & mod_mask) && (key.state & mod_mask)) {
+                        iev.code = modmap->modifiermap[mod_index*modmap->max_keypermod] - 8;
+                        iev.value = 1;
+                        // send modifier press
+                        send_event(g, &iev);
+                        // update state for this modifier
+                        g->last_known_modifier_states ^= mod_mask;
+                    }
                 }
             }
-            XFreeModifiermap(modmap);
         }
-    }
+        
+        XFreeModifiermap(modmap);
 
-    feed_xdriver(g, 'K', key.keycode, key.type == KeyPress ? 1 : 0);
+        // caps lock needs to be excluded to not send down, up, down or down, up, up on a caps lock sync instead of down, up
+        if(key.keycode-8 != KEY_CAPSLOCK) {
+            iev.code = key.keycode-8;
+            iev.value = (key.type == KeyPress ? 1 : 0);
+            send_event(g, &iev);
+        }
+        
+    }
 }
 
 static void handle_button(Ghandles * g, XID winid)
@@ -2267,6 +2367,60 @@ int main(int argc, char **argv)
     int i;
     int xfd;
     Ghandles g;
+
+    g.created_input_device = access("/run/qubes-service/gui-agent-virtual-input-device", F_OK) == 0;
+
+    if(g.created_input_device) {
+        // open uinput, if it fails, falls back to xdriver to not break input to the qube
+        g.uinput_fd = open("/dev/uinput", O_WRONLY | O_NDELAY);
+        if(g.uinput_fd < 0) {
+            g.uinput_fd = open("/dev/input/uinput", O_WRONLY | O_NDELAY);
+            
+            if(g.uinput_fd < 0) {
+                fprintf(stderr, "Couldn't open uinput, falling back to xdriver\n");
+                g.created_input_device = 0;
+            }
+        }
+    }
+    
+    // input device creation
+    if(g.created_input_device) {
+        
+        if (ioctl(g.uinput_fd, UI_SET_EVBIT, EV_SYN) < 0) {
+            fprintf(stderr, "error setting EVBIT for EV_SYN, falling back to xdriver\n");
+            g.created_input_device = 0;
+        }
+
+        if (ioctl(g.uinput_fd, UI_SET_EVBIT, EV_KEY) < 0) {
+            fprintf(stderr, "error setting EVBIT for EV_KEY, falling back to xdriver\n");
+            g.created_input_device = 0;
+        }
+
+        // set all keys
+        for(int i = 1; i < KEY_MAX; i++) {
+            if((i < BTN_MISC || i > BTN_GEAR_UP) && i != KEY_RESERVED && ioctl(g.uinput_fd, UI_SET_KEYBIT, i) < 0) {
+                fprintf(stderr, "Not able to set KEYBIT %d\n", i);
+            }
+        }
+        
+        struct uinput_setup usetup;
+        memset(&usetup, 0, sizeof(usetup));
+        strcpy(usetup.name, "Qubes Virtual Input Device");
+        
+        if(ioctl(g.uinput_fd, UI_DEV_SETUP, &usetup) < 0) {
+            fprintf(stderr, "Input device setup failed, falling back to xdriver\n");
+            g.created_input_device = 0;
+        } else {
+            
+            if(ioctl(g.uinput_fd, UI_DEV_CREATE) < 0) {
+                fprintf(stderr, "Input device creation failed, falling back to xdriver\n");
+                g.created_input_device = 0;
+            }
+        }
+        
+        g.last_known_modifier_states = 0;
+    }
+
 
     parse_args(&g, argc, argv);
 
