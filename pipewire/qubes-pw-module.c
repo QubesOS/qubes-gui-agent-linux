@@ -39,6 +39,7 @@
 #define QUBES_PW_KEY_RECORD_BUFFER_SPACE   "org.qubes-os.record.buffer-size"
 #define QUBES_PW_KEY_PLAYBACK_BUFFER_SPACE   "org.qubes-os.playback.buffer-size"
 #define QUBES_PW_KEY_PLAYBACK_TARGET_BUFFER_FILL   "org.qubes-os.playback.target-buffer-fill"
+#define QUBES_PW_KEY_PLAYBACK_BUFFER_PREFILL   "org.qubes-os.playback.buffer.prefill"
 #define QUBES_PW_KEY_CAPTURE_TARGET_BUFFER_FILL   "org.qubes-os.record.target-buffer-fill"
 #define QUBES_PW_KEY_ASSUME_MIC_ATTACHED   "org.qubes-os.assume-mic-attached"
 
@@ -144,6 +145,9 @@ PW_LOG_TOPIC_STATIC(mod_topic, "mod." NAME);
                         "[ " QUBES_PW_KEY_BUFFER_SPACE "=<default vchan buffer space (headroom)> ] " \
                         "[ " QUBES_PW_KEY_RECORD_BUFFER_SPACE "=<recording headroom> ]" \
                         "[ " QUBES_PW_KEY_PLAYBACK_BUFFER_SPACE "=<playback headroom> ]" \
+                        "[ " QUBES_PW_KEY_PLAYBACK_TARGET_BUFFER_FILL "=<playback target buffer fill level> ]" \
+                        "[ " QUBES_PW_KEY_PLAYBACK_TARGET_BUFFER_FILL "=<playback buffer pre-fill> ]" \
+                        "[ " QUBES_PW_KEY_CAPTURE_TARGET_BUFFER_FILL "=<record target buffer fill level> ]" \
                         "[ stream.sink.props=<properties> ] " \
                         "[ stream.source.props=<properties> ] "
 
@@ -184,13 +188,13 @@ struct qubes_stream {
     struct pw_properties *stream_props;
     // Pointer to stream.  Immutable after init.
     struct pw_stream *stream;
+    // Audio format info.  Accessed only on main thread.
+    struct spa_audio_info_raw info;
     // Stream event listener.  Accessed on main thread only.
     struct spa_hook stream_listener;
     // Position control.  Pointer is immutable after being set.
     // Pointee accessed on realtime thread only.
     struct spa_io_position *position;
-    // Audio format info.  Accessed only on main thread.
-    struct spa_audio_info_raw info;
     // Vchans, explicitly synchronized using message passing.
     struct libvchan *vchan, *closed_vchan;
     // Pointer to the implementation.
@@ -211,6 +215,13 @@ struct qubes_stream {
     uint64_t next_time;
     struct spa_source timer;
     struct rate_match rm;
+    // Number of bytes to send before sending a command.
+    // Unused for capture.
+    uint32_t bytes_before_sending_cmd;
+    // Number of bytes to add or subtract to the pre-fill amount
+    // before triggering playback.  Unused for capture.
+    // Always in [rm.target_buffer-vchan_write_buf,rm.target_buffer]
+    int32_t prefill_delta;
 };
 
 static inline bool
@@ -901,17 +912,41 @@ static int process_control_commands(struct impl *impl)
 
     if (new_state != playback_stream->last_state) {
         uint32_t cmd = new_state ? QUBES_PA_SINK_UNCORK_CMD : QUBES_PA_SINK_CORK_CMD;
+        bool send = true;
 
         if (libvchan_buffer_space(control_vchan) < (int)sizeof(cmd)) {
             pw_log_error("cannot write command to control vchan: no buffer space");
             return -ENOBUFS;
         }
 
-        int res = libvchan_send(control_vchan, &cmd, sizeof(cmd));
-        if (res != (int)sizeof(cmd)) {
-            pw_log_error("error writing command to control vchan: got %d, expected %zu",
-                         res, sizeof(cmd));
-            return -EPROTO;
+        if (new_state) {
+            /* Fill the playback vchan to the target level.  This avoids underruns
+             * during the first 2-3 seconds of playback. */
+            int buffer_space = libvchan_buffer_space(playback_stream->vchan);
+            // Adjust for the prefill delta requested by the user.
+            // Overflow is impossible because of the 2^20 limit on vchan buffers
+            // and the check during initialization that prefill_delta is in
+            // [rm.target_buffer-vchan_write_buf,rm.target_buffer].  This also guarantees
+            // that one can fill the vchan enough to uncork the stream.
+            spa_assert(playback_stream->rm.target_buffer <= 1UL << 20);
+            spa_assert((int32_t)playback_stream->rm.target_buffer >= playback_stream->prefill_delta);
+            uint32_t minimum_buffer = (uint32_t)((int32_t)playback_stream->rm.target_buffer -
+                                                 playback_stream->prefill_delta);
+            if (buffer_space >= 0 && (unsigned int)buffer_space > minimum_buffer) {
+                uint32_t bytes_before_start = (unsigned int)buffer_space - minimum_buffer;
+                pw_log_trace("Will start playback once %" PRIu32 " bytes have been sent", bytes_before_start);
+                playback_stream->bytes_before_sending_cmd = bytes_before_start;
+                send = false;
+            }
+        }
+
+        if (send) {
+            int res = libvchan_send(control_vchan, &cmd, sizeof(cmd));
+            if (res != (int)sizeof(cmd)) {
+                pw_log_error("error writing command to control vchan: got %d, expected %zu",
+                             res, sizeof(cmd));
+                return -EPROTO;
+            }
         }
 
         pw_log_trace("Audio playback %s", new_state ? "started" : "stopped");
@@ -1143,19 +1178,36 @@ static void playback_stream_process(void *d)
 
     update_rate(&stream->rm, (uint32_t)ready, pw_stream_is_driving(stream->stream), stream->direction);
 
+    uint32_t to_write;
     if (size > (uint32_t)ready) {
         pw_log_warn("Overrun: asked to write %" PRIu32 " bytes, but can only write %d", size, ready);
         process_control_commands(impl);
-        size = (uint32_t)ready;
+        to_write = (uint32_t)ready;
+    } else {
+        to_write = size;
     }
 
-    pw_log_trace("writing %" PRIu32 " bytes to vchan", size);
-    if (size > 0) {
+    pw_log_trace("writing %" PRIu32 " bytes to vchan", to_write);
+    if (to_write > 0) {
         errno = 0;
-        if (libvchan_send(stream->vchan, data, size) != (int)size)
+        if (libvchan_send(stream->vchan, data, to_write) != (int)to_write)
             pw_log_error("vchan error: %m");
     }
     pw_stream_queue_buffer(stream->stream, buf);
+    if (stream->bytes_before_sending_cmd != 0) {
+        if (size >= stream->bytes_before_sending_cmd) {
+            pw_log_trace("Uncorking stream after trying to send %" PRIu32 " bytes",
+                         size);
+            uint32_t cmd = QUBES_PA_SINK_UNCORK_CMD;
+            if (libvchan_send(stream->impl->stream[PW_DIRECTION_OUTPUT].vchan, &cmd, sizeof(cmd)) != (int)sizeof(cmd))
+                pw_log_error("Cannot uncork playback stream!");
+            stream->bytes_before_sending_cmd = 0;
+        } else {
+            stream->bytes_before_sending_cmd -= size;
+            pw_log_trace("Will uncork stream after trying to send %" PRIu32 " bytes",
+                         stream->bytes_before_sending_cmd);
+        }
+    }
 }
 
 static void stream_param_changed(void *data, uint32_t id, const struct spa_pod *param)
@@ -1585,6 +1637,7 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
         const char *record_size = pw_properties_get(props, QUBES_PW_KEY_RECORD_BUFFER_SPACE);
         const char *record_buffer_fill = pw_properties_get(props, QUBES_PW_KEY_CAPTURE_TARGET_BUFFER_FILL);
         const char *playback_buffer_fill = pw_properties_get(props, QUBES_PW_KEY_PLAYBACK_TARGET_BUFFER_FILL);
+        const char *playback_buffer_prefill = pw_properties_get(props, QUBES_PW_KEY_PLAYBACK_BUFFER_PREFILL);
         const char *playback_size = pw_properties_get(props, QUBES_PW_KEY_PLAYBACK_BUFFER_SPACE);
         if (!record_size || !playback_size) {
             const char *buffer_size = pw_properties_get(props, QUBES_PW_KEY_BUFFER_SPACE);
@@ -1601,8 +1654,12 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
         if (playback_size &&
             (res = parse_number(playback_size, 1UL << 20, &write_min, "playback buffer size")))
             goto error;
+
         read_min = SPA_UNLIKELY(read_min < 1024) ? 1024 : (size_t)1 << ((sizeof(unsigned long) * 8) - __builtin_clzl(read_min - 1));
         write_min = SPA_UNLIKELY(write_min < 1024) ? 1024 : (size_t)1 << ((sizeof(unsigned long) * 8) - __builtin_clzl(write_min - 1));
+
+        spa_assert_se(read_min <= 1UL << 20);
+        spa_assert_se(write_min <= 1UL << 20);
 
         size_t record_target_buffer_fill = SPA_MIN(0x2000U, read_min / 2);
         size_t playback_target_buffer_fill = SPA_MIN(0x2000U, write_min / 2);
@@ -1623,6 +1680,27 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
         impl->stream[PW_DIRECTION_OUTPUT].rm.target_buffer = record_target_buffer_fill;
         impl->stream[PW_DIRECTION_INPUT].buffer_size = write_min;
         impl->stream[PW_DIRECTION_INPUT].rm.target_buffer = write_min - playback_target_buffer_fill;
+
+        int32_t signed_prefill = 4096; /* default buffer size in pacat-simple-vchan in low-latency mode */
+        if (playback_buffer_prefill != NULL) {
+            size_t prefill = 0;
+            bool negative = playback_buffer_prefill[0] == '-';
+            if (negative) {
+                res = parse_number(playback_buffer_prefill + 1,
+                                   playback_target_buffer_fill,
+                                   &prefill, "playback pre-fill");
+                signed_prefill = -(int32_t)prefill;
+            } else {
+                res = parse_number(playback_buffer_prefill,
+                                   impl->stream[PW_DIRECTION_INPUT].rm.target_buffer,
+                                   &prefill, "playback pre-fill");
+                signed_prefill = (uint32_t)prefill;
+            }
+            if (res != 0)
+                goto error;
+        }
+        impl->stream[PW_DIRECTION_INPUT].prefill_delta = signed_prefill;
+
     }
 
     pw_log_info("module %p: new (%s), peer id is %d", impl, args, (int)impl->domid);
