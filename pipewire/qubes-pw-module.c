@@ -574,13 +574,13 @@ static void stream_state_changed_common(void *d, enum pw_stream_state old,
 static void playback_stream_state_changed(void *d, enum pw_stream_state old,
         enum pw_stream_state state, const char *error)
 {
-    return stream_state_changed_common(d, old, state, error, true);
+    stream_state_changed_common(d, old, state, error, true);
 }
 
 static void capture_stream_state_changed(void *d, enum pw_stream_state old,
         enum pw_stream_state state, const char *error)
 {
-    return stream_state_changed_common(d, old, state, error, false);
+    stream_state_changed_common(d, old, state, error, false);
 }
 
 static void capture_stream_process(void *d)
@@ -986,7 +986,7 @@ static int parse_number(const char *const str,
 {
     char *endptr = (void *)1;
     errno = *res = 0;
-    unsigned long long value = strtoull(str, &endptr, 10);
+    unsigned long long value = strtoull(str, &endptr, 0);
     if (errno) {
         int i = errno;
         pw_log_error("Invalid %s \"%s\": %m", msg, str);
