@@ -829,17 +829,37 @@ static void capture_stream_param_changed(void *data, uint32_t id,
     stream_param_changed(data, id, param, PW_DIRECTION_OUTPUT);
 }
 
+static void capture_control_info(void *data, uint32_t id, const struct pw_stream_control *control) {
+    pw_log_debug("capture_control_info id %d", id);
+}
+
+static void capture_io_changed(void *data, uint32_t id, void *area, uint32_t size) {
+    pw_log_debug("capture_io_changed id %d", id);
+}
+
+static void capture_add_buffer(void *data, struct pw_buffer *buffer) {
+    pw_log_debug("capture_add_buffer %p", buffer);
+}
+
+static void capture_remove_buffer(void *data, struct pw_buffer *buffer) {
+    pw_log_debug("capture_remove_buffer %p", buffer);
+}
+
+static void capture_drained(void *data) {
+    pw_log_debug("capture_drained");
+}
+
 static const struct pw_stream_events capture_stream_events = {
     .version = PW_VERSION_STREAM_EVENTS,
     .destroy = capture_stream_destroy,
     .state_changed = capture_stream_state_changed,
-    .control_info = NULL,
-    .io_changed = NULL,
+    .control_info = capture_control_info,
+    .io_changed = capture_io_changed,
     .param_changed = capture_stream_param_changed,
-    .add_buffer = NULL,
-    .remove_buffer = NULL,
+    .add_buffer = capture_add_buffer,
+    .remove_buffer = capture_remove_buffer,
     .process = capture_stream_process,
-    .drained = NULL,
+    .drained = capture_drained,
 };
 
 static void playback_stream_param_changed(void *data, uint32_t id,
@@ -848,17 +868,37 @@ static void playback_stream_param_changed(void *data, uint32_t id,
     stream_param_changed(data, id, param, PW_DIRECTION_INPUT);
 }
 
+static void playback_control_info(void *data, uint32_t id, const struct pw_stream_control *control) {
+    pw_log_debug("playback_control_info id %d", id);
+}
+
+static void playback_io_changed(void *data, uint32_t id, void *area, uint32_t size) {
+    pw_log_debug("playback_io_changed id %d", id);
+}
+
+static void playback_add_buffer(void *data, struct pw_buffer *buffer) {
+    pw_log_debug("playback_add_buffer %p", buffer);
+}
+
+static void playback_remove_buffer(void *data, struct pw_buffer *buffer) {
+    pw_log_debug("playback_remove_buffer %p", buffer);
+}
+
+static void playback_drained(void *data) {
+    pw_log_debug("playback_drained");
+}
+
 static const struct pw_stream_events playback_stream_events = {
     .version = PW_VERSION_STREAM_EVENTS,
     .destroy = playback_stream_destroy,
     .state_changed = playback_stream_state_changed,
-    .control_info = NULL,
-    .io_changed = NULL,
+    .control_info = playback_control_info,
+    .io_changed = playback_io_changed,
     .param_changed = playback_stream_param_changed,
-    .add_buffer = NULL,
-    .remove_buffer = NULL,
+    .add_buffer = playback_add_buffer,
+    .remove_buffer = playback_remove_buffer,
     .process = playback_stream_process,
-    .drained = NULL,
+    .drained = playback_drained,
 };
 
 static int create_stream(struct impl *impl, enum spa_direction direction)
