@@ -80,6 +80,7 @@
 #include <spa/pod/builder.h>
 #include <spa/param/audio/format-utils.h>
 #include <spa/param/audio/raw.h>
+#include <spa/param/latency-utils.h>
 
 #include <pipewire/impl.h>
 #include <pipewire/log.h>
@@ -713,11 +714,16 @@ static void stream_param_changed(void *data, uint32_t id,
     struct impl *impl = data;
     uint32_t media_type = UINT32_MAX, media_subtype = UINT32_MAX;
     struct spa_audio_info_raw info = { 0 };
-    uint64_t params_buffer[64];
+    uint64_t params_buffer[96];
     int res;
 
     struct spa_pod_builder b = SPA_POD_BUILDER_INIT(params_buffer, sizeof(params_buffer));
     const struct spa_pod *params[5];
+    struct spa_latency_info latency_info = {
+        .direction = direction,
+        .min_quantum = 1.0f,
+        .max_quantum = 1.0f,
+    };
 
     switch (id) {
     case SPA_PARAM_Format:
@@ -805,9 +811,12 @@ doit:
             (struct spa_audio_info_raw *)&qubes_audio_format);
     spa_assert_se(params[1]);
 
+    params[2] = spa_latency_build(&b, SPA_PARAM_Latency, &latency_info);
+    spa_assert_se(params[2]);
+
     spa_assert_se(b.state.offset <= sizeof params_buffer);
 
-    if ((res = pw_stream_update_params(impl->stream[direction].stream, params, 2)) < 0) {
+    if ((res = pw_stream_update_params(impl->stream[direction].stream, params, 3)) < 0) {
         errno = -res;
         pw_log_error("Failed to negotiate parameters: %m");
         errno = -res;
