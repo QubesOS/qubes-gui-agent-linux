@@ -1,3 +1,59 @@
+qubes-gui-agent (4.2.10-1) unstable; urgency=medium
+
+  [ Everett Gally ]
+  * create input device. if fails, will fall back to xdriver. Keyboard
+    events are working. Mouse events are not currently. Having trouble
+    with getting the cursor into the right position.
+  * switched to storing the output_fd and createdInputDevice flag in the
+    ghandles
+  * added my actual email in the commit so the signature will be
+    verified correctly
+  * removed a comment from a function that doesn't exist anymore
+  * add some log_level checks on some of the fprintf statements I added
+  * remove some uneeded whitespace and comments I added previously
+  * udev rules file that sets the group owner of the virtual input
+    device to user so xinit can access the device when it's created
+  * virtual input device disabled by default. Can be enabled by enabling
+    the qvm-service 'gui-agent-virtual-input-device'
+  * Modifier sync will now happen all the time, regardless of whether
+    virtual input device creation was requested or not.
+  * removed lines setting bits for EV_REL and the REL_BITS. I'm not
+    going to get that in this PR and will work on it in a future one
+  * rename output_fd to uinput_fd so it's clearer what the fd is
+  * renamed the flag createdInputDevice to created_input_device to
+    follow the same naming convention as other variables
+  * completely separated original handle_keypress function from the one
+    designed for the virtual input device. When input device creation is
+    requested, modifier sync now happens through the uinput_fd instead
+    of the xserver_fd. All modifiers are working as expected when
+    switching between qubes.
+  * changed group="user" to group="qubes" in udev rules file. Added
+    lines to install the file in Makefile, appvm-
+    scripts/lib/udev/rules.d/90-qubes-virtual-input-device.rules,
+    debian/qubes-gui-agent.install, and rpm_spec/gui-agent.spec.in
+  * made send_event static
+  * exclude all BTN_* keys
+  * removed some unneeded whitespace
+  * an extra unused wait_fds[2] line made it in after the conflict was
+    resolved. Removed that line since the variable is unused and stops
+    the build
+  * fixed caps lock. It was missing the line to flip its bit in last
+    known states and needs to be excluded from the key send below
+  * remove debug line I added in while testing and forgot to remove in
+    the last commit
+  * added check to see if modmap is null and moved XFreeModifierMap out
+    of the if statement checking if the current keycode is capslock.
+  * remove incorrect comment
+  * comment explaining why capslock is excluded from key sending
+
+  [ Demi Marie Obenour ]
+  * Do not override default clock rate or quantum
+
+  [ Marek Marczykowski-Górecki ]
+  * pipewire: adjust buffer parameters
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 30 Oct 2023 05:45:06 +0100
+
 qubes-gui-agent (4.2.9-1) unstable; urgency=medium
 
   [ Demi Marie Obenour ]
