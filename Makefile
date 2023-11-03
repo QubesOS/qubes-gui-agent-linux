@@ -238,6 +238,9 @@ else ifeq ($(shell lsb_release -is), Ubuntu)
 else ifeq ($(shell lsb_release -is), Arch)
 	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent.archlinux \
 		$(DESTDIR)/etc/pam.d/qubes-gui-agent
+else ifeq ($(shell lsb_release -is), Gentoo)
+	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent.gentoo \
+		$(DESTDIR)/etc/pam.d/qubes-gui-agent
 else
 	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent \
 		$(DESTDIR)/etc/pam.d/qubes-gui-agent
