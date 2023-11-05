@@ -38,6 +38,13 @@ URL:		https://www.qubes-os.org
 
 %define pa_ver_full %((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -d "-" -f 1)
 %define pa_module_dir %(pkg-config --variable=modlibexecdir libpulse)
+%if 0%{?is_opensuse}
+%define xinitrc_dir /usr/etc/X11/xinit/xinitrc.d
+%define limits_dir /usr/etc/security/limits.d
+%else
+%define xinitrc_dir /etc/X11/xinit/xinitrc.d
+%define limits_dir /etc/security/limits.d
+%endif
 
 BuildRequires:	gcc
 BuildRequires:	libX11-devel
@@ -152,6 +159,8 @@ make install "DESTDIR=$RPM_BUILD_ROOT" \
                      LIBDIR=%{_libdir} \
                      DATADIR=%{_datadir} \
                      SYSLIBDIR=/usr/lib \
+                     XINITRCDIR=%{xinitrc_dir} \
+                     LIMITSDIR=%{limits_dir} \
                      PA_VER_FULL=%{pa_ver_full} \
                      ENABLE_SELINUX=%{with selinux} \
                      UNITDIR=%{_unitdir} \
@@ -249,11 +258,11 @@ rm -f %{name}-%{version}
 /etc/profile.d/qubes-gui.sh
 /etc/profile.d/qubes-gui.csh
 %config /etc/pam.d/qubes-gui-agent
-%config /etc/security/limits.d/90-qubes-gui.conf
+%config %{limits_dir}/90-qubes-gui.conf
 %config /etc/xdg/Trolltech.conf
-/etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh
-/etc/X11/xinit/xinitrc.d/20qt-gnome-desktop-session-id.sh
-/etc/X11/xinit/xinitrc.d/50guivm-windows-prefix.sh
+%{xinitrc_dir}/20qt-x11-no-mitshm.sh
+%{xinitrc_dir}/20qt-gnome-desktop-session-id.sh
+%{xinitrc_dir}/50guivm-windows-prefix.sh
 /etc/qubes-rpc/qubes.SetMonitorLayout
 /etc/qubes-rpc/qubes.GuiVMSession
 /etc/qubes/post-install.d/20-qubes-guivm-gui-agent.sh
@@ -293,7 +302,7 @@ rm -f %{name}-%{version}
 # Works with ordinary PipeWire service :)
 
 %files xfce
-/etc/X11/xinit/xinitrc.d/60xfce-desktop.sh
+%{xinitrc_dir}/60xfce-desktop.sh
 
 %files -n qubes-gui-vnc
 #/lib/systemd/system/qubes-gui-vncserver.service

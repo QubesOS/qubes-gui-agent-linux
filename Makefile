@@ -23,6 +23,8 @@ VERSION := $(file <version)
 LIBDIR ?= /usr/lib64
 USRLIBDIR ?= /usr/lib
 SYSLIBDIR ?= /lib
+XINITRCDIR ?= /etc/X11/xinit/xinitrc.d
+LIMITSDIR ?= /etc/security/limits.d
 UNITDIR ?= $(SYSLIBDIR)/systemd/system
 USERUNITDIR ?= $(SYSLIBDIR)/systemd/user
 USERPRESETDIR ?= $(SYSLIBDIR)/systemd/user-preset
@@ -103,13 +105,13 @@ install-rh-agent: appvm install-common install-systemd
 	install -m 0644 -D appvm-scripts/etc/sysconfig/desktop \
 		$(DESTDIR)/etc/sysconfig/desktop
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh \
-		$(DESTDIR)/etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh
+		$(DESTDIR)$(XINITRCDIR)/20qt-x11-no-mitshm.sh
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/20qt-gnome-desktop-session-id.sh \
-		$(DESTDIR)/etc/X11/xinit/xinitrc.d/20qt-gnome-desktop-session-id.sh
+		$(DESTDIR)$(XINITRCDIR)/20qt-gnome-desktop-session-id.sh
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/50guivm-windows-prefix.sh \
-		$(DESTDIR)/etc/X11/xinit/xinitrc.d/50guivm-windows-prefix.sh
+		$(DESTDIR)$(XINITRCDIR)/50guivm-windows-prefix.sh
 	install -D appvm-scripts/etc/X11/xinit/xinitrc.d/60xfce-desktop.sh \
-		$(DESTDIR)/etc/X11/xinit/xinitrc.d/60xfce-desktop.sh
+		$(DESTDIR)$(XINITRCDIR)/60xfce-desktop.sh
 
 .PHONY: install-debian
 install-debian: appvm install-common install-pulseaudio install-systemd install-pipewire
@@ -193,7 +195,7 @@ install-common:
 	install -m 0644 -D appvm-scripts/etc/profile.d/qubes-gui.csh \
 		$(DESTDIR)/etc/profile.d/qubes-gui.csh
 	install -m 0644 -D appvm-scripts/etc/securitylimits.d/90-qubes-gui.conf \
-		$(DESTDIR)/etc/security/limits.d/90-qubes-gui.conf
+		$(DESTDIR)$(LIMITSDIR)/90-qubes-gui.conf
 ifneq ($(shell lsb_release -is), Ubuntu)
 	install -m 0644 -D appvm-scripts/etc/xdg/Trolltech.conf \
 		$(DESTDIR)/etc/xdg/Trolltech.conf
