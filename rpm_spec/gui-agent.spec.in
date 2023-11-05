@@ -47,14 +47,21 @@ BuildRequires:	libXfixes-devel
 BuildRequires:	libXt-devel
 BuildRequires:	libtool-ltdl-devel
 BuildRequires:	libtool
+%if 0%{?is_opensuse}
+BuildRequires:	libpulse-devel >= 0.9.21
+BuildRequires:	libpulse-devel <= 16.99.1
+BuildRequires:	xorg-x11-server-sdk
+BuildRequires:	libgbm-devel
+%else
 BuildRequires:	pulseaudio-libs-devel >= 0.9.21, pulseaudio-libs-devel <= 16.99.1
 BuildRequires:	xorg-x11-server-devel
+BuildRequires:	mesa-libgbm-devel
+%endif
 BuildRequires:	pam-devel
 BuildRequires:	qubes-libvchan-devel
 BuildRequires:	qubes-gui-common-devel >= 4.1.0
 BuildRequires:	qubes-db-devel
 BuildRequires:	xen-devel
-BuildRequires:	mesa-libgbm-devel
 BuildRequires:	systemd-rpm-macros
 Requires:	Xorg %(xserver-sdk-abi-requires ansic)
 Requires:	Xorg %(xserver-sdk-abi-requires videodrv)
