@@ -1,8 +1,7 @@
 extra_cflags := $(shell pkg-config --cflags libpipewire-0.3 vchan-xen) \
   -fno-strict-aliasing -fno-strict-overflow \
   -fno-delete-null-pointer-checks -fPIC -Wall -Wextra -Werror \
-  -Wno-missing-field-initializers -Wno-unused-parameter -ggdb -O2 \
-  -D_FORTIFY_SOURCE=2
+  -Wno-missing-field-initializers -Wno-unused-parameter -ggdb -O2
 extra_ldflags :=  $(shell pkg-config --libs libpipewire-0.3 vchan-xen) -lqubesdb
 CFLAGS += $(extra_cflags)
 LDLIBS += $(extra_ldflags)
