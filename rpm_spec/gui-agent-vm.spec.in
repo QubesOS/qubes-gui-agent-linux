@@ -20,7 +20,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 Name:		qubes-gui-agent-selinux
 Version:	@VERSION@
-Release:	1%{dist}
+Release:	1%{?dist}
 Summary:	The Qubes GUI Agent for AppVMs
 License:	GPLv2+
 URL:		https://www.qubes-os.org
