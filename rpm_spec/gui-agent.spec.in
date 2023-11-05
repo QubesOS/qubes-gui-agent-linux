@@ -70,6 +70,12 @@ BuildRequires:	qubes-gui-common-devel >= 4.1.0
 BuildRequires:	qubes-db-devel
 BuildRequires:	xen-devel
 BuildRequires:	systemd-rpm-macros
+%if 0%{?is_opensuse}
+# for directory ownership
+BuildRequires:  xinit
+BuildRequires:	qubes-core-qrexec
+BuildRequires:	qubes-core-agent
+%endif
 Requires:	Xorg %(xserver-sdk-abi-requires ansic)
 Requires:	Xorg %(xserver-sdk-abi-requires videodrv)
 Requires:	libXfixes
@@ -107,6 +113,10 @@ Requires:	pulseaudio = %{pa_ver_full}
 # Needed so that systemd can manage PulseAudio
 Conflicts:	qubes-core-agent < 4.2.5
 Conflicts:  qubes-gui-vm < 4.0.0
+%if 0%{?is_opensuse}
+# for directory ownership
+BuildRequires: pulseaudio
+%endif
 
 %description -n pulseaudio-qubes
 Pulseaudio module to enable sound support in Qubes VM
@@ -117,6 +127,10 @@ Requires:      pipewire
 BuildRequires: pipewire-devel
 BuildRequires: qubes-db-devel
 BuildRequires: qubes-libvchan-devel
+%if 0%{?is_opensuse}
+# for directory ownership
+BuildRequires: pipewire
+%endif
 
 %description -n pipewire-qubes
 Experimental PipeWire module to enable sound support in Qubes VMs.
@@ -134,6 +148,10 @@ XFCE desktop support for Qubes VM
 %package -n qubes-gui-vnc
 Summary: Remote GuiVM support using VNC
 Requires: x11vnc
+%if 0%{?is_opensuse}
+# for directory ownership
+BuildRequires: systemd
+%endif
 
 %description -n qubes-gui-vnc
 Remote GuiVM support using VNC
@@ -290,12 +308,16 @@ rm -f %{name}-%{version}
 %{pa_module_dir}/module-vchan-sink.so
 /etc/xdg/autostart/qubes-pulseaudio.desktop
 /usr/lib/systemd/user-preset/75-pulseaudio-qubes.preset
+%dir /usr/lib/systemd/user/pulseaudio.service.d
 /usr/lib/systemd/user/pulseaudio.service.d/30_qubes.conf
 
 %files -n pipewire-qubes
+# should be owned by pipewire, but it isn't
+%dir %_datadir/pipewire/pipewire.conf.d
 %_datadir/pipewire/pipewire.conf.d/30_qubes.conf
 %_userpresetdir/74-qubes-vm.preset
 %_libdir/pipewire-0.3/libpipewire-module-qubes.so
+%dir %_defaultlicensedir/pipewire-qubes
 %_defaultlicensedir/pipewire-qubes/COPYING
 /etc/qubes/post-install.d/20-qubes-pipewire.sh
 
@@ -307,6 +329,7 @@ rm -f %{name}-%{version}
 %files -n qubes-gui-vnc
 #/lib/systemd/system/qubes-gui-vncserver.service
 %attr(0644,root,root) /etc/X11/xorg-qubes-x11vnc.conf.template
+%dir /etc/systemd/system/lightdm.service.d
 %attr(0644,root,root) /etc/systemd/system/lightdm.service.d/qubes-guivm-vnc.conf
 %_bindir/qubes-run-x11vnc
 
