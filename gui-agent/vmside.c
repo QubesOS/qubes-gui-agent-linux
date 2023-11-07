@@ -160,7 +160,7 @@ static Ghandles *ghandles_for_vchan_reinitialize;
 #define SKIP_NONMANAGED_WINDOW do {                                    \
     if (!list_lookup(windows_list, window)) {                          \
         if (g->log_level > 0)                                          \
-            fprintf(stderr, "Skipping unmanaged window 0x%x",          \
+            fprintf(stderr, "Skipping unmanaged window 0x%x\n",        \
                     (int) window);                                     \
         return;                                                        \
     }                                                                  \
@@ -667,7 +667,7 @@ void retrieve_wmprotocols(Ghandles * g, XID window, int ignore_fail)
     struct genlist *l;
 
     if (!((l=list_lookup(windows_list, window)) && (l->data))) {
-        fprintf(stderr, "ERROR retrieve_wmprotocols: Window 0x%x data not initialized", (int)window);
+        fprintf(stderr, "ERROR retrieve_wmprotocols: Window 0x%x data not initialized\n", (int)window);
         return;
     }
 
@@ -703,7 +703,7 @@ void retrieve_wmhints(Ghandles * g, XID window, int ignore_fail)
     struct genlist *l;
 
     if (!((l=list_lookup(windows_list, window)) && (l->data))) {
-        fprintf(stderr, "ERROR retrieve_wmhints: Window 0x%x data not initialized", (int)window);
+        fprintf(stderr, "ERROR retrieve_wmhints: Window 0x%x data not initialized\n", (int)window);
         return;
     }
 
@@ -1205,7 +1205,7 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
                 w = ev->data.l[2];
 
                 if (!(l=list_lookup(windows_list, w))) {
-                    fprintf(stderr, "ERROR process_xevent_message: Window 0x%x not initialized", (int)w);
+                    fprintf(stderr, "ERROR process_xevent_message: Window 0x%x not initialized\n", (int)w);
                     return;
                 }
                 if (g->log_level > 0)
@@ -1230,7 +1230,7 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
                     XFree(data);
 
                 if (!(l->data)) {
-                    fprintf(stderr, "ERROR process_xevent_message: Window 0x%x data not initialized", (int)w);
+                    fprintf(stderr, "ERROR process_xevent_message: Window 0x%x data not initialized\n", (int)w);
                     return;
                 }
                 wd = (struct window_data*)(l->data);
@@ -1916,7 +1916,7 @@ static void handle_focus(Ghandles * g, XID winid)
             if (((struct window_data*)l->data)->is_docked)
                 XRaiseWindow(g->display, ((struct window_data*)l->data)->embeder);
         } else {
-            fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
+            fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized\n", (int)winid);
             input_hint = True;
             use_take_focus = False;
         }
@@ -1937,7 +1937,7 @@ static void handle_focus(Ghandles * g, XID winid)
         if ( (l=list_lookup(windows_list, winid)) && (l->data) )
             input_hint = ((struct window_data*)l->data)->input_hint;
         else {
-            fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized", (int)winid);
+            fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized\n", (int)winid);
             input_hint = True;
         }
         if (input_hint)
@@ -2014,7 +2014,7 @@ static void handle_close(Ghandles * g, XID winid)
     if ( (l=list_lookup(windows_list, winid)) && (l->data) ) {
         use_delete_window = ((struct window_data*)l->data)->support_delete_window;
     } else {
-        fprintf(stderr, "WARNING handle_close: Window 0x%x data not initialized",
+        fprintf(stderr, "WARNING handle_close: Window 0x%x data not initialized\n",
                 (int)winid);
         use_delete_window = True; /* gentler, though it may be a no-op */
     }
@@ -2480,7 +2480,7 @@ int main(int argc, char **argv)
             XFixesSelectCursorInput(g.display, RootWindow(g.display, i),
                                     XFixesDisplayCursorNotifyMask);
     } else
-        fprintf(stderr, "XFixes not available, cursor shape handling off");
+        fprintf(stderr, "XFixes not available, cursor shape handling off\n");
 
     XAutoRepeatOff(g.display);
     signal(SIGCHLD, SIG_IGN);
