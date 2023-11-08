@@ -1916,7 +1916,7 @@ static void handle_focus(Ghandles * g, XID winid)
             if (((struct window_data*)l->data)->is_docked)
                 XRaiseWindow(g->display, ((struct window_data*)l->data)->embeder);
         } else {
-            fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized\n", (int)winid);
+            fprintf(stderr, "WARNING handle_focus: FocusIn: Window 0x%x data not initialized\n", (int)winid);
             input_hint = True;
             use_take_focus = False;
         }
@@ -1937,7 +1937,7 @@ static void handle_focus(Ghandles * g, XID winid)
         if ( (l=list_lookup(windows_list, winid)) && (l->data) )
             input_hint = ((struct window_data*)l->data)->input_hint;
         else {
-            fprintf(stderr, "WARNING handle_focus: Window 0x%x data not initialized\n", (int)winid);
+            fprintf(stderr, "WARNING handle_focus: FocusOut: Window 0x%x data not initialized\n", (int)winid);
             input_hint = True;
         }
         if (input_hint)
