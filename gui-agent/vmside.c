@@ -1837,15 +1837,16 @@ static void handle_crossing(Ghandles * g, XID winid)
 
     if (key.mode != NotifyNormal)
         return;
-    ret = XGetWindowAttributes(g->display, winid, &attr);
-    if (ret != 1) {
-        fprintf(stderr,
-                "XGetWindowAttributes for 0x%x failed in "
-                "handle_crossing, ret=0x%x\n", (int) winid, ret);
-        return;
-    }
 
     if (key.type == EnterNotify) {
+        ret = XGetWindowAttributes(g->display, winid, &attr);
+        if (ret != 1) {
+            fprintf(stderr,
+                    "XGetWindowAttributes for 0x%x failed in "
+                    "handle_crossing, ret=0x%x\n", (int) winid, ret);
+            return;
+        }
+
         // hide stub window
         XUnmapWindow(g->display, g->stub_win);
         feed_xdriver(g, 'M', attr.x + key.x, attr.y + key.y);
