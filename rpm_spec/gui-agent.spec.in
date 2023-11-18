@@ -185,6 +185,11 @@ make install "DESTDIR=$RPM_BUILD_ROOT" \
                      USERPRESETDIR=%{_userpresetdir} \
                      UDEVRULESDIR=%{_udevrulesdir}
 
+%if 0%{?is_opensuse}
+mkdir -p $RPM_BUILD_ROOT/usr/lib/pam.d
+mv $RPM_BUILD_ROOT/etc/pam.d/* $RPM_BUILD_ROOT/usr/lib/pam.d/
+%endif
+
 %post
 if [ -x /bin/systemctl ] && readlink /sbin/init | grep -q systemd; then
     /bin/systemctl enable qubes-gui-agent.service 2> /dev/null
@@ -274,7 +279,11 @@ rm -f %{name}-%{version}
 %attr(0644,root,root) /etc/X11/xorg-qubes.conf.template
 /etc/profile.d/qubes-gui.sh
 /etc/profile.d/qubes-gui.csh
+%if 0%{?is_opensuse}
+/usr/lib/pam.d/qubes-gui-agent
+%else
 %config /etc/pam.d/qubes-gui-agent
+%endif
 %config %{limits_dir}/90-qubes-gui.conf
 %config /etc/xdg/Trolltech.conf
 %{xinitrc_dir}/20qt-x11-no-mitshm.sh
