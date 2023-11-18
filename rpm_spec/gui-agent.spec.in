@@ -329,8 +329,8 @@ rm -f %{name}-%{version}
 %files -n qubes-gui-vnc
 #/lib/systemd/system/qubes-gui-vncserver.service
 %attr(0644,root,root) /etc/X11/xorg-qubes-x11vnc.conf.template
-%dir /etc/systemd/system/lightdm.service.d
-%attr(0644,root,root) /etc/systemd/system/lightdm.service.d/qubes-guivm-vnc.conf
+%dir %{_unitdir}/lightdm.service.d
+%{_unitdir}/lightdm.service.d/qubes-guivm-vnc.conf
 %_bindir/qubes-run-x11vnc
 
 %changelog

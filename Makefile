@@ -189,7 +189,7 @@ install-common:
 	install -m 0644 -D appvm-scripts/etc/X11/xorg-qubes-x11vnc.conf.template \
 		$(DESTDIR)/etc/X11/xorg-qubes-x11vnc.conf.template
 	install -m 0644 -D appvm-scripts/etc/systemd/system/lightdm.service.d/qubes-guivm-vnc.conf \
-		$(DESTDIR)/etc/systemd/system/lightdm.service.d/qubes-guivm-vnc.conf
+		$(DESTDIR)$(UNITDIR)/lightdm.service.d/qubes-guivm-vnc.conf
 	install -m 0644 -D appvm-scripts/etc/profile.d/qubes-gui.sh \
 		$(DESTDIR)/etc/profile.d/qubes-gui.sh
 	install -m 0644 -D appvm-scripts/etc/profile.d/qubes-gui.csh \
