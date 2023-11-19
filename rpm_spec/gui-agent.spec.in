@@ -38,6 +38,13 @@ URL:		https://www.qubes-os.org
 
 %define pa_ver_full %((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -d "-" -f 1)
 %define pa_module_dir %(pkg-config --variable=modlibexecdir libpulse)
+%if 0%{?is_opensuse}
+%define xinitrc_dir /usr/etc/X11/xinit/xinitrc.d
+%define limits_dir /usr/etc/security/limits.d
+%else
+%define xinitrc_dir /etc/X11/xinit/xinitrc.d
+%define limits_dir /etc/security/limits.d
+%endif
 
 BuildRequires:	gcc
 BuildRequires:	libX11-devel
@@ -47,18 +54,31 @@ BuildRequires:	libXfixes-devel
 BuildRequires:	libXt-devel
 BuildRequires:	libtool-ltdl-devel
 BuildRequires:	libtool
+%if 0%{?is_opensuse}
+BuildRequires:	libpulse-devel >= 0.9.21
+BuildRequires:	libpulse-devel <= 16.99.1
+BuildRequires:	xorg-x11-server-sdk
+BuildRequires:	libgbm-devel
+%else
 BuildRequires:	pulseaudio-libs-devel >= 0.9.21, pulseaudio-libs-devel <= 16.99.1
 BuildRequires:	xorg-x11-server-devel
+BuildRequires:	mesa-libgbm-devel
+%endif
 BuildRequires:	pam-devel
 BuildRequires:	qubes-libvchan-devel
 BuildRequires:	qubes-gui-common-devel >= 4.1.0
 BuildRequires:	qubes-db-devel
 BuildRequires:	xen-devel
-BuildRequires:	mesa-libgbm-devel
 BuildRequires:	systemd-rpm-macros
+%if 0%{?is_opensuse}
+# for directory ownership
+BuildRequires:  xinit
+BuildRequires:	qubes-core-qrexec
+BuildRequires:	qubes-core-agent
+Requires(post): %fillup_prereq
+%endif
 Requires:	Xorg %(xserver-sdk-abi-requires ansic)
 Requires:	Xorg %(xserver-sdk-abi-requires videodrv)
-Requires:	libXfixes
 Requires:	qubes-core-vm >= 3.0.14
 Requires:	xorg-x11-xinit
 # qubesdb-read --wait option
@@ -93,6 +113,10 @@ Requires:	pulseaudio = %{pa_ver_full}
 # Needed so that systemd can manage PulseAudio
 Conflicts:	qubes-core-agent < 4.2.5
 Conflicts:  qubes-gui-vm < 4.0.0
+%if 0%{?is_opensuse}
+# for directory ownership
+BuildRequires: pulseaudio
+%endif
 
 %description -n pulseaudio-qubes
 Pulseaudio module to enable sound support in Qubes VM
@@ -103,6 +127,10 @@ Requires:      pipewire
 BuildRequires: pipewire-devel
 BuildRequires: qubes-db-devel
 BuildRequires: qubes-libvchan-devel
+%if 0%{?is_opensuse}
+# for directory ownership
+BuildRequires: pipewire
+%endif
 
 %description -n pipewire-qubes
 Experimental PipeWire module to enable sound support in Qubes VMs.
@@ -120,6 +148,10 @@ XFCE desktop support for Qubes VM
 %package -n qubes-gui-vnc
 Summary: Remote GuiVM support using VNC
 Requires: x11vnc
+%if 0%{?is_opensuse}
+# for directory ownership
+BuildRequires: systemd
+%endif
 
 %description -n qubes-gui-vnc
 Remote GuiVM support using VNC
@@ -145,6 +177,8 @@ make install "DESTDIR=$RPM_BUILD_ROOT" \
                      LIBDIR=%{_libdir} \
                      DATADIR=%{_datadir} \
                      SYSLIBDIR=/usr/lib \
+                     XINITRCDIR=%{xinitrc_dir} \
+                     LIMITSDIR=%{limits_dir} \
                      PA_VER_FULL=%{pa_ver_full} \
                      ENABLE_SELINUX=%{with selinux} \
                      UNITDIR=%{_unitdir} \
@@ -152,10 +186,22 @@ make install "DESTDIR=$RPM_BUILD_ROOT" \
                      USERPRESETDIR=%{_userpresetdir} \
                      UDEVRULESDIR=%{_udevrulesdir}
 
+%if 0%{?is_opensuse}
+mkdir -p $RPM_BUILD_ROOT/usr/lib/pam.d
+mv $RPM_BUILD_ROOT/etc/pam.d/* $RPM_BUILD_ROOT/usr/lib/pam.d/
+mkdir -p $RPM_BUILD_ROOT%{_fillupdir}
+mv $RPM_BUILD_ROOT/etc/sysconfig/desktop \
+    $RPM_BUILD_ROOT%{_fillupdir}/desktop.qubes-gui-agent
+%endif
+
 %post
 if [ -x /bin/systemctl ] && readlink /sbin/init | grep -q systemd; then
     /bin/systemctl enable qubes-gui-agent.service 2> /dev/null
 fi
+
+%if 0%{?is_opensuse}
+%{fillup_and_insserv}
+%endif
 
 %post -n pulseaudio-qubes
 
@@ -241,16 +287,24 @@ rm -f %{name}-%{version}
 %attr(0644,root,root) /etc/X11/xorg-qubes.conf.template
 /etc/profile.d/qubes-gui.sh
 /etc/profile.d/qubes-gui.csh
+%if 0%{?is_opensuse}
+/usr/lib/pam.d/qubes-gui-agent
+%else
 %config /etc/pam.d/qubes-gui-agent
-%config /etc/security/limits.d/90-qubes-gui.conf
+%endif
+%config %{limits_dir}/90-qubes-gui.conf
 %config /etc/xdg/Trolltech.conf
-/etc/X11/xinit/xinitrc.d/20qt-x11-no-mitshm.sh
-/etc/X11/xinit/xinitrc.d/20qt-gnome-desktop-session-id.sh
-/etc/X11/xinit/xinitrc.d/50guivm-windows-prefix.sh
+%{xinitrc_dir}/20qt-x11-no-mitshm.sh
+%{xinitrc_dir}/20qt-gnome-desktop-session-id.sh
+%{xinitrc_dir}/50guivm-windows-prefix.sh
 /etc/qubes-rpc/qubes.SetMonitorLayout
 /etc/qubes-rpc/qubes.GuiVMSession
 /etc/qubes/post-install.d/20-qubes-guivm-gui-agent.sh
+%if 0%{?is_opensuse}
+%{_fillupdir}/desktop.qubes-gui-agent
+%else
 %config /etc/sysconfig/desktop
+%endif
 %_unitdir/qubes-gui-agent.service
 %_udevrulesdir/70-master-of-seat.rules
 %_udevrulesdir/90-qubes-virtual-input-device.rules
@@ -274,24 +328,29 @@ rm -f %{name}-%{version}
 %{pa_module_dir}/module-vchan-sink.so
 /etc/xdg/autostart/qubes-pulseaudio.desktop
 /usr/lib/systemd/user-preset/75-pulseaudio-qubes.preset
+%dir /usr/lib/systemd/user/pulseaudio.service.d
 /usr/lib/systemd/user/pulseaudio.service.d/30_qubes.conf
 
 %files -n pipewire-qubes
+# should be owned by pipewire, but it isn't
+%dir %_datadir/pipewire/pipewire.conf.d
 %_datadir/pipewire/pipewire.conf.d/30_qubes.conf
 %_userpresetdir/74-qubes-vm.preset
 %_libdir/pipewire-0.3/libpipewire-module-qubes.so
+%dir %_defaultlicensedir/pipewire-qubes
 %_defaultlicensedir/pipewire-qubes/COPYING
 /etc/qubes/post-install.d/20-qubes-pipewire.sh
 
 # Works with ordinary PipeWire service :)
 
 %files xfce
-/etc/X11/xinit/xinitrc.d/60xfce-desktop.sh
+%{xinitrc_dir}/60xfce-desktop.sh
 
 %files -n qubes-gui-vnc
 #/lib/systemd/system/qubes-gui-vncserver.service
 %attr(0644,root,root) /etc/X11/xorg-qubes-x11vnc.conf.template
-%attr(0644,root,root) /etc/systemd/system/lightdm.service.d/qubes-guivm-vnc.conf
+%dir %{_unitdir}/lightdm.service.d
+%{_unitdir}/lightdm.service.d/qubes-guivm-vnc.conf
 %_bindir/qubes-run-x11vnc
 
 %changelog
