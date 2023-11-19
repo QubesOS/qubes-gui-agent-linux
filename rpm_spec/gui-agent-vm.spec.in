@@ -33,6 +33,7 @@ BuildRequires: qubes-core-agent-selinux
 Requires(post): qubes-core-agent-selinux
 BuildRequires: qubes-core-qrexec-vm-selinux
 Requires(post): qubes-core-qrexec-vm-selinux
+BuildRequires: pkgconfig
 %{?selinux_requires}
 
 Source0: qubes-gui-agent-%{version}.tar.gz
