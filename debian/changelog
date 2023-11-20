@@ -1,3 +1,29 @@
+qubes-gui-agent (4.2.11-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * rpm: fix dist macro usage
+
+  [ Rusty Bird ]
+  * vmside: add newline to error messages where it was missing
+  * vmside: disambiguate two identical error messages
+  * vmside: avoid XGetWindowAttributes() call if result isn't used
+
+  [ Frédéric Pierret (fepitre) ]
+  * Add dedicated PAM file for Gentoo
+
+  [ Marek Marczykowski-Górecki ]
+  * rpm: adjust dependencies for openSUSE
+  * pipewire: skip duplicated cflags
+  * rpm: install files to /usr/etc when relevant on openSUSE
+  * rpm: adjust directory ownership and add relevant BR to satisfy the
+    check
+  * Move lightdm.service drop-in into /usr/lib
+  * rpm: drop explicit dependency on libXfixes
+  * rpm: put PAM config in /usr/lib/pam.d on openSUSE
+  * rpm: use fillup tool to manage /etc/sysconfig/desktop on openSUSE
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 20 Nov 2023 01:46:30 +0100
+
 qubes-gui-agent (4.2.10-1) unstable; urgency=medium
 
   [ Everett Gally ]
