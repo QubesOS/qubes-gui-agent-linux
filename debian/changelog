@@ -1,3 +1,17 @@
+qubes-gui-agent (4.1.32-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * Update for Fedora 39
+
+  [ Marek Marczykowski-Górecki ]
+  * rpm: fix dist macro usage
+
+  [ Rusty Bird ]
+  * vmside: add newline to error messages where it was missing
+  * vmside: disambiguate two identical error messages
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 20 Nov 2023 13:21:08 +0100
+
 qubes-gui-agent (4.1.31-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
