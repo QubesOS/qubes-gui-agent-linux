@@ -63,6 +63,7 @@
 #include <limits.h>
 #include <signal.h>
 #include <stdatomic.h>
+#include <stdalign.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -133,6 +134,12 @@ struct qubes_stream {
     struct pw_stream *stream;
     // Stream event listener.  Accessed on main thread only.
     struct spa_hook stream_listener;
+    // Rate match control.  Pointer is immutable after being set.
+    // Pointee accessed on realtime thread only.
+    struct spa_io_rate_match *rate_match;
+    // Position control.  Pointer is immutable after being set.
+    // Pointee accessed on realtime thread only.
+    struct spa_io_position *position;
     // Audio format info.  Accessed only on main thread.
     struct spa_audio_info_raw info;
     // Vchans, explicitly synchronized using message passing.
@@ -548,6 +555,62 @@ static int process_control_commands(struct impl *impl)
     return 0;
 }
 
+struct slice {
+    void *data;
+    size_t size;
+};
+
+static int rt_set_io(struct spa_loop *loop,
+                     bool async,
+                     uint32_t seq,
+                     const void *data,
+                     size_t size,
+                     void *user_data)
+{
+    struct qubes_stream *stream = user_data;
+    const struct slice *slice;
+
+    spa_assert_se(size == sizeof(*slice));
+    slice = data;
+    switch (seq) {
+        case SPA_IO_RateMatch:
+            if (slice->data != NULL &&
+                (slice->size < sizeof *stream->rate_match || !SPA_IS_ALIGNED(slice->size, alignof(*stream->rate_match))))
+                return -EINVAL;
+            stream->rate_match = slice->data;
+            break;
+        case SPA_IO_Position:
+            if (slice->data != NULL &&
+                (slice->size < sizeof *stream->position || !SPA_IS_ALIGNED(slice->size, alignof(*stream->position))))
+                return -EINVAL;
+            stream->position = slice->data;
+            break;
+    }
+    return 0;
+}
+
+static void stream_io_changed(struct qubes_stream *stream, uint32_t id, void *area, uint32_t size)
+{
+    int status;
+    struct slice slice = { .data = area, .size = size };
+    do {
+        status = spa_loop_invoke(stream->impl->data_loop, rt_set_io,
+                id, &slice, sizeof slice, true, stream);
+    } while (status == -EPIPE);
+}
+
+static void capture_stream_io_changed(void *data, uint32_t id, void *area, uint32_t size)
+{
+    struct impl *impl = data;
+    stream_io_changed(&impl->stream[PW_DIRECTION_OUTPUT], id, area, size);
+}
+
+static void playback_stream_io_changed(void *data, uint32_t id, void *area, uint32_t size)
+{
+    struct impl *impl = data;
+    stream_io_changed(&impl->stream[PW_DIRECTION_INPUT], id, area, size);
+}
+
 static void stream_state_changed_common(void *d, enum pw_stream_state old,
         enum pw_stream_state state, const char *error, bool playback)
 {
@@ -828,7 +891,7 @@ static const struct pw_stream_events capture_stream_events = {
     .destroy = capture_stream_destroy,
     .state_changed = capture_stream_state_changed,
     .control_info = NULL,
-    .io_changed = NULL,
+    .io_changed = capture_stream_io_changed,
     .param_changed = capture_stream_param_changed,
     .add_buffer = NULL,
     .remove_buffer = NULL,
@@ -847,7 +910,7 @@ static const struct pw_stream_events playback_stream_events = {
     .destroy = playback_stream_destroy,
     .state_changed = playback_stream_state_changed,
     .control_info = NULL,
-    .io_changed = NULL,
+    .io_changed = playback_stream_io_changed,
     .param_changed = playback_stream_param_changed,
     .add_buffer = NULL,
     .remove_buffer = NULL,
