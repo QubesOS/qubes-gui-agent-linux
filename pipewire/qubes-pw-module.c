@@ -376,6 +376,7 @@ static int main_thread_connect(struct spa_loop *loop,
             stream->direction,
             PW_ID_ANY,
             PW_STREAM_FLAG_AUTOCONNECT |
+            PW_STREAM_FLAG_MAP_BUFFERS |
             PW_STREAM_FLAG_RT_PROCESS |
             0,
             params, n_params) < 0)
