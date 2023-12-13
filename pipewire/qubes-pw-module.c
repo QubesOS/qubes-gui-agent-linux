@@ -627,20 +627,16 @@ static void capture_stream_process(void *d)
 
     spa_assert(buf->n_datas == 1 && "wrong number of datas");
 
-    size = buf->datas[0].maxsize;
     // TODO: handle more data
 #if PW_CHECK_VERSION(0, 3, 49)
-    if (SPA_UNLIKELY(b->requested > size))
-        pw_log_warn("Can only record %" PRIu32 " bytes of %" PRIu64, size,
-                    b->requested);
-    else if (b->requested)
-        size = b->requested;
-#endif
-
-    if (__builtin_mul_overflow(size, impl->frame_size, &size)) {
+    if (__builtin_mul_overflow(b->requested ? b->requested : 4096, impl->frame_size, &size)) {
         pw_log_error("Overflow calculating amount of data there is room for????");
         goto done;
     }
+    size = SPA_MIN(size, buf->datas[0].maxsize);
+#else
+    size = buf->datas[0].maxsize;
+#endif
     buf->datas[0].chunk->size = size;
 
     if (size > bytes_ready) {
