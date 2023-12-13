@@ -21,8 +21,7 @@
  */
 /* PipeWire */
 /* SPDX-FileCopyrightText: Copyright © 2021 Sanchayan Maity <sanchayan@asymptotic.io> */
-/* SPDX-FileCopyrightText: Copyright © 2021 Wim Taymans */
-/* SPDX-FileCopyrightText: Copyright © 2022 Wim Taymans */
+/* SPDX-FileCopyrightText: Copyright © 2019,2021-2023 Wim Taymans */
 /* SPDX-License-Identifier: MIT */
 
 #define QUBES_PA_SINK_VCHAN_PORT 4713
@@ -37,13 +36,17 @@
 #define QUBES_AUDIOVM_QUBESDB_ENTRY "/qubes-audio-domain-xid"
 #define QUBES_AUDIOVM_PW_KEY "org.qubes-os.audio-domain-xid"
 #define QUBES_PW_KEY_BUFFER_SPACE   "org.qubes-os.vchan-buffer-size"
-#define QUBES_PW_KEY_RECORD_BUFFER_SPACE   "org.qubes-os.record-buffer-size"
-#define QUBES_PW_KEY_PLAYBACK_BUFFER_SPACE   "org.qubes-os.playback-buffer-size"
+#define QUBES_PW_KEY_RECORD_BUFFER_SPACE   "org.qubes-os.record.buffer-size"
+#define QUBES_PW_KEY_PLAYBACK_BUFFER_SPACE   "org.qubes-os.playback.buffer-size"
+#define QUBES_PW_KEY_PLAYBACK_TARGET_BUFFER_FILL   "org.qubes-os.playback.target-buffer-fill"
+#define QUBES_PW_KEY_CAPTURE_TARGET_BUFFER_FILL   "org.qubes-os.record.target-buffer-fill"
+#define QUBES_PW_KEY_ASSUME_MIC_ATTACHED   "org.qubes-os.assume-mic-attached"
 
 /* Check that PipeWire supports a specific feature.
  * The "1 &&" is for ease of testing: by replacing the 1 with 0, one can
  * easily disable the feature manually to make sure the code still compiles. */
 #define QUBES_PW_HAS_SCHEDULE_DESTROY (1 && PW_CHECK_VERSION(0, 3, 65))
+#define QUBES_PW_HAS_TARGET (1 && PW_CHECK_VERSION(0, 3, 68))
 
 /* C11 headers */
 #include <assert.h>
@@ -57,6 +60,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <float.h>
 
 /* POSIX headers */
 #include <sys/types.h>
@@ -71,11 +75,55 @@
 #include <spa/param/audio/format-utils.h>
 #include <spa/param/audio/raw.h>
 
+#include <pipewire/data-loop.h>
 #include <pipewire/impl.h>
 #include <pipewire/log.h>
 
 #include <libvchan.h>
 #include <qubesdb-client.h>
+
+#if PW_CHECK_VERSION(0, 3, 50)
+#include <spa/utils/dll.h>
+#else
+
+/* vendored copy for old PipeWire */
+
+#include <stddef.h>
+#include <math.h>
+
+#define SPA_DLL_BW_MAX		0.128
+#define SPA_DLL_BW_MIN		0.016
+
+struct spa_dll {
+	double bw;
+	double z1, z2, z3;
+	double w0, w1, w2;
+};
+
+static inline void spa_dll_init(struct spa_dll *dll)
+{
+	dll->bw = 0.0;
+	dll->z1 = dll->z2 = dll->z3 = 0.0;
+}
+
+static inline void spa_dll_set_bw(struct spa_dll *dll, double bw, unsigned period, unsigned rate)
+{
+	double w = 2 * M_PI * bw * period / rate;
+	dll->w0 = 1.0 - exp (-20.0 * w);
+	dll->w1 = w * 1.5 / period;
+	dll->w2 = w / 1.5;
+	dll->bw = bw;
+}
+
+static inline double spa_dll_update(struct spa_dll *dll, double err)
+{
+	dll->z1 += dll->w0 * (dll->w1 * err - dll->z1);
+	dll->z2 += dll->w0 * (dll->z1 - dll->z2);
+	dll->z3 += dll->w2 * dll->z2;
+	return 1.0 - (dll->z2 + dll->z3);
+}
+#endif
+
 
 /** \page page_module_example_sink PipeWire Module: Example Sink
  */
@@ -109,6 +157,28 @@ static const struct spa_dict_item module_props[] = {
 
 struct impl;
 
+/** Rate matching information */
+struct rate_match {
+    /** The maximum error that will be used to update the DLL. */
+    double max_error;
+
+    /** If we are driving the graph, the amount by which the timestamp
+     * will be increased.  Otherwise, the inverse of the rate match value. */
+    double corr;
+
+    /** Delay-Locked Loop used for timing decisions */
+    struct spa_dll dll;
+
+    /** The target fill level for the buffer. */
+    uint32_t target_buffer;
+
+    /** Period of the system. FIXME: the meaning of this isn't clear. */
+    uint32_t period;
+
+    /** Pointer to the rate-match IO */
+    struct spa_io_rate_match *rate_match;
+};
+
 struct qubes_stream {
     // Stream properties.  Immutable after init.
     struct pw_properties *stream_props;
@@ -116,9 +186,6 @@ struct qubes_stream {
     struct pw_stream *stream;
     // Stream event listener.  Accessed on main thread only.
     struct spa_hook stream_listener;
-    // Rate match control.  Pointer is immutable after being set.
-    // Pointee accessed on realtime thread only.
-    struct spa_io_rate_match *rate_match;
     // Position control.  Pointer is immutable after being set.
     // Pointee accessed on realtime thread only.
     struct spa_io_position *position;
@@ -136,8 +203,14 @@ struct qubes_stream {
     bool is_open;
     // true for capture, false for playback
     // Set at creation, immutable afterwards
-    bool direction;
-    atomic_bool dead, in_use;
+    unsigned direction : 1;
+    // Implicitly serialized by PipeWire, in theory at least (so atomic, just in case)
+    atomic_bool driving;
+    atomic_bool dead;
+    // Time information
+    uint64_t next_time;
+    struct spa_source timer;
+    struct rate_match rm;
 };
 
 static inline bool
@@ -152,6 +225,58 @@ qubes_stream_is_playback(const struct qubes_stream *stream)
     return !stream->direction;
 }
 
+static int
+rate_buff_init(struct rate_match *matcher, uint32_t target_buffer, uint32_t rate)
+{
+    uint32_t norm_dll_period;
+    uint32_t dll_period = 256;
+    uint32_t frame_size = 4;
+
+    if (__builtin_mul_overflow(frame_size, dll_period, &norm_dll_period)) {
+        return -ERANGE;
+    }
+
+    matcher->target_buffer = target_buffer;
+    matcher->max_error = norm_dll_period;
+    matcher->corr = 1.0;
+    spa_dll_init(&matcher->dll);
+    spa_dll_set_bw(&matcher->dll, SPA_DLL_BW_MIN, dll_period, rate);
+    matcher->period = dll_period;
+    return 0;
+}
+
+/** For capture, filled is returned by libvchan_data_ready(), for playback
+ * it is returned by libvchan_buffer_space(). */
+static void update_rate(struct rate_match *rate_match, uint32_t filled, bool driving, bool direction)
+{
+	double error;
+
+	if (rate_match->rate_match == NULL)
+		return;
+
+	error = (double)rate_match->target_buffer - (double)(filled);
+	error = SPA_CLAMP(error, -rate_match->max_error, rate_match->max_error);
+
+	rate_match->corr = spa_dll_update(&rate_match->dll, error);
+	pw_log_debug("direction:%s error:%f corr:%f current:%u target:%" PRIu32,
+		     direction ? "capture" : "playback", error, rate_match->corr, filled, rate_match->target_buffer);
+
+	if (!driving) {
+		SPA_FLAG_SET(rate_match->rate_match->flags, SPA_IO_RATE_MATCH_FLAG_ACTIVE);
+		rate_match->rate_match->rate = direction ? 1.0 / rate_match->corr : rate_match->corr;
+	}
+}
+
+static uint64_t
+rate_match_duration(struct rate_match *rm, uint64_t duration, uint32_t rate)
+{
+    spa_assert_se(isfinite(rm->corr) && rm->corr > 0);
+    double d = (double)duration / rm->corr * 1e9 / rate;
+    if (d > (double)UINT64_MAX || d < 1)
+        return duration;
+    return (uint64_t)d;
+}
+
 struct impl {
     struct pw_context *context;
 
@@ -163,6 +288,7 @@ struct impl {
 
     struct pw_core *core;
     struct spa_loop *data_loop, *main_loop;
+    struct spa_system *data_system;
     struct spa_hook core_proxy_listener;
     struct spa_hook core_listener;
 
@@ -240,6 +366,140 @@ static void stop_watching_vchan(struct qubes_stream *stream)
     }
 }
 
+#ifndef SPA_SCALE32_UP
+#define SPA_SCALE32_UP(val,num,denom)				\
+({								\
+    uint64_t _val = (val);					\
+    uint64_t _denom = (denom);					\
+    (uint32_t)(((_val) * (num) + (_denom)-1) / (_denom));	\
+})
+#endif
+
+/* Set the timer.  Must be called on the realtime thread. */
+static void set_timeout(struct qubes_stream *stream, uint64_t time)
+{
+    struct impl *impl = stream->impl;
+    struct itimerspec its;
+
+    spa_zero(its);
+    its.it_value.tv_sec = time / SPA_NSEC_PER_SEC;
+    its.it_value.tv_nsec = time % SPA_NSEC_PER_SEC;
+    spa_assert_se(spa_system_timerfd_settime(impl->data_system,
+                                             stream->timer.fd,
+                                             SPA_FD_TIMER_ABSTIME, &its, NULL) >= 0);
+}
+
+static void trigger_process(struct qubes_stream *stream, uint64_t expirations)
+{
+    uint64_t duration, current_time;
+    uint32_t rate;
+    int32_t avail;
+    if (!stream->driving) {
+        return;
+    }
+
+    libvchan_t *vchan = stream->vchan;
+    struct spa_io_position *pos = stream->position;
+
+    if (SPA_LIKELY(pos)) {
+#if QUBES_PW_HAS_TARGET
+        duration = pos->clock.target_duration;
+        rate = pos->clock.target_rate.denom;
+#else
+        duration = pos->clock.duration;
+        rate = pos->clock.rate.denom;
+#endif
+    } else {
+        duration = 1024;
+        rate = QUBES_STREAM_RATE;
+    }
+    pw_log_trace("timeout %" PRIu64, duration);
+
+    current_time = stream->next_time;
+    double d = rate_match_duration(&stream->rm, duration, rate);
+    pw_log_debug("direction:%s new duration:%f target duration:%" PRIu64 " target rate:%" PRIu32, stream->direction ? "capture" : "playback", d, duration, rate);
+    stream->next_time += d;
+
+    if (qubes_stream_is_capture(stream)) {
+        avail = vchan ? SPA_MAX(libvchan_data_ready(vchan), 0) : 0;
+    } else {
+        avail = vchan ? (int32_t)stream->buffer_size - SPA_MAX(libvchan_buffer_space(vchan), 0) : 0;
+    }
+
+    if (SPA_LIKELY(pos)) {
+        pos->clock.nsec = current_time;
+        pos->clock.position += pos->clock.duration;
+#if QUBES_PW_HAS_TARGET
+        pos->clock.rate = pos->clock.target_rate;
+        pos->clock.duration = pos->clock.target_duration;
+#endif
+        pos->clock.delay = (int64_t)SPA_SCALE32_UP(avail, rate, QUBES_STREAM_RATE) * (qubes_stream_is_capture(stream) ? 1 : -1);
+        pos->clock.rate_diff = 1;
+        pos->clock.next_nsec = stream->next_time;
+    }
+    set_timeout(stream, stream->next_time);
+    pw_stream_trigger_process(stream->stream);
+}
+
+static void
+on_timeout_fd(struct spa_source *source)
+{
+    struct qubes_stream *stream = SPA_CONTAINER_OF(source, struct qubes_stream, timer);
+    struct impl *impl = stream->impl;
+    uint64_t expirations;
+    int res = spa_system_timerfd_read(impl->data_system, source->fd, &expirations);
+
+    if (SPA_UNLIKELY(res < 0)) {
+            if (res != -EAGAIN)
+                    pw_log_error("%p: failed to read timer fd:%d: %s",
+                                 impl, source->fd, spa_strerror(res));
+            return;
+    }
+
+    trigger_process(stream, expirations);
+}
+
+
+static int add_timeout_cb(struct spa_loop *loop,
+                          bool async,
+                          uint32_t seq,
+                          const void *data,
+                          size_t size,
+                          void *user_data)
+{
+    struct impl *impl = user_data;
+    int timerfd, res;
+
+    spa_assert_se(loop == impl->data_loop);
+    for (int i = 0; i < 2; ++i)
+        impl->stream[i].timer.fd = -1;
+
+    for (int i = 0; i < 2; ++i) {
+        timerfd = spa_system_timerfd_create(impl->data_system, CLOCK_MONOTONIC,
+                                            SPA_FD_CLOEXEC | SPA_FD_NONBLOCK);
+        if (timerfd < 0) {
+            spa_assert_se(timerfd != -EPIPE);
+            return timerfd;
+        }
+        impl->stream[i].timer = (struct spa_source) {
+            .loop = loop,
+            .func = on_timeout_fd,
+            .fd = timerfd,
+            .mask = SPA_IO_IN,
+        };
+        if ((res = spa_loop_add_source(loop, &impl->stream[i].timer)) < 0)
+            return res;
+        impl->stream[i].timer.data = &impl->stream[i];
+    }
+    timerfd = spa_system_timerfd_create(impl->data_system, CLOCK_MONOTONIC,
+                                        SPA_FD_CLOEXEC | SPA_FD_NONBLOCK);
+    if (timerfd < 0) {
+        spa_assert_se(timerfd != -EPIPE);
+        return timerfd;
+    }
+    return 0;
+}
+
 static int remove_stream_cb(struct spa_loop *loop,
                             bool async,
                             uint32_t seq,
@@ -247,7 +507,17 @@ static int remove_stream_cb(struct spa_loop *loop,
                             size_t size,
                             void *user_data)
 {
-    stop_watching_vchan(user_data);
+    struct qubes_stream *stream = user_data;
+
+    stop_watching_vchan(stream);
+    struct impl *impl = stream->impl;
+    if (stream->timer.data != NULL) {
+        spa_assert_se(stream->timer.loop == impl->data_loop);
+        spa_assert_se(spa_loop_remove_source(impl->data_loop, &stream->timer) >= 0);
+        stream->timer.data = NULL;
+        spa_assert_se(spa_system_close(impl->data_system, stream->timer.fd) >= 0);
+        stream->timer.fd = -1;
+    }
     return 0;
 }
 
@@ -284,6 +554,7 @@ static int add_stream(struct spa_loop *loop,
     stream->source.data = stream;
     stream->source.fd = libvchan_fd_for_select(stream->vchan);
     stream->source.mask = SPA_IO_IN;
+    set_timeout(stream, 0);
     return spa_loop_add_source(loop, &stream->source);
 }
 
@@ -385,6 +656,8 @@ static void set_stream_state(struct qubes_stream *stream, bool state)
 {
     static_assert(atomic_is_lock_free(&stream->current_state),
                   "PipeWire agent requires lock-free atomic size_t");
+    static_assert(atomic_is_lock_free(&stream->driving),
+                  "PipeWire agent requires lock-free atomic bool");
     stream->current_state = state;
 }
 
@@ -494,6 +767,15 @@ static const struct spa_audio_info_raw qubes_audio_format = {
     .position = { SPA_AUDIO_CHANNEL_FL, SPA_AUDIO_CHANNEL_FR },
 };
 
+
+static uint64_t get_time_ns(struct impl *impl)
+{
+    struct timespec now;
+    if (spa_system_clock_gettime(impl->data_system, CLOCK_MONOTONIC, &now) < 0)
+        return 0;
+    return SPA_TIMESPEC_TO_NSEC(&now);
+}
+
 /**
  * Called on the realtime thread when a vchan's event channel
  * is signaled.  Must not be called on any other thread.
@@ -507,7 +789,7 @@ static void vchan_ready(struct spa_source *source)
 
     // 0: Check if the vchan exists
     if (!stream->vchan) {
-        spa_assert(!stream->is_open && "no vchan on open stream?");
+        spa_assert_se(!stream->is_open && "no vchan on open stream?");
         pw_log_error("vchan_ready() called with vchan closed???");
         return;
     }
@@ -527,7 +809,8 @@ static void vchan_ready(struct spa_source *source)
                             main_thread_connect, 0, NULL, 0, false, stream);
             if (qubes_stream_is_capture(stream)) {
                 // vchan just opened, no need to check for buffer space
-                const uint32_t control_commands[2] = {
+                const uint32_t control_commands[3] = {
+                    0x00010004,
                     (stream->last_state = stream->current_state) ?
                         QUBES_PA_SOURCE_START_CMD : QUBES_PA_SOURCE_STOP_CMD,
                     (playback_stream->last_state = playback_stream->current_state) ?
@@ -546,10 +829,10 @@ static void vchan_ready(struct spa_source *source)
     }
     if (!is_open)
         return; /* vchan closed */
-    if (qubes_stream_is_playback(stream))
-        return; // Nothing to do for playback
-    discard_unwanted_recorded_data(stream);
-    process_control_commands(stream->impl);
+    if (qubes_stream_is_capture(stream)) {
+        discard_unwanted_recorded_data(stream);
+        process_control_commands(stream->impl);
+    }
 }
 
 /**
@@ -575,11 +858,30 @@ static void discard_unwanted_recorded_data(struct qubes_stream *stream)
     size_t to_read = (size_t)ready;
     pw_log_trace("Discarding %d bytes of unwanted data", ready);
     while (to_read > 0) {
-        int res = libvchan_read(stream->vchan, buf, to_read > sizeof buf ? sizeof buf : to_read);
+        int res = libvchan_read(stream->vchan, buf, SPA_MIN(to_read, sizeof(buf)));
         if (res <= 0)
-            break;
+            return;
         to_read -= (size_t)res;
     }
+}
+
+static void rt_set_stream_state(struct qubes_stream *stream, bool active)
+{
+    pw_log_trace("Setting %s state to %s", qubes_stream_is_capture(stream) ? "capture" : "playback", active ? "started" : "stopped");
+    if (active) {
+        bool driving = pw_stream_is_driving(stream->stream);
+        if (driving && !stream->driving) {
+            stream->next_time = get_time_ns(stream->impl);
+            set_timeout(stream, stream->next_time);
+        }
+        stream->driving = driving;
+    } else {
+        stream->next_time = 0;
+        stream->driving = false;
+        set_timeout(stream, 0);
+    }
+
+    stream->last_state = active;
 }
 
 /**
@@ -613,8 +915,7 @@ static int process_control_commands(struct impl *impl)
         }
 
         pw_log_trace("Audio playback %s", new_state ? "started" : "stopped");
-
-        playback_stream->last_state = new_state;
+        rt_set_stream_state(playback_stream, new_state);
     }
 
     new_state = capture_stream->current_state;
@@ -635,7 +936,11 @@ static int process_control_commands(struct impl *impl)
 
         pw_log_trace("Audio capturing %s", new_state ? "started" : "stopped");
 
-        capture_stream->last_state = new_state;
+        if (pw_stream_is_driving(capture_stream->stream)) {
+            if (new_state)
+                pw_log_trace("Qubes OS capture node is driving");
+        }
+        rt_set_stream_state(capture_stream, new_state);
     }
 
     return 0;
@@ -665,6 +970,14 @@ static int rt_set_io(struct spa_loop *loop,
                 spa_assert_se(SPA_IS_ALIGNED(slice->data, alignof(struct spa_io_position)));
             }
             stream->position = slice->data;
+            break;
+        case SPA_IO_RateMatch:
+            if (slice->data != NULL) {
+                spa_assert_se(slice->size >= sizeof(*stream->rm.rate_match));
+                spa_assert_se(SPA_IS_ALIGNED(slice->data,
+                                             alignof(typeof(*stream->rm.rate_match))));
+            }
+            stream->rm.rate_match = slice->data;
             break;
     }
     return 0;
@@ -739,6 +1052,8 @@ static void capture_stream_process(void *d)
             bytes_ready = (uint32_t)ready;
     }
 
+    pw_log_debug("space to read %" PRIu32 " bytes, target is %" PRIu32, bytes_ready, stream->rm.target_buffer);
+
     struct spa_buffer *buf = b->buffer;
     if (buf->n_datas < 1 || (dst = buf->datas[0].data) == NULL)
         goto done;
@@ -768,17 +1083,22 @@ static void capture_stream_process(void *d)
     }
 
     pw_log_trace("reading %" PRIu32 " bytes from vchan", size);
-    if (size) {
+    bool something_to_read = size > 0;
+    if (something_to_read) {
         int r = libvchan_recv(stream->vchan, dst, size);
-        if (r != (int)size) {
-            pw_log_error("vchan error: %m");
-            // avoid recording uninitialized memory
-            if (r <= 0)
-                memset(dst, 0, size);
-            else
-                memset(dst + (unsigned int)r, 0, size - (unsigned int)r);
+        if (r < 0) {
+            pw_log_error("vchan error: got %d", r);
+        } else if (r == 0) {
+            pw_log_error("premature EOF on vchan or protocol violation by peer");
+        } else {
+            spa_assert_se(size == (unsigned int)r);
+            dst += r;
+            size = 0;
+            update_rate(&stream->rm, bytes_ready, pw_stream_is_driving(stream->stream), stream->direction);
         }
     }
+    // avoid recording uninitialized memory
+    memset(dst, 0, size);
 done:
     pw_stream_queue_buffer(stream->stream, b);
 }
@@ -802,6 +1122,8 @@ static void playback_stream_process(void *d)
 
     discard_unwanted_recorded_data(capture_stream);
 
+    pw_log_debug("space to write %d bytes, target is %" PRIu32, ready, stream->rm.target_buffer);
+
     if ((buf = pw_stream_dequeue_buffer(stream->stream)) == NULL) {
         pw_log_error("out of buffers: %m");
         return;
@@ -818,6 +1140,8 @@ static void playback_stream_process(void *d)
         pw_log_error("Negative return value from libvchan_buffer_space()");
         return;
     }
+
+    update_rate(&stream->rm, (uint32_t)ready, pw_stream_is_driving(stream->stream), stream->direction);
 
     if (size > (uint32_t)ready) {
         pw_log_warn("Overrun: asked to write %" PRIu32 " bytes, but can only write %d", size, ready);
@@ -1096,6 +1420,9 @@ create_stream(struct impl *impl, enum spa_direction direction)
 {
     struct qubes_stream *stream = impl->stream + direction;
 
+    int res = rate_buff_init(&stream->rm, stream->rm.target_buffer, QUBES_STREAM_RATE);
+    if (res != 0)
+        return res;
     stream->stream = pw_stream_new(impl->core,
                                    direction ? "Qubes Source" : "Qubes Sink",
                                    stream->stream_props);
@@ -1146,6 +1473,7 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
 #endif
     impl->reference_count = 1;
     for (int i = 0; i < 2; ++i) {
+        impl->stream[i].timer.fd = -1;
         impl->stream[i].source.fd = -1;
         impl->stream[i].impl = impl;
     }
@@ -1155,7 +1483,9 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
         struct pw_data_loop *pw_data_loop = pw_context_get_data_loop(context);
         spa_assert_se(pw_data_loop);
         struct pw_loop *data_loop = pw_data_loop_get_loop(pw_data_loop);
+        spa_assert_se(data_loop && data_loop->loop && data_loop->system);
         impl->data_loop = data_loop->loop;
+        impl->data_system = data_loop->system;
 #else
         uint32_t n_support;
         const struct spa_support *support = pw_context_get_support(context, &n_support);
@@ -1165,14 +1495,28 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
             pw_log_error("cannot get data loop: %m");
             goto error;
         }
+        impl->data_system = spa_support_find(support, n_support, SPA_TYPE_INTERFACE_DataSystem);
+        if (impl->data_system == NULL) {
+            res = -errno;
+            pw_log_error("could not obtain data system: %m");
+            goto error;
+        }
 #endif
     }
 
     {
         struct pw_loop *loop = pw_context_get_main_loop(context);
-        spa_assert_se(loop);
-        spa_assert_se(loop->loop);
+        spa_assert_se(loop && loop->loop);
         impl->main_loop = loop->loop;
+    }
+
+    do {
+        res = spa_loop_invoke(impl->data_loop, add_timeout_cb, 0, NULL, 0, true, impl);
+    } while (res == -EPIPE);
+    if (res != 0) {
+        errno = -res;
+        pw_log_error("can't create timer: %m");
+        goto error;
     }
 
     if (!(global_props = pw_context_get_properties(context))) {
@@ -1239,6 +1583,8 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
 
         size_t read_min = 0x100000, write_min = 0x10000;
         const char *record_size = pw_properties_get(props, QUBES_PW_KEY_RECORD_BUFFER_SPACE);
+        const char *record_buffer_fill = pw_properties_get(props, QUBES_PW_KEY_CAPTURE_TARGET_BUFFER_FILL);
+        const char *playback_buffer_fill = pw_properties_get(props, QUBES_PW_KEY_PLAYBACK_TARGET_BUFFER_FILL);
         const char *playback_size = pw_properties_get(props, QUBES_PW_KEY_PLAYBACK_BUFFER_SPACE);
         if (!record_size || !playback_size) {
             const char *buffer_size = pw_properties_get(props, QUBES_PW_KEY_BUFFER_SPACE);
@@ -1258,8 +1604,25 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
         read_min = SPA_UNLIKELY(read_min < 1024) ? 1024 : (size_t)1 << ((sizeof(unsigned long) * 8) - __builtin_clzl(read_min - 1));
         write_min = SPA_UNLIKELY(write_min < 1024) ? 1024 : (size_t)1 << ((sizeof(unsigned long) * 8) - __builtin_clzl(write_min - 1));
 
+        size_t record_target_buffer_fill = SPA_MIN(0x2000U, read_min / 2);
+        size_t playback_target_buffer_fill = SPA_MIN(0x2000U, write_min / 2);
+
+        if (record_buffer_fill != NULL) {
+            res = parse_number(record_buffer_fill, read_min, &record_target_buffer_fill, "record target buffer fill");
+            if (res != 0)
+                goto error;
+        }
+
+        if (playback_buffer_fill != NULL) {
+            res = parse_number(playback_buffer_fill, write_min, &playback_target_buffer_fill, "playback target buffer fill");
+            if (res != 0)
+                goto error;
+        }
+
         impl->stream[PW_DIRECTION_OUTPUT].buffer_size = read_min;
+        impl->stream[PW_DIRECTION_OUTPUT].rm.target_buffer = record_target_buffer_fill;
         impl->stream[PW_DIRECTION_INPUT].buffer_size = write_min;
+        impl->stream[PW_DIRECTION_INPUT].rm.target_buffer = write_min - playback_target_buffer_fill;
     }
 
     pw_log_info("module %p: new (%s), peer id is %d", impl, args, (int)impl->domid);
