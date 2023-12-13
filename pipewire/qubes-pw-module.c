@@ -127,16 +127,26 @@ static const struct spa_dict_item module_props[] = {
 struct impl;
 
 struct qubes_stream {
+    // Stream properties.  Immutable after init.
     struct pw_properties *stream_props;
+    // Pointer to stream.  Immutable after init.
     struct pw_stream *stream;
+    // Stream event listener.  Accessed on main thread only.
     struct spa_hook stream_listener;
+    // Audio format info.  Accessed only on main thread.
     struct spa_audio_info_raw info;
+    // Vchans, explicitly synchronized using message passing.
     struct libvchan *vchan, *closed_vchan;
+    // Pointer to the implementation.
     struct impl *impl;
     atomic_size_t current_state, last_state;
     struct spa_source source;
+    // Set at creation, immutable afterwards
     size_t buffer_size;
-    bool is_open, direction;
+    // Whether the stream is open.  Only accessed on RT thread.
+    bool is_open;
+    // Set at creation, immutable afterwards
+    bool direction;
     atomic_bool dead, in_use;
 };
 
