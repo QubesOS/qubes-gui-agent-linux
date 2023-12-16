@@ -425,9 +425,9 @@ static void vchan_ready(struct spa_source *source)
     }
 
     // 1: Acknowledge vchan event
-    pw_log_debug("Waiting for vchan");
+    pw_log_trace("Waiting for vchan");
     libvchan_wait(stream->vchan);
-    pw_log_debug("Vchan awaited");
+    pw_log_trace("Vchan awaited");
 
     // 2: Figure out if stream is open
     bool is_open = libvchan_is_open(stream->vchan);
@@ -484,7 +484,7 @@ static void discard_unwanted_recorded_data(struct qubes_stream *stream)
         return;
 
     size_t to_read = (size_t)ready;
-    pw_log_debug("Discarding %d bytes of unwanted data", ready);
+    pw_log_trace("Discarding %d bytes of unwanted data", ready);
     while (to_read > 0) {
         int res = libvchan_read(stream->vchan, buf, to_read > sizeof buf ? sizeof buf : to_read);
         if (res <= 0)
@@ -521,7 +521,7 @@ static int process_control_commands(struct impl *impl)
             return -EPROTO;
         }
 
-        pw_log_info("Audio playback %s", new_state ? "started" : "stopped");
+        pw_log_trace("Audio playback %s", new_state ? "started" : "stopped");
 
         playback_stream->last_state = new_state;
     }
@@ -540,7 +540,7 @@ static int process_control_commands(struct impl *impl)
             return -ENOSPC;
         }
 
-        pw_log_info("Audio capturing %s", new_state ? "started" : "stopped");
+        pw_log_trace("Audio capturing %s", new_state ? "started" : "stopped");
 
         capture_stream->last_state = new_state;
     }
@@ -645,7 +645,7 @@ static void capture_stream_process(void *d)
         size = bytes_ready;
     }
 
-    pw_log_debug("reading %" PRIu32 " bytes from vchan", size);
+    pw_log_trace("reading %" PRIu32 " bytes from vchan", size);
     if (size && libvchan_read(stream->vchan, dst, size) != (int)size) {
         pw_log_error("vchan error: %m");
         // avoid recording uninitialized memory
@@ -674,7 +674,7 @@ static void playback_stream_process(void *d)
 
     discard_unwanted_recorded_data(capture_stream);
 
-    pw_log_debug("%d bytes ready for writing", ready);
+    pw_log_trace("%d bytes ready for writing", ready);
 
     if ((buf = pw_stream_dequeue_buffer(stream->stream)) == NULL) {
         pw_log_error("out of buffers: %m");
@@ -698,7 +698,7 @@ static void playback_stream_process(void *d)
         size = ready;
     }
 
-    pw_log_debug("writing %" PRIu32 " bytes to vchan", size);
+    pw_log_trace("writing %" PRIu32 " bytes to vchan", size);
     if (size > 0 && libvchan_write(stream->vchan, data, size) != (int)size) {
         pw_log_error("vchan error: %m");
         return;
