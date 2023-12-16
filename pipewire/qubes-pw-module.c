@@ -484,7 +484,7 @@ static void discard_unwanted_recorded_data(struct qubes_stream *stream)
         return;
 
     size_t to_read = (size_t)ready;
-    pw_log_debug("Discarding %d bytes of unwanted data", ready);
+    pw_log_trace("Discarding %d bytes of unwanted data", ready);
     while (to_read > 0) {
         int res = libvchan_read(stream->vchan, buf, to_read > sizeof buf ? sizeof buf : to_read);
         if (res <= 0)
@@ -645,7 +645,7 @@ static void capture_stream_process(void *d)
         size = bytes_ready;
     }
 
-    pw_log_debug("reading %" PRIu32 " bytes from vchan", size);
+    pw_log_trace("reading %" PRIu32 " bytes from vchan", size);
     if (size && libvchan_read(stream->vchan, dst, size) != (int)size) {
         pw_log_error("vchan error: %m");
         // avoid recording uninitialized memory
@@ -698,7 +698,7 @@ static void playback_stream_process(void *d)
         size = ready;
     }
 
-    pw_log_debug("writing %" PRIu32 " bytes to vchan", size);
+    pw_log_trace("writing %" PRIu32 " bytes to vchan", size);
     if (size > 0 && libvchan_write(stream->vchan, data, size) != (int)size) {
         pw_log_error("vchan error: %m");
         return;
