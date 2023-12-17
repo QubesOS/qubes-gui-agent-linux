@@ -135,10 +135,23 @@ struct qubes_stream {
     size_t buffer_size;
     // Whether the stream is open.  Only accessed on RT thread.
     bool is_open;
+    // true for capture, false for playback
     // Set at creation, immutable afterwards
     bool direction;
     atomic_bool dead, in_use;
 };
+
+static inline bool
+qubes_stream_is_capture(const struct qubes_stream *stream)
+{
+    return stream->direction;
+}
+
+static inline bool
+qubes_stream_is_playback(const struct qubes_stream *stream)
+{
+    return !stream->direction;
+}
 
 struct impl {
     struct pw_context *context;
@@ -256,11 +269,11 @@ static int add_stream(struct spa_loop *loop,
  */
 static void connect_stream(struct qubes_stream *stream)
 {
-    const char *msg = stream->direction ? "capture" : "playback";
+    const char *msg = qubes_stream_is_capture(stream) ? "capture" : "playback";
     uint16_t domid = stream->impl->domid;
     spa_assert(stream->vchan == NULL);
     spa_assert(stream->closed_vchan == NULL);
-    stream->closed_vchan = stream->direction ?
+    stream->closed_vchan = qubes_stream_is_capture(stream) ?
         libvchan_server_init((int)domid, QUBES_PA_SOURCE_VCHAN_PORT, stream->buffer_size, 128) :
         libvchan_server_init((int)domid, QUBES_PA_SINK_VCHAN_PORT, 128, stream->buffer_size);
     if (stream->closed_vchan == NULL) {
@@ -426,7 +439,7 @@ static void vchan_ready(struct spa_source *source)
             // vchan connected
             spa_loop_invoke(stream->impl->main_loop,
                             main_thread_connect, 0, NULL, 0, false, stream);
-            if (stream->direction) {
+            if (qubes_stream_is_capture(stream)) {
                 // vchan just opened, no need to check for buffer space
                 const uint32_t control_commands[2] = {
                     (stream->last_state = stream->current_state) ?
@@ -447,7 +460,7 @@ static void vchan_ready(struct spa_source *source)
     }
     if (!is_open)
         return; /* vchan closed */
-    if (!stream->direction)
+    if (qubes_stream_is_playback(stream->direction))
         return; // Nothing to do for playback
     discard_unwanted_recorded_data(stream);
     process_control_commands(stream->impl);
@@ -905,7 +918,9 @@ static int create_stream(struct impl *impl, enum spa_direction direction)
 {
     struct qubes_stream *stream = impl->stream + direction;
 
-    stream->stream = pw_stream_new(impl->core, direction == PW_DIRECTION_INPUT ? "Qubes Sink" : "Qubes Source", stream->stream_props);
+    stream->stream = pw_stream_new(impl->core,
+                                   qubes_stream_is_capture(stream) ? "Qubes Source" : "Qubes Sink",
+                                   stream->stream_props);
     stream->stream_props = NULL;
 
     if (stream->stream == NULL)
@@ -1259,7 +1274,7 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
         connect_stream(stream);
         pw_stream_add_listener(stream->stream,
                 &stream->stream_listener,
-                stream->direction ? &capture_stream_events : &playback_stream_events,
+                qubes_stream_is_capture(stream) ? &capture_stream_events : &playback_stream_events,
                 impl);
     }
 
