@@ -749,10 +749,6 @@ static void playback_stream_process(void *d)
 
     if (ready <= 0 || size > (uint32_t)ready) {
         pw_log_warn("Overrun: asked to write %" PRIu32 " bytes, but can only write %d", size, ready);
-        if (stream->last_state) {
-            // Force process_control_commands() to send QUBES_PA_SINK_UNCORK_CMD
-            stream->last_state = 2;
-        }
         process_control_commands(stream->impl);
         size = ready;
     }
