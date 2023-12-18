@@ -811,7 +811,7 @@ static void stream_param_changed(void *data, uint32_t id,
     if (param == NULL)
         goto doit;
 
-    if ((res = spa_format_parse(param, &media_type, &media_subtype) < 0)) {
+    if ((res = spa_format_parse(param, &media_type, &media_subtype)) < 0) {
         errno = -res;
         pw_log_error("spa_format_parse() failed: %m");
         errno = -res;
