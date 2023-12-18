@@ -791,8 +791,18 @@ static void stream_param_changed(void *data, uint32_t id,
     case SPA_PARAM_Props:
         /* TODO: reconfigure the stream according to the new properties */
         return;
+#if PW_CHECK_VERSION(0, 3, 29)
+    case SPA_PARAM_Latency:
+        /* TODO: latency reporting */
+        return;
+#endif
+#if PW_CHECK_VERSION(0, 3, 79)
+    case SPA_PARAM_Tag:
+        /* TODO: tag reporting */
+        return;
+#endif
     default:
-        pw_log_error("Unknown id %" PRIu32, id);
+        pw_log_info("Unknown param ID %" PRIu32, id);
         return;
     }
 
