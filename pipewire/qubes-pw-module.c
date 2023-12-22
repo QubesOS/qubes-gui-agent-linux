@@ -32,6 +32,7 @@
 #define QUBES_PA_SOURCE_STOP_CMD 0x00010000
 #define QUBES_PA_SINK_CORK_CMD 0x00020000
 #define QUBES_PA_SINK_UNCORK_CMD 0x00020001
+#define QUBES_STREAM_RATE 44100
 
 #define QUBES_AUDIOVM_QUBESDB_ENTRY "/qubes-audio-domain-xid"
 #define QUBES_AUDIOVM_PW_KEY "org.qubes-os.audio-domain-xid"
@@ -764,7 +765,7 @@ static void playback_stream_process(void *d)
 static const struct spa_audio_info_raw qubes_audio_format = {
     .format = SPA_AUDIO_FORMAT_S16_LE,
     .flags = 0,
-    .rate = 44100,
+    .rate = QUBES_STREAM_RATE,
     .channels = 2,
     .position = { SPA_AUDIO_CHANNEL_FL, SPA_AUDIO_CHANNEL_FR },
 };
@@ -833,7 +834,7 @@ static void stream_param_changed(void *data, uint32_t id,
         return;
     }
 
-    if (info.rate != 44100) {
+    if (info.rate != QUBES_STREAM_RATE) {
         pw_log_error("Unsupported audio rate %" PRIu32, info.rate);
         errno = ENOTSUP;
         return;
@@ -1018,7 +1019,7 @@ static void parse_audio_info(struct impl *impl)
 
         info->format = SPA_AUDIO_FORMAT_S16_LE;
         info->channels = 2;
-        info->rate = 44100;
+        info->rate = QUBES_STREAM_RATE;
         _Static_assert(QUBES_ARRAY_SIZE(info->position) >= 2, "out of bounds bug");
         info->position[0] = SPA_AUDIO_CHANNEL_FL;
         info->position[1] = SPA_AUDIO_CHANNEL_FR;
@@ -1032,7 +1033,7 @@ static const struct spa_dict_item source_props[] = {
     { "node.want-driver", "true" },
     // { PW_KEY_MEDIA_TYPE, "Audio" },
     { PW_KEY_MEDIA_CLASS, "Audio/Source" },
-    { PW_KEY_AUDIO_RATE, "44100" },
+    { PW_KEY_AUDIO_RATE, SPA_STRINGIFY(QUBES_STREAM_RATE) },
     { PW_KEY_AUDIO_CHANNELS, "2" },
     { PW_KEY_AUDIO_FORMAT, "S16LE" },
     { "audio.position", "[ FL FR ]" },
@@ -1046,7 +1047,7 @@ static const struct spa_dict_item sink_props[] = {
     { "node.want-driver", "true" },
     // { PW_KEY_MEDIA_TYPE, "Audio" },
     { PW_KEY_MEDIA_CLASS, "Audio/Sink" },
-    { PW_KEY_AUDIO_RATE, "44100" },
+    { PW_KEY_AUDIO_RATE, SPA_STRINGIFY(QUBES_STREAM_RATE) },
     { PW_KEY_AUDIO_CHANNELS, "2" },
     { PW_KEY_AUDIO_FORMAT, "S16LE" },
     { "audio.position", "[ FL FR ]"},
