@@ -520,8 +520,10 @@ static int process_control_commands(struct impl *impl)
             return -ENOBUFS;
         }
 
-        if (libvchan_send(control_vchan, &cmd, sizeof(cmd)) != sizeof(cmd)) {
-            pw_log_error("error writing command to control vchan");
+        int res = libvchan_send(control_vchan, &cmd, sizeof(cmd));
+        if (res != (int)sizeof(cmd)) {
+            pw_log_error("error writing command to control vchan: got %d, expected %zu",
+                         res, sizeof(cmd));
             return -EPROTO;
         }
 
@@ -539,9 +541,11 @@ static int process_control_commands(struct impl *impl)
             return -ENOSPC;
         }
 
-        if (libvchan_send(control_vchan, &cmd, sizeof(cmd)) != sizeof(cmd)) {
-            pw_log_error("error writing command to control vchan");
-            return -ENOSPC;
+        int res = libvchan_send(control_vchan, &cmd, sizeof(cmd));
+        if (res != (int)sizeof(cmd)) {
+            pw_log_error("error writing command to control vchan: got %d, expected %zu",
+                         res, sizeof(cmd));
+            return -EPROTO;
         }
 
         pw_log_trace("Audio capturing %s", new_state ? "started" : "stopped");
