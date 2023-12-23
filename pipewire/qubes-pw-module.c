@@ -875,7 +875,7 @@ doit:
             SPA_TYPE_OBJECT_ParamBuffers, SPA_PARAM_Buffers,
             SPA_PARAM_BUFFERS_buffers, SPA_POD_CHOICE_RANGE_Int(8, 2, 64),
             SPA_PARAM_BUFFERS_blocks, SPA_POD_Int(1),
-            SPA_PARAM_BUFFERS_size, SPA_POD_Int(2048 * (int)impl->frame_size),
+            SPA_PARAM_BUFFERS_size, SPA_POD_Int(impl->stream[direction].buffer_size),
             SPA_PARAM_BUFFERS_stride, SPA_POD_Int((int)impl->frame_size),
             SPA_PARAM_BUFFERS_dataType, SPA_POD_CHOICE_FLAGS_Int((1 << SPA_DATA_MemPtr)));
     spa_assert_se(params[0]);
