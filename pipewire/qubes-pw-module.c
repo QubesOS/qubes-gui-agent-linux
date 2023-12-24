@@ -711,7 +711,7 @@ static void capture_stream_process(void *d)
 
     pw_log_trace("reading %" PRIu32 " bytes from vchan", size);
     if (size) {
-        int r = libvchan_read(stream->vchan, dst, size);
+        int r = libvchan_recv(stream->vchan, dst, size);
         if (r != (int)size) {
             pw_log_error("vchan error: %m");
             // avoid recording uninitialized memory
@@ -761,11 +761,14 @@ static void playback_stream_process(void *d)
     if (ready <= 0 || size > (uint32_t)ready) {
         pw_log_warn("Overrun: asked to write %" PRIu32 " bytes, but can only write %d", size, ready);
         process_control_commands(stream->impl);
-        size = ready;
+        if (ready < 1)
+            size = 0;
+        else
+            size = (uint32_t)ready;
     }
 
     pw_log_trace("writing %" PRIu32 " bytes to vchan", size);
-    if (size > 0 && libvchan_write(stream->vchan, data, size) != (int)size) {
+    if (size > 0 && libvchan_send(stream->vchan, data, size) != (int)size) {
         pw_log_error("vchan error: %m");
         return;
     }
