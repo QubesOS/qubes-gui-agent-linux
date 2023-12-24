@@ -461,7 +461,7 @@ static void vchan_ready(struct spa_source *source)
     }
     if (!is_open)
         return; /* vchan closed */
-    if (qubes_stream_is_playback(stream->direction))
+    if (qubes_stream_is_playback(stream))
         return; // Nothing to do for playback
     discard_unwanted_recorded_data(stream);
     process_control_commands(stream->impl);
@@ -1043,6 +1043,7 @@ static void parse_audio_info(struct impl *impl)
 static const struct spa_dict_item source_props[] = {
     { PW_KEY_NODE_NAME, "qubes-source" },
     { PW_KEY_NODE_DESCRIPTION, "Qubes Virtual Audio Source" },
+    { "node.rate", SPA_STRINGIFY(QUBES_STREAM_RATE) },
     { "node.want-driver", "true" },
     // { PW_KEY_MEDIA_TYPE, "Audio" },
     { PW_KEY_MEDIA_CLASS, "Audio/Source" },
@@ -1057,6 +1058,7 @@ static const struct spa_dict source_dict = SPA_DICT_INIT_ARRAY(source_props);
 static const struct spa_dict_item sink_props[] = {
     { PW_KEY_NODE_NAME, "qubes-sink" },
     { PW_KEY_NODE_DESCRIPTION, "Qubes Virtual Audio Sink" },
+    { "node.rate", SPA_STRINGIFY(QUBES_STREAM_RATE) },
     { "node.want-driver", "true" },
     // { PW_KEY_MEDIA_TYPE, "Audio" },
     { PW_KEY_MEDIA_CLASS, "Audio/Sink" },
