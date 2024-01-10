@@ -122,7 +122,7 @@ BuildRequires: pulseaudio
 Pulseaudio module to enable sound support in Qubes VM
 
 %package -n pipewire-qubes
-Summary:       Experimental PipeWire audio support for Qubes VMs
+Summary:       PipeWire audio support for Qubes VMs
 Requires:      pipewire
 BuildRequires: pipewire-devel
 BuildRequires: qubes-db-devel
@@ -133,11 +133,11 @@ BuildRequires: pipewire
 %endif
 
 %description -n pipewire-qubes
-Experimental PipeWire module to enable sound support in Qubes VMs.
-Unlike the PulseAudio support in the pulseaudio-qubes package, this
-works with the stock PipeWire service and does not depend on internal
-PipeWire headers.  It also promises lower latency than PulseAudio,
-at least once the audio daemon supports low latency.
+PipeWire module to enable sound support in Qubes VMs.  Unlike the
+PulseAudio support in the pulseaudio-qubes package, this works with
+the stock PipeWire service and does not depend on internal PipeWire
+headers.  It also promises lower latency than PulseAudio, at least
+once the audio daemon supports low latency.
 
 %package xfce
 Summary: XFCE desktop support for Qubes VM
