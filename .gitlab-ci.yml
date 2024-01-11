@@ -8,6 +8,9 @@ include:
 - file: /r4.2/gitlab-vm.yml
   project: QubesOS/qubes-continuous-integration
   ref: $CI_BRANCH_REF
+- file: /r4.2/gitlab-host-vm-openqa.yml
+  project: QubesOS/qubes-continuous-integration
+  ref: $CI_BRANCH_REF
 variables:
   CI_INSTALL_EXCLUDE: pulseaudio-qubes pulseaudio-qubes-dbgsym
   CI_INSTALL_EXCLUDE_DOM0: pulseaudio-qubes qubes-gui-agent
