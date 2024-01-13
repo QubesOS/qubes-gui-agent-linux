@@ -16,7 +16,7 @@ makedepends=(
     automake
     autoconf
     libtool
-    'pulseaudio<=16.99.1'
+    'pulseaudio<=17.0'
     'pipewire>=1:0.3.53-2'
     'pipewire<1:0.4'
     xorg-server-devel
@@ -83,7 +83,7 @@ package_qubes-vm-gui() {
 
 package_qubes-vm-pulseaudio() {
     pkgdesc="Pulseaudio support for Qubes VM"
-    depends=('alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'pulseaudio<=16.99.1')
+    depends=('alsa-lib' 'alsa-utils' 'pulseaudio-alsa' 'pulseaudio<=17.0')
     conflicts=('qubes-core-agent<4.2.5')
     install=archlinux/PKGBUILD-pulseaudio.install
     _pa_ver="$( (pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -f 1 -d "-" )"
