@@ -99,7 +99,7 @@ package_qubes-vm-pulseaudio() {
 package_pipewire-qubes () {
 
     pkgdesc='PipeWire support for Qubes VM.  This replaces the legacy PulseAudio module.'
-    depends=('pipewire>=1:0.3.53-2' 'pipewire<1:0.4')
+    depends=('pipewire>=1:0.3.53-2')
     replaces=('qubes-vm-pulseaudio<=4.1.26-10')
     install=archlinux/PKGBUILD-pipewire-qubes.install
 
