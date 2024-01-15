@@ -18,7 +18,6 @@ makedepends=(
     libtool
     'pulseaudio<=16.99.1'
     'pipewire>=1:0.3.53-2'
-    'pipewire<1:0.4'
     xorg-server-devel
     xorg-util-macros
     libxcomposite
