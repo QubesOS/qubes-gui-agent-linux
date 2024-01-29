@@ -448,7 +448,7 @@ static void vchan_ready(struct spa_source *source)
                     (playback_stream->last_state = playback_stream->current_state) ?
                         QUBES_PA_SINK_UNCORK_CMD : QUBES_PA_SINK_CORK_CMD,
                 };
-                if (libvchan_write(stream->vchan, control_commands, sizeof control_commands) !=
+                if (libvchan_send(stream->vchan, control_commands, sizeof control_commands) !=
                     sizeof control_commands)
                     pw_log_error("Cannot write stream initial states to vchan");
             }
