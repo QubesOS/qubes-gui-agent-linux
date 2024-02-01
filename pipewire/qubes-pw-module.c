@@ -84,13 +84,6 @@ PW_LOG_TOPIC_STATIC(mod_topic, "mod." NAME);
 #error bad PipeWire includes?
 #endif
 
-#if PW_CHECK_VERSION(0, 3, 30)
-#define MODULE_EXTRA_USAGE "[ stream.sink.props=<properties> ] " \
-                           "[ stream.source.props=<properties> ] "
-#else
-#define MODULE_EXTRA_USAGE ""
-#endif
-
 #define MODULE_USAGE    "[ node.latency=<latency as fraction> ] "                \
                         "[ node.name=<name of the nodes> ] "                    \
                         "[ node.description=<description of the nodes> ] "            \
@@ -98,8 +91,8 @@ PW_LOG_TOPIC_STATIC(mod_topic, "mod." NAME);
                         "[ " QUBES_PW_KEY_BUFFER_SPACE "=<default vchan buffer space (headroom)> ] " \
                         "[ " QUBES_PW_KEY_RECORD_BUFFER_SPACE "=<recording headroom> ]" \
                         "[ " QUBES_PW_KEY_PLAYBACK_BUFFER_SPACE "=<playback headroom> ]" \
-                        MODULE_EXTRA_USAGE
-
+                        "[ stream.sink.props=<properties> ] " \
+                        "[ stream.source.props=<properties> ] "
 
 static const struct spa_dict_item module_props[] = {
     { PW_KEY_MODULE_AUTHOR, "Wim Taymans <wim.taymans@gmail.com>, "
@@ -801,11 +794,9 @@ static void stream_param_changed(void *data, uint32_t id,
     case SPA_PARAM_Props:
         /* TODO: reconfigure the stream according to the new properties */
         return;
-#if PW_CHECK_VERSION(0, 3, 29)
     case SPA_PARAM_Latency:
         /* TODO: latency reporting */
         return;
-#endif
 #if PW_CHECK_VERSION(0, 3, 79)
     case SPA_PARAM_Tag:
         /* TODO: tag reporting */
@@ -1246,13 +1237,13 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
         }
     }
 
-#if PW_CHECK_VERSION(0, 3, 30)
     if ((str = pw_properties_get(arg_props, "stream.source.props")) != NULL)
-        pw_properties_update_string(impl->stream[PW_DIRECTION_OUTPUT].stream_props, str, strlen(str));
+        if (pw_properties_update_string(impl->stream[PW_DIRECTION_OUTPUT].stream_props, str, strlen(str)) < 0)
+            goto error;
 
     if ((str = pw_properties_get(arg_props, "stream.sink.props")) != NULL)
-        pw_properties_update_string(impl->stream[PW_DIRECTION_INPUT].stream_props, str, strlen(str));
-#endif
+        if (pw_properties_update_string(impl->stream[PW_DIRECTION_INPUT].stream_props, str, strlen(str)) < 0)
+            goto error;
 
     pw_properties_free(arg_props);
     arg_props = NULL;
