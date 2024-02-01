@@ -275,8 +275,8 @@ static int add_stream(struct spa_loop *loop,
     struct qubes_stream *stream = user_data;
     if (stream->dead)
         return -ESHUTDOWN;
-    spa_assert(stream->closed_vchan);
-    spa_assert(!stream->vchan);
+    spa_assert_se(stream->closed_vchan);
+    spa_assert_se(!stream->vchan);
     stream->vchan = stream->closed_vchan;
     stream->closed_vchan = NULL;
     stream->source.loop = stream->impl->data_loop;
@@ -378,22 +378,6 @@ static void stream_destroy(void *data)
     /* Free the stream properties */
     if (stream->stream_props != NULL)
         pw_properties_free(stream->stream_props);
-}
-
-/**
- * Called on the main thread to destroy the capture stream.
- */
-static void capture_stream_destroy(void *d)
-{
-    stream_destroy(&((struct impl *)d)->stream[PW_DIRECTION_INPUT]);
-}
-
-/**
- * Called on the main thread to destroy the playback stream.
- */
-static void playback_stream_destroy(void *d)
-{
-    stream_destroy(&((struct impl *)d)->stream[PW_DIRECTION_OUTPUT]);
 }
 
 /** Called on the main thread to set the stream state */
@@ -501,6 +485,14 @@ static int process_control_commands_cb(struct spa_loop *loop,
 {
     return process_control_commands(user_data);
 }
+
+static const struct spa_audio_info_raw qubes_audio_format = {
+    .format = SPA_AUDIO_FORMAT_S16_LE,
+    .flags = 0,
+    .rate = QUBES_STREAM_RATE,
+    .channels = 2,
+    .position = { SPA_AUDIO_CHANNEL_FL, SPA_AUDIO_CHANNEL_FR },
+};
 
 /**
  * Called on the realtime thread when a vchan's event channel
@@ -667,69 +659,55 @@ static int rt_set_io(struct spa_loop *loop,
     spa_assert_se(size == sizeof(*slice));
     slice = data;
     switch (seq) {
-        case SPA_IO_RateMatch:
-            if (slice->data != NULL &&
-                (slice->size < sizeof *stream->rate_match || !SPA_IS_ALIGNED(slice->size, alignof(*stream->rate_match))))
-                return -EINVAL;
-            stream->rate_match = slice->data;
-            break;
         case SPA_IO_Position:
-            if (slice->data != NULL &&
-                (slice->size < sizeof *stream->position || !SPA_IS_ALIGNED(slice->size, alignof(*stream->position))))
-                return -EINVAL;
+            if (slice->data != NULL) {
+                spa_assert_se(slice->size >= sizeof *stream->position);
+                spa_assert_se(SPA_IS_ALIGNED(slice->data, alignof(struct spa_io_position)));
+            }
             stream->position = slice->data;
             break;
     }
     return 0;
 }
 
-static void stream_io_changed(struct qubes_stream *stream, uint32_t id, void *area, uint32_t size)
+static void stream_io_changed(void *data, uint32_t id, void *area, uint32_t size)
 {
+    struct qubes_stream *stream = data;
     int status;
     struct slice slice = { .data = area, .size = size };
+
     do {
         status = spa_loop_invoke(stream->impl->data_loop, rt_set_io,
                 id, &slice, sizeof slice, true, stream);
     } while (status == -EPIPE);
 }
 
-static void capture_stream_io_changed(void *data, uint32_t id, void *area, uint32_t size)
+static void stream_state_changed(void *data, enum pw_stream_state old,
+                                 enum pw_stream_state state, const char *error)
 {
-    struct impl *impl = data;
-    stream_io_changed(&impl->stream[PW_DIRECTION_OUTPUT], id, area, size);
-}
-
-static void playback_stream_io_changed(void *data, uint32_t id, void *area, uint32_t size)
-{
-    struct impl *impl = data;
-    stream_io_changed(&impl->stream[PW_DIRECTION_INPUT], id, area, size);
-}
-
-static void stream_state_changed_common(void *d, enum pw_stream_state old,
-        enum pw_stream_state state, const char *error, bool playback)
-{
-    struct impl *impl = d;
-    const char *const name = playback ? "playback" : "capture";
+    struct qubes_stream *stream = data;
+    struct impl *impl = stream->impl;
+    const char *const name = qubes_stream_is_playback(stream) ? "playback" : "capture";
 
     switch (state) {
     case PW_STREAM_STATE_ERROR:
         pw_log_error("%s error: %s", name, error ? error : "(null)");
-        set_stream_state(&impl->stream[playback ? PW_DIRECTION_INPUT : PW_DIRECTION_OUTPUT], false);
+        set_stream_state(stream, false);
         break;
     case PW_STREAM_STATE_UNCONNECTED:
         pw_log_debug("%s unconnected", name);
-        set_stream_state(&impl->stream[playback ? PW_DIRECTION_INPUT : PW_DIRECTION_OUTPUT], false);
+        set_stream_state(stream, false);
         break;
     case PW_STREAM_STATE_CONNECTING:
         pw_log_debug("%s connected", name);
         return;
     case PW_STREAM_STATE_PAUSED:
         pw_log_debug("%s paused", name);
-        set_stream_state(&impl->stream[playback ? PW_DIRECTION_INPUT : PW_DIRECTION_OUTPUT], false);
+        set_stream_state(stream, false);
         break;
     case PW_STREAM_STATE_STREAMING:
         pw_log_debug("%s streaming", name);
-        set_stream_state(&impl->stream[playback ? PW_DIRECTION_INPUT : PW_DIRECTION_OUTPUT], true);
+        set_stream_state(stream, true);
         break;
     default:
         pw_log_error("unknown %s stream state %d", name, state);
@@ -739,23 +717,10 @@ static void stream_state_changed_common(void *d, enum pw_stream_state old,
     pw_log_debug("Successfully queued message");
 }
 
-static void playback_stream_state_changed(void *d, enum pw_stream_state old,
-        enum pw_stream_state state, const char *error)
-{
-    return stream_state_changed_common(d, old, state, error, true);
-}
-
-static void capture_stream_state_changed(void *d, enum pw_stream_state old,
-        enum pw_stream_state state, const char *error)
-{
-    return stream_state_changed_common(d, old, state, error, false);
-}
-
 static void capture_stream_process(void *d)
 {
-    struct impl *impl = d;
+    struct qubes_stream *stream = d;
     struct pw_buffer *b;
-    struct qubes_stream *stream = impl->stream + PW_DIRECTION_OUTPUT;
     uint8_t *dst;
     uint32_t bytes_ready = 0, size;
 
@@ -782,11 +747,11 @@ static void capture_stream_process(void *d)
     buf->datas[0].chunk->stride = 4;
     buf->datas[0].chunk->size = 0;
 
-    spa_assert(buf->n_datas == 1 && "wrong number of datas");
+    spa_assert_se(buf->n_datas == 1 && "wrong number of datas");
 
     // TODO: handle more data
 #if PW_CHECK_VERSION(0, 3, 49)
-    if (__builtin_mul_overflow(b->requested ? b->requested : 2048, impl->frame_size, &size)) {
+    if (__builtin_mul_overflow(b->requested ? b->requested : 2048, stream->impl->frame_size, &size)) {
         pw_log_error("Overflow calculating amount of data there is room for????");
         goto done;
     }
@@ -820,9 +785,9 @@ done:
 
 static void playback_stream_process(void *d)
 {
-    struct impl *impl = d;
+    struct qubes_stream *stream = d;
     struct pw_buffer *buf;
-    struct qubes_stream *stream = impl->stream + PW_DIRECTION_INPUT;
+    struct impl *impl = stream->impl;
     struct qubes_stream *capture_stream = impl->stream + PW_DIRECTION_OUTPUT;
     struct spa_data *bd;
     uint8_t *data;
@@ -837,49 +802,42 @@ static void playback_stream_process(void *d)
 
     discard_unwanted_recorded_data(capture_stream);
 
-    pw_log_trace("%d bytes ready for writing", ready);
-
     if ((buf = pw_stream_dequeue_buffer(stream->stream)) == NULL) {
         pw_log_error("out of buffers: %m");
         return;
     }
 
-    spa_assert(buf->buffer->n_datas == 1 && "wrong number of datas");
+    spa_assert_se(buf->buffer->n_datas == 1 && "wrong number of datas");
 
     bd = &buf->buffer->datas[0];
-    spa_assert(bd->chunk->offset == 0);
+    spa_assert_se(bd->chunk->offset == 0);
     data = bd->data + bd->chunk->offset;
     size = bd->chunk->size;
 
-    if (ready <= 0 || size > (uint32_t)ready) {
+    if (ready < 0) {
+        pw_log_error("Negative return value from libvchan_buffer_space()");
+        return;
+    }
+
+    if (size > (uint32_t)ready) {
         pw_log_warn("Overrun: asked to write %" PRIu32 " bytes, but can only write %d", size, ready);
-        process_control_commands(stream->impl);
-        if (ready < 1)
-            size = 0;
-        else
-            size = (uint32_t)ready;
+        process_control_commands(impl);
+        size = (uint32_t)ready;
     }
 
     pw_log_trace("writing %" PRIu32 " bytes to vchan", size);
-    if (size > 0 && libvchan_send(stream->vchan, data, size) != (int)size) {
-        pw_log_error("vchan error: %m");
-        return;
+    if (size > 0) {
+        errno = 0;
+        if (libvchan_send(stream->vchan, data, size) != (int)size)
+            pw_log_error("vchan error: %m");
     }
     pw_stream_queue_buffer(stream->stream, buf);
 }
 
-static const struct spa_audio_info_raw qubes_audio_format = {
-    .format = SPA_AUDIO_FORMAT_S16_LE,
-    .flags = 0,
-    .rate = QUBES_STREAM_RATE,
-    .channels = 2,
-    .position = { SPA_AUDIO_CHANNEL_FL, SPA_AUDIO_CHANNEL_FR },
-};
-
-static void stream_param_changed(void *data, uint32_t id,
-        const struct spa_pod *param, enum spa_direction direction)
+static void stream_param_changed(void *data, uint32_t id, const struct spa_pod *param)
 {
-    struct impl *impl = data;
+    struct qubes_stream *stream = data;
+    struct impl *impl = stream->impl;
     uint32_t media_type = UINT32_MAX, media_subtype = UINT32_MAX;
     struct spa_audio_info_raw info = { 0 };
     uint64_t params_buffer[64];
@@ -906,8 +864,6 @@ static void stream_param_changed(void *data, uint32_t id,
         pw_log_info("Unknown param ID %" PRIu32, id);
         return;
     }
-
-    spa_assert(direction >= 0 && direction <= 1);
 
     if (param == NULL)
         goto doit;
@@ -938,14 +894,15 @@ static void stream_param_changed(void *data, uint32_t id,
         return;
     }
 
-    if (info.rate != QUBES_STREAM_RATE) {
+    if (info.rate != qubes_audio_format.rate) {
         pw_log_error("Unsupported audio rate %" PRIu32, info.rate);
         errno = ENOTSUP;
         return;
     }
 
-    if (info.channels != 2) {
-        pw_log_error("Expected 2 channels, got %" PRIu32, info.channels);
+    if (info.channels != qubes_audio_format.channels) {
+        pw_log_error("Expected %d channels, got %" PRIu32,
+                     qubes_audio_format.channels, info.channels);
         errno = ENOTSUP;
         return;
     }
@@ -969,7 +926,7 @@ doit:
             SPA_TYPE_OBJECT_ParamBuffers, SPA_PARAM_Buffers,
             SPA_PARAM_BUFFERS_buffers, SPA_POD_CHOICE_RANGE_Int(8, 2, 64),
             SPA_PARAM_BUFFERS_blocks, SPA_POD_Int(1),
-            SPA_PARAM_BUFFERS_size, SPA_POD_Int(impl->stream[direction].buffer_size),
+            SPA_PARAM_BUFFERS_size, SPA_POD_Int(stream->buffer_size),
             SPA_PARAM_BUFFERS_stride, SPA_POD_Int((int)impl->frame_size),
             SPA_PARAM_BUFFERS_dataType, SPA_POD_CHOICE_FLAGS_Int((1 << SPA_DATA_MemPtr)));
     spa_assert_se(params[0]);
@@ -980,49 +937,35 @@ doit:
 
     spa_assert_se(b.state.offset <= sizeof params_buffer);
 
-    if ((res = pw_stream_update_params(impl->stream[direction].stream, params, 2)) < 0) {
+    if ((res = pw_stream_update_params(stream->stream, params, 2)) < 0) {
         errno = -res;
         pw_log_error("Failed to negotiate parameters: %m");
         errno = -res;
     }
 }
 
-static void capture_stream_param_changed(void *data, uint32_t id,
-        const struct spa_pod *param)
-{
-    stream_param_changed(data, id, param, PW_DIRECTION_OUTPUT);
-}
-
 static const struct pw_stream_events capture_stream_events = {
     .version = PW_VERSION_STREAM_EVENTS,
-    .destroy = capture_stream_destroy,
-    .state_changed = capture_stream_state_changed,
+    .destroy = stream_destroy,
+    .state_changed = stream_state_changed,
     .control_info = NULL,
-    .io_changed = capture_stream_io_changed,
-    .param_changed = capture_stream_param_changed,
+    .io_changed = stream_io_changed,
+    .param_changed = stream_param_changed,
     .add_buffer = NULL,
     .remove_buffer = NULL,
     .process = capture_stream_process,
-    .drained = NULL,
 };
-
-static void playback_stream_param_changed(void *data, uint32_t id,
-        const struct spa_pod *param)
-{
-    stream_param_changed(data, id, param, PW_DIRECTION_INPUT);
-}
 
 static const struct pw_stream_events playback_stream_events = {
     .version = PW_VERSION_STREAM_EVENTS,
-    .destroy = playback_stream_destroy,
-    .state_changed = playback_stream_state_changed,
+    .destroy = stream_destroy,
+    .state_changed = stream_state_changed,
     .control_info = NULL,
-    .io_changed = playback_stream_io_changed,
-    .param_changed = playback_stream_param_changed,
+    .io_changed = stream_io_changed,
+    .param_changed = stream_param_changed,
     .add_buffer = NULL,
     .remove_buffer = NULL,
     .process = playback_stream_process,
-    .drained = NULL,
 };
 
 static void core_error(void *data, uint32_t id, int seq, int res, const char *message)
@@ -1073,43 +1016,31 @@ static const struct pw_impl_module_events module_events = {
     .registered = NULL,
 };
 
-#define QUBES_ARRAY_SIZE(s) \
-    ({ _Pragma("GCC diagnostic push"); \
-       _Pragma("GCC diagnostic error \"-Wsizeof-pointer-div\""); \
-       _Static_assert(!__builtin_types_compatible_p(__typeof__(s), \
-                            __typeof__(&*(s))), \
-              "expression " #s " is a pointer, not an array"); \
-       _Static_assert(__builtin_types_compatible_p(__typeof__(s), \
-                                                   __typeof__((s)[0])[sizeof(s)/sizeof((s)[0])]), \
-              "expression " #s " is not an array"); \
-       (sizeof(s)/sizeof((s)[0])); \
-       _Pragma("GCC diagnostic pop"); \
-     })
-
 static void parse_audio_info(struct impl *impl)
 {
     for (uint8_t i = 0; i < 2; ++i) {
         struct spa_audio_info_raw *info = &impl->stream[i].info;
 
-        _Static_assert(QUBES_ARRAY_SIZE(impl->stream) == 2, "out of bounds bug");
+        _Static_assert(SPA_N_ELEMENTS(impl->stream) == 2, "out of bounds bug");
         spa_zero(*info);
 
         info->format = SPA_AUDIO_FORMAT_S16_LE;
         info->channels = 2;
         info->rate = QUBES_STREAM_RATE;
-        _Static_assert(QUBES_ARRAY_SIZE(info->position) >= 2, "out of bounds bug");
+        _Static_assert(SPA_N_ELEMENTS(info->position) >= 2, "out of bounds bug");
         info->position[0] = SPA_AUDIO_CHANNEL_FL;
         info->position[1] = SPA_AUDIO_CHANNEL_FR;
     }
     impl->frame_size = 4;
 }
 
-static const struct spa_dict_item source_props[] = {
+static const struct spa_dict_item capture_props[] = {
     { PW_KEY_NODE_NAME, "qubes-source" },
     { PW_KEY_NODE_DESCRIPTION, "Qubes Virtual Audio Source" },
     { "node.rate", SPA_STRINGIFY(QUBES_STREAM_RATE) },
-    { "node.want-driver", "true" },
-    // { PW_KEY_MEDIA_TYPE, "Audio" },
+    { PW_KEY_NODE_DRIVER, "true" },
+    { PW_KEY_PRIORITY_DRIVER, "21500" },
+    { PW_KEY_MEDIA_TYPE, "Audio" },
     { PW_KEY_MEDIA_CLASS, "Audio/Source" },
     { PW_KEY_AUDIO_RATE, SPA_STRINGIFY(QUBES_STREAM_RATE) },
     { PW_KEY_AUDIO_CHANNELS, "2" },
@@ -1117,22 +1048,23 @@ static const struct spa_dict_item source_props[] = {
     { "audio.position", "[ FL FR ]" },
 };
 
-static const struct spa_dict source_dict = SPA_DICT_INIT_ARRAY(source_props);
+static const struct spa_dict capture_dict = SPA_DICT_INIT_ARRAY(capture_props);
 
-static const struct spa_dict_item sink_props[] = {
+static const struct spa_dict_item playback_props[] = {
     { PW_KEY_NODE_NAME, "qubes-sink" },
     { PW_KEY_NODE_DESCRIPTION, "Qubes Virtual Audio Sink" },
     { "node.rate", SPA_STRINGIFY(QUBES_STREAM_RATE) },
-    { "node.want-driver", "true" },
-    // { PW_KEY_MEDIA_TYPE, "Audio" },
+    { PW_KEY_NODE_DRIVER, "true" },
+    { PW_KEY_PRIORITY_DRIVER, "21499" },
+    { PW_KEY_MEDIA_TYPE, "Audio" },
     { PW_KEY_MEDIA_CLASS, "Audio/Sink" },
     { PW_KEY_AUDIO_RATE, SPA_STRINGIFY(QUBES_STREAM_RATE) },
     { PW_KEY_AUDIO_CHANNELS, "2" },
     { PW_KEY_AUDIO_FORMAT, "S16LE" },
-    { "audio.position", "[ FL FR ]"},
+    { "audio.position", "[ FL FR ]" },
 };
 
-static const struct spa_dict sink_dict = SPA_DICT_INIT_ARRAY(sink_props);
+static const struct spa_dict playback_dict = SPA_DICT_INIT_ARRAY(playback_props);
 
 // FIXME: this should be a Qubes-wide domID parsing function
 static int parse_number(const char *const str,
@@ -1140,7 +1072,7 @@ static int parse_number(const char *const str,
 {
     char *endptr = (void *)1;
     errno = *res = 0;
-    unsigned long long value = strtoull(str, &endptr, 10);
+    unsigned long long value = strtoull(str, &endptr, 0);
     if (errno) {
         int i = errno;
         pw_log_error("Invalid %s \"%s\": %m", msg, str);
@@ -1305,7 +1237,7 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
             goto error;
         impl->domid = domid;
 
-        size_t read_min = 0x8000, write_min = 0x8000;
+        size_t read_min = 0x100000, write_min = 0x10000;
         const char *record_size = pw_properties_get(props, QUBES_PW_KEY_RECORD_BUFFER_SPACE);
         const char *playback_size = pw_properties_get(props, QUBES_PW_KEY_PLAYBACK_BUFFER_SPACE);
         if (!record_size || !playback_size) {
@@ -1317,26 +1249,30 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
         }
 
         if (record_size &&
-            (res = parse_number(record_size, INT32_MAX / 2, &read_min, "record buffer size")))
+            (res = parse_number(record_size, 1UL << 20, &read_min, "record buffer size")))
             goto error;
 
         if (playback_size &&
-            (res = parse_number(playback_size, INT32_MAX / 2, &write_min, "playback buffer size")))
+            (res = parse_number(playback_size, 1UL << 20, &write_min, "playback buffer size")))
             goto error;
+        read_min = SPA_UNLIKELY(read_min < 1024) ? 1024 : (size_t)1 << ((sizeof(unsigned long) * 8) - __builtin_clzl(read_min - 1));
+        write_min = SPA_UNLIKELY(write_min < 1024) ? 1024 : (size_t)1 << ((sizeof(unsigned long) * 8) - __builtin_clzl(write_min - 1));
 
         impl->stream[PW_DIRECTION_OUTPUT].buffer_size = read_min;
         impl->stream[PW_DIRECTION_INPUT].buffer_size = write_min;
     }
 
     pw_log_info("module %p: new (%s), peer id is %d", impl, args, (int)impl->domid);
-    pw_log_info("module %p: record buffer size %zu, playback buffer size %zu",
+    pw_log_info("module %p: record buffer size 0x%zx, playback buffer size 0x%zx",
                 impl,
                 impl->stream[PW_DIRECTION_OUTPUT].buffer_size,
                 impl->stream[PW_DIRECTION_INPUT].buffer_size);
 
     for (uint8_t i = 0; i < 2; ++i) {
-        const char *msg = i ? "sink" : "source";
-        const struct spa_dict *dict = i ? &source_dict : &sink_dict;
+        const char *msg = i ? "capture" : "playback";
+        // i = 0: playback
+        // i = 1: capture
+        const struct spa_dict *dict = i ? &capture_dict : &playback_dict;
         struct qubes_stream *stream = impl->stream + i;
         stream->stream_props = pw_properties_new_dict(dict);
         if (stream->stream_props == NULL) {
