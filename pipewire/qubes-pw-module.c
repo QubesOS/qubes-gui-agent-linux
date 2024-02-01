@@ -40,6 +40,11 @@
 #define QUBES_PW_KEY_RECORD_BUFFER_SPACE   "org.qubes-os.record-buffer-size"
 #define QUBES_PW_KEY_PLAYBACK_BUFFER_SPACE   "org.qubes-os.playback-buffer-size"
 
+/* Check that PipeWire supports a specific feature.
+ * The "1 &&" is for ease of testing: by replacing the 1 with 0, one can
+ * easily disable the feature manually to make sure the code still compiles. */
+#define QUBES_PW_HAS_SCHEDULE_DESTROY (1 && PW_CHECK_VERSION(0, 3, 65))
+
 /* C11 headers */
 #include <assert.h>
 #include <errno.h>
@@ -165,15 +170,39 @@ struct impl {
 
     uint32_t frame_size, domid;
 
-    bool do_disconnect, unloading;
+    bool do_disconnect;
+#if !QUBES_PW_HAS_SCHEDULE_DESTROY
+    bool unloading;
+    struct pw_work_queue *work;
+#endif
+
+    atomic_uint_fast64_t reference_count;
 };
+
+static inline void
+impl_incref(struct impl *impl)
+{
+    atomic_fetch_add(&impl->reference_count, 1);
+}
+
+#if !QUBES_PW_HAS_SCHEDULE_DESTROY
+static void do_unload_module(void *obj, void *data, int res, uint32_t id)
+{
+    struct impl *impl = data;
+    pw_impl_module_destroy(impl->module);
+}
+#endif
 
 static void unload_module(struct impl *impl)
 {
+#if QUBES_PW_HAS_SCHEDULE_DESTROY
+    pw_impl_module_schedule_destroy(impl->module);
+#else
     if (!impl->unloading) {
         impl->unloading = true;
-        pw_impl_module_destroy(impl->module);
+        pw_work_queue_add(impl->work, impl, 0, do_unload_module, impl);
     }
+#endif
 }
 
 static_assert(ATOMIC_BOOL_LOCK_FREE, "PipeWire agent requires lock-free atomic booleans");
@@ -196,17 +225,19 @@ static void stop_watching_vchan(struct qubes_stream *stream)
     if (stream->vchan) {
         // Must do this first, so that EPOLL_CTL_DEL is called before the
         // file descriptor is closed.
-        if (stream->impl)
-            spa_loop_remove_source(stream->impl->data_loop, &stream->source);
+        spa_loop_remove_source(stream->impl->data_loop, &stream->source);
         stream->closed_vchan = stream->vchan;
         stream->vchan = NULL;
     }
     stream->is_open = false;
-    // Update the main-thread state asynchronously.
-    if (stream->impl)
+    // Update the main-thread state asynchronously, but only if the stream
+    // is not being torn down.
+    if (!stream->dead) {
+        impl_incref(stream->impl);
         spa_loop_invoke(stream->impl->main_loop,
                         vchan_error_callback, 0, NULL, 0, false,
                         stream);
+    }
 }
 
 static int remove_stream_cb(struct spa_loop *loop,
@@ -261,21 +292,38 @@ static int add_stream(struct spa_loop *loop,
  *
  * @param stream The stream to connect.
  */
-static void connect_stream(struct qubes_stream *stream)
+static int connect_stream(struct qubes_stream *stream)
 {
     const char *msg = qubes_stream_is_capture(stream) ? "capture" : "playback";
     uint16_t domid = stream->impl->domid;
-    spa_assert(stream->vchan == NULL);
-    spa_assert(stream->closed_vchan == NULL);
-    stream->closed_vchan = qubes_stream_is_capture(stream) ?
-        libvchan_server_init((int)domid, QUBES_PA_SOURCE_VCHAN_PORT, stream->buffer_size, 128) :
-        libvchan_server_init((int)domid, QUBES_PA_SINK_VCHAN_PORT, 128, stream->buffer_size);
+    int status;
+
+    spa_assert_se(stream->vchan == NULL);
+    spa_assert_se(stream->closed_vchan == NULL);
+    if (qubes_stream_is_capture(stream)) { // capture
+        stream->closed_vchan = libvchan_server_init((int)domid, QUBES_PA_SOURCE_VCHAN_PORT, stream->buffer_size, 128);
+    } else { // playback
+        stream->closed_vchan = libvchan_server_init((int)domid, QUBES_PA_SINK_VCHAN_PORT, 128, stream->buffer_size);
+        if (stream->closed_vchan != NULL) {
+            int ready = libvchan_buffer_space(stream->closed_vchan);
+            if (ready > 0) {
+                stream->buffer_size = (uint32_t)ready;
+            }
+        }
+    }
     if (stream->closed_vchan == NULL) {
         pw_log_error("can't create %s vchan, audio will not work", msg);
+        return -EPROTO; // FIXME: better error
     }
-    if (spa_loop_invoke(stream->impl->data_loop, add_stream, 0, NULL, 0, true, stream))
-        pw_log_error("spa_loop_add_source() failed, audio will not work");
-    return;
+    do {
+        status = spa_loop_invoke(stream->impl->data_loop, add_stream, 0, NULL, 0, true, stream);
+    } while (status == -EPIPE);
+    if (status) {
+        errno = -status;
+        pw_log_error("spa_loop_add_source() failed (%m), audio will not work");
+        return status;
+    }
+    return 0;
 }
 
 /**
@@ -296,18 +344,39 @@ static void stream_shutdown(struct qubes_stream *stream)
 /**
  * Called on the main thread to destroy a stream.
  */
-static void stream_destroy(struct impl *impl, enum spa_direction direction)
+static void stream_destroy(void *data)
 {
-    struct qubes_stream *stream = impl->stream + direction;
+    struct qubes_stream *stream = data;
+    int status;
+
+    /* Log that the stream is being destroyed, for debugging purposes. */
+    pw_log_debug("%p: destroy", data);
+
+    /* Mark the stream as dead, so that future destroy attempts are no-ops. */
     if (stream->dead)
         return;
     stream->dead = true;
-    spa_loop_invoke(impl->data_loop, remove_stream_cb, 0, NULL, 0, true, stream);
-    /* after this point the realtime thread is definitely aware of the shutdown */
-    stream_shutdown(stream);
-    spa_hook_remove(&stream->stream_listener);
+
+    /* Notify the realtime thread of the shutdown.  This ensures that the
+     * realtime thread will no longer use any resources that have been torn
+     * down. */
+    do {
+        status = spa_loop_invoke(stream->impl->data_loop,
+                                 remove_stream_cb,
+                                 0, NULL, 0, true, stream);
+    } while (status != 0);
+
+    /* Set the PipeWire stream to NULL, as it is being destroyed and is thus not
+     * valid to use any more. */
     stream->stream = NULL;
-    if (stream->stream_props)
+
+    stream_shutdown(stream);
+
+    /* Remove the listener hook */
+    spa_hook_remove(&stream->stream_listener);
+
+    /* Free the stream properties */
+    if (stream->stream_props != NULL)
         pw_properties_free(stream->stream_props);
 }
 
@@ -316,7 +385,7 @@ static void stream_destroy(struct impl *impl, enum spa_direction direction)
  */
 static void capture_stream_destroy(void *d)
 {
-    stream_destroy(d, PW_DIRECTION_INPUT);
+    stream_destroy(&((struct impl *)d)->stream[PW_DIRECTION_INPUT]);
 }
 
 /**
@@ -324,7 +393,7 @@ static void capture_stream_destroy(void *d)
  */
 static void playback_stream_destroy(void *d)
 {
-    stream_destroy(d, PW_DIRECTION_OUTPUT);
+    stream_destroy(&((struct impl *)d)->stream[PW_DIRECTION_OUTPUT]);
 }
 
 /** Called on the main thread to set the stream state */
@@ -336,6 +405,35 @@ static void set_stream_state(struct qubes_stream *stream, bool state)
 }
 
 static const struct pw_stream_events capture_stream_events, playback_stream_events;
+
+static void impl_decref(struct impl *impl)
+{
+    uint_fast64_t old_refcount = atomic_fetch_sub(&impl->reference_count, 1);
+    spa_assert_se(old_refcount >= 1);
+    if (old_refcount > 1)
+        return;
+    if (impl->stream[PW_DIRECTION_OUTPUT].stream != NULL)
+        pw_stream_destroy(impl->stream[PW_DIRECTION_OUTPUT].stream);
+    else
+        stream_destroy(&impl->stream[PW_DIRECTION_OUTPUT]);
+    if (impl->stream[PW_DIRECTION_INPUT].stream != NULL)
+        pw_stream_destroy(impl->stream[PW_DIRECTION_INPUT].stream);
+    else
+        stream_destroy(&impl->stream[PW_DIRECTION_INPUT]);
+    if (impl->core != NULL) {
+        spa_hook_remove(&impl->core_proxy_listener);
+        spa_hook_remove(&impl->core_listener);
+        if (impl->do_disconnect)
+            pw_core_disconnect(impl->core);
+    }
+    pw_properties_free(impl->props);
+    pw_log_debug("%p: free", (void *)impl);
+#if !QUBES_PW_HAS_SCHEDULE_DESTROY
+    if (impl->work != NULL)
+        pw_work_queue_cancel(impl->work, impl, SPA_ID_INVALID);
+#endif
+    free(impl);
+}
 
 /**
  * Called on the main thread when a vchan has been disconnected.
@@ -349,10 +447,11 @@ static int vchan_error_callback(struct spa_loop *loop,
 {
     struct qubes_stream *stream = user_data;
 
-    spa_assert(!stream->vchan);
+    spa_assert_se(!stream->vchan);
     stream_shutdown(stream);
-    if (!stream->dead)
+    if (!stream->dead && stream->stream != NULL)
         connect_stream(stream);
+    impl_decref(stream->impl);
     return 0;
 }
 
@@ -367,27 +466,27 @@ static int main_thread_connect(struct spa_loop *loop,
                                void *user_data)
 {
 
-    struct qubes_stream *stream;
+    struct qubes_stream *stream = user_data;
     uint32_t n_params = 0;
     const struct spa_pod *params[1];
     uint8_t buffer[1024];
     struct spa_pod_builder b = { 0 };
 
-    if ((stream = user_data)->dead)
+    if (stream->dead || stream->stream == NULL)
         return 0;
     spa_pod_builder_init(&b, buffer, sizeof(buffer));
     params[n_params++] = spa_format_audio_raw_build(&b,
             SPA_PARAM_EnumFormat, &stream->info);
 
     if (pw_stream_connect(stream->stream,
-            stream->direction,
+            qubes_stream_is_capture(stream) ? PW_DIRECTION_OUTPUT : PW_DIRECTION_INPUT,
             PW_ID_ANY,
             PW_STREAM_FLAG_AUTOCONNECT |
             PW_STREAM_FLAG_MAP_BUFFERS |
-            PW_STREAM_FLAG_RT_PROCESS |
-            0,
+            PW_STREAM_FLAG_RT_PROCESS,
             params, n_params) < 0)
         pw_log_error("Could not connect stream: %m");
+    impl_decref(stream->impl);
     return 0;
 }
 
@@ -431,6 +530,7 @@ static void vchan_ready(struct spa_source *source)
     if (is_open != stream->is_open) {
         if (is_open) {
             // vchan connected
+            impl_incref(stream->impl);
             spa_loop_invoke(stream->impl->main_loop,
                             main_thread_connect, 0, NULL, 0, false, stream);
             if (qubes_stream_is_capture(stream)) {
@@ -925,20 +1025,6 @@ static const struct pw_stream_events playback_stream_events = {
     .drained = NULL,
 };
 
-static int create_stream(struct impl *impl, enum spa_direction direction)
-{
-    struct qubes_stream *stream = impl->stream + direction;
-
-    stream->stream = pw_stream_new(impl->core,
-                                   qubes_stream_is_capture(stream) ? "Qubes Source" : "Qubes Sink",
-                                   stream->stream_props);
-    stream->stream_props = NULL;
-
-    if (stream->stream == NULL)
-        return -errno;
-    return 0;
-}
-
 static void core_error(void *data, uint32_t id, int seq, int res, const char *message)
 {
     struct impl *impl = data;
@@ -968,28 +1054,15 @@ static const struct pw_proxy_events core_proxy_events = {
     .destroy = core_destroy,
 };
 
-static void impl_destroy(struct impl *impl)
-{
-    stream_destroy(impl, PW_DIRECTION_INPUT);
-    stream_destroy(impl, PW_DIRECTION_OUTPUT);
-    if (impl->core) {
-        if (impl->do_disconnect)
-            pw_core_disconnect(impl->core);
-        if (impl->core) {
-            spa_hook_remove(&impl->core_proxy_listener);
-            spa_hook_remove(&impl->core_listener);
-        }
-    }
-    pw_properties_free(impl->props);
-    free(impl);
-}
-
 static void module_destroy(void *data)
 {
     struct impl *impl = data;
+#if !QUBES_PW_HAS_SCHEDULE_DESTROY
     impl->unloading = true;
+#endif
     spa_hook_remove(&impl->module_listener);
-    impl_destroy(impl);
+    spa_zero(impl->module_listener);
+    impl_decref(impl);
 }
 
 static const struct pw_impl_module_events module_events = {
@@ -1086,6 +1159,26 @@ static int parse_number(const char *const str,
     }
 }
 
+static int
+create_stream(struct impl *impl, enum spa_direction direction)
+{
+    struct qubes_stream *stream = impl->stream + direction;
+
+    stream->stream = pw_stream_new(impl->core,
+                                   direction ? "Qubes Source" : "Qubes Sink",
+                                   stream->stream_props);
+    stream->stream_props = NULL;
+    if (stream->stream == NULL)
+        return -errno;
+    stream->impl = impl;
+    stream->direction = direction;
+    pw_stream_add_listener(stream->stream,
+                           &stream->stream_listener,
+                           qubes_stream_is_capture(stream) ? &capture_stream_events : &playback_stream_events,
+                           stream);
+    return 0;
+}
+
 SPA_EXPORT
 int pipewire__module_init(struct pw_impl_module *module, const char *args)
 {
@@ -1102,6 +1195,11 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
 #endif
     pw_log_info("hello from qubes module");
 
+#if !QUBES_PW_HAS_SCHEDULE_DESTROY
+    struct pw_work_queue *queue = pw_context_get_work_queue(context);
+    if (queue == NULL)
+        return -errno;
+#endif
     impl = calloc(1, sizeof(struct impl));
     if (impl == NULL)
         return -errno;
@@ -1111,6 +1209,14 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
 
     impl->module = module;
     impl->context = context;
+#if !QUBES_PW_HAS_SCHEDULE_DESTROY
+    impl->work = queue;
+#endif
+    impl->reference_count = 1;
+    for (int i = 0; i < 2; ++i) {
+        impl->stream[i].source.fd = -1;
+        impl->stream[i].impl = impl;
+    }
 
     {
 #if PW_CHECK_VERSION(0, 3, 56)
@@ -1138,16 +1244,17 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
     }
 
     if (!(global_props = pw_context_get_properties(context))) {
-        res = -errno || -ENOMEM;
+        res = errno ? -errno : -ENOMEM;
         pw_log_error("cannot obtain properties: %m");
         goto error;
     }
 
     if (!(props = pw_properties_copy(global_props))) {
-        res = -errno || -ENOMEM;
+        res = errno ? -errno : -ENOMEM;
         pw_log_error("cannot clone properties: %m");
         goto error;
     }
+    impl->props = props;
 
     if ((arg_props = pw_properties_new_string(args)) == NULL) {
         res = -errno;
@@ -1161,7 +1268,6 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
         goto error;
     }
 
-    impl->props = props;
     if ((peer_domain_prop = pw_properties_get(props, QUBES_AUDIOVM_PW_KEY)) == NULL) {
         qdb_handle_t qdb = qdb_open(NULL);
         if (!qdb) {
@@ -1283,24 +1389,20 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
     if ((res = create_stream(impl, PW_DIRECTION_OUTPUT)) < 0)
         goto error;
 
-    for (uint8_t i = 0; i < 2; ++i) {
-        struct qubes_stream *stream = impl->stream + i;
-        stream->impl = impl;
-        stream->direction = i;
-        connect_stream(stream);
-        pw_stream_add_listener(stream->stream,
-                &stream->stream_listener,
-                qubes_stream_is_capture(stream) ? &capture_stream_events : &playback_stream_events,
-                impl);
-    }
+    if ((res = pw_impl_module_update_properties(module, &SPA_DICT_INIT_ARRAY(module_props))) < 0)
+        goto error;
+
+    for (uint8_t i = 0; i < 2; ++i)
+        if ((res = connect_stream(&impl->stream[i])) != 0)
+            goto error;
 
     pw_impl_module_add_listener(module, &impl->module_listener, &module_events, impl);
-
-    pw_impl_module_update_properties(module, &SPA_DICT_INIT_ARRAY(module_props));
 
     return 0;
 
 error:
-    impl_destroy(impl);
+    if (arg_props != NULL)
+        pw_properties_free(arg_props);
+    impl_decref(impl);
     return res;
 }

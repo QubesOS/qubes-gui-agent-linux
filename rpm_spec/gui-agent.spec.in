@@ -36,6 +36,11 @@ License:	GPL
 URL:		https://www.qubes-os.org
 
 
+%if %{?!centos:9}%{?centos} >= 9
+%global enable_pipewire 1
+%else
+%global enable_pipewire 0
+%endif
 %define pa_ver_full %((pkg-config --modversion libpulse 2>/dev/null || echo 0.0) | cut -d "-" -f 1)
 %define pa_module_dir %(pkg-config --variable=modlibexecdir libpulse)
 %if 0%{?is_opensuse}
@@ -121,6 +126,7 @@ BuildRequires: pulseaudio
 %description -n pulseaudio-qubes
 Pulseaudio module to enable sound support in Qubes VM
 
+%if %enable_pipewire
 %package -n pipewire-qubes
 Summary:       PipeWire audio support for Qubes VMs
 Requires:      pipewire
@@ -138,6 +144,7 @@ PulseAudio support in the pulseaudio-qubes package, this works with
 the stock PipeWire service and does not depend on internal PipeWire
 headers.  It also promises lower latency than PulseAudio, at least
 once the audio daemon supports low latency.
+%endif
 
 %package xfce
 Summary: XFCE desktop support for Qubes VM
@@ -331,6 +338,7 @@ rm -f %{name}-%{version}
 %dir /usr/lib/systemd/user/pulseaudio.service.d
 /usr/lib/systemd/user/pulseaudio.service.d/30_qubes.conf
 
+%if %enable_pipewire
 %files -n pipewire-qubes
 # should be owned by pipewire, but it isn't
 %dir %_datadir/pipewire/pipewire.conf.d
@@ -342,6 +350,7 @@ rm -f %{name}-%{version}
 /etc/qubes/post-install.d/20-qubes-pipewire.sh
 
 # Works with ordinary PipeWire service :)
+%endif
 
 %files xfce
 %{xinitrc_dir}/60xfce-desktop.sh
