@@ -1112,26 +1112,29 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
     impl->module = module;
     impl->context = context;
 
-    uint32_t n_support;
-    const struct spa_support *support = pw_context_get_support(context, &n_support);
-    if (!support) {
-        res = -errno;
-        pw_log_error("cannot get support: %m");
-        goto error;
+    {
+#if PW_CHECK_VERSION(0, 3, 56)
+        struct pw_data_loop *pw_data_loop = pw_context_get_data_loop(context);
+        spa_assert_se(pw_data_loop);
+        struct pw_loop *data_loop = pw_data_loop_get_loop(pw_data_loop);
+        impl->data_loop = data_loop->loop;
+#else
+        uint32_t n_support;
+        const struct spa_support *support = pw_context_get_support(context, &n_support);
+        impl->data_loop = spa_support_find(support, n_support, SPA_TYPE_INTERFACE_DataLoop);
+        if (!impl->data_loop) {
+            res = -errno;
+            pw_log_error("cannot get data loop: %m");
+            goto error;
+        }
+#endif
     }
 
-    impl->data_loop = spa_support_find(support, n_support, SPA_TYPE_INTERFACE_DataLoop);
-    if (!impl->data_loop) {
-        res = -errno;
-        pw_log_error("cannot get data loop: %m");
-        goto error;
-    }
-
-    impl->main_loop = spa_support_find(support, n_support, SPA_TYPE_INTERFACE_Loop);
-    if (!impl->main_loop) {
-        res = -errno;
-        pw_log_error("cannot get main loop: %m");
-        goto error;
+    {
+        struct pw_loop *loop = pw_context_get_main_loop(context);
+        spa_assert_se(loop);
+        spa_assert_se(loop->loop);
+        impl->main_loop = loop->loop;
     }
 
     if (!(global_props = pw_context_get_properties(context))) {
