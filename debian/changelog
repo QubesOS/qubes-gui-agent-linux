@@ -1,3 +1,36 @@
+qubes-gui-agent (4.2.13-1) unstable; urgency=medium
+
+  [ Demi Marie Obenour ]
+  * Add the PW_STREAM_MAP_BUFFERS flag
+  * Add comments describing thread synchronization
+  * Fix buffer size calculation error
+  * Only use trace logs in the realtime thread
+  * Obtain rate_match and position SPA IOs
+  * Cleanup license metadata
+  * Reduce usage of confusing 'direction' flag
+  * Downgrade unknown ID errors to warnings
+  * Fix error message when spa_format_parse() fails
+  * Do not send QUBES_PA_SINK_UNCORK_CMD on overrun
+  * Use a #define for the stream rate
+  * Atomically send initial stream states
+  * Avoid zeroing out recorded samples if underrun
+  * Better error reporting
+  * Allow capturing vchan size in one go
+  * Use libvchan_send and libvchan_recv for all-or-nothing ops
+  * Add utility program to run any PipeWire stream
+  * Set node.rate for streams
+  * Fix package descriptions
+  * Drop support for PipeWire < 0.3.30
+  * Do not rely on pw_context_get_support() on modern PipeWire
+  * Avoid crashing during shutdown
+  * Pass streams to stream callbacks
+  * Fix audio quality problems
+
+  [ Marek Marczykowski-Górecki ]
+  * qubes-gui-runuser: fix parameters order for calloc
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 05 Feb 2024 04:46:50 +0100
+
 qubes-gui-agent (4.2.12-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
