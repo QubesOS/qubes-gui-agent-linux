@@ -121,10 +121,10 @@ Depends:
 Conflicts: pulseaudio-qubes
 Recommends: pipewire-pulse
 Description: PipeWire module to enable sound support in Qubes VM
- Experimental PipeWire module to enable sound support in Qubes VMs.
- Unlike the PulseAudio support in the pulseaudio-qubes package, this
- works with the stock PipeWire service and does not depend on internal
- PipeWire headers.  It is also less code.
+ PipeWire module to enable sound support in Qubes VMs.  Unlike the
+ PulseAudio support in the pulseaudio-qubes package, this works with
+ the stock PipeWire service and does not depend on internal
+ PipeWire headers.
 
 Package: qubes-gui-agent-xfce
 Architecture: any
