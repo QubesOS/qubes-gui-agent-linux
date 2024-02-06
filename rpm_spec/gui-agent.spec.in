@@ -249,11 +249,13 @@ for unit_name in pipewire.socket pipewire.service \
     systemctl --no-reload --global preset "$unit_name" >/dev/null 2>&1 || :
 done
 
+%if %enable_pipewire
 %post -n pipewire-qubes
 %systemd_user_post pipewire.service pipewire.socket wireplumber.service
 
 %preun -n pipewire-qubes
 %systemd_user_preun pipewire.service pipewire.socket wireplumber.service
+%endif
 
 %preun
 if [ "$1" = 0 ] ; then
