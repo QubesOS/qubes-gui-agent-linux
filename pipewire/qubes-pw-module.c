@@ -82,6 +82,28 @@
 #include <libvchan.h>
 #include <qubesdb-client.h>
 
+/* Throughout this file, input and output are from _the stream's_
+ * perspective.  This means that audio _recording_ uses an _output_
+ * stream, while audio _playback_ uses an _input_ stream.  This is
+ * the _opposite_ of what one would expect, and of what an application
+ * would use.
+ *
+ * Specifically:
+ *
+ * - Input stream, Audio/Sink media class: this is a _sink_, which applications
+ *   will play audio into.
+ * - Output stream, Audio/Source media class: this is a _source_, which
+ *   applications will record audio from.
+ * - Output stream, Stream/Output/Audio media class: this is application
+ *   _playing audio_, which will be sent to a sink.
+ * - Input stream, Stream/Input/Audio media class: this is an application
+ *   _recording audio_, which will be taken from a source.
+ *
+ * Yes, this is confusing.  Yes, this means that info->stream[PW_DIRECTION_OUTPUT]
+ * gives the _capture_ stream, and info->stream[PW_DIRECTION_INPUT] gives the
+ * _playback_ stream.
+ */
+
 #if PW_CHECK_VERSION(0, 3, 50)
 #include <spa/utils/dll.h>
 #else
