@@ -114,7 +114,8 @@ bool is_valid_clipboard_string_from_vm(unsigned char *untrusted_s)
     for (; *untrusted_s; untrusted_s++) {
         // allow only non-control ASCII chars
         if ((*untrusted_s >= 0x20 && *untrusted_s <= 0x7E) ||
-             *untrusted_s == '\n' || *untrusted_s == '\t')
+             *untrusted_s == '\n' || *untrusted_s == '\t' ||
+             (*untrusted_s == '\r' && untrusted_s[1] == '\n'))
             continue;
         if (*untrusted_s >= 0x80) {
             utf8_ret = validate_utf8_char(untrusted_s);
