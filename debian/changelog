@@ -1,3 +1,18 @@
+qubes-gui-agent (4.2.14-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * rpm: fix conditional pipewire build
+
+  [ Demi Marie Obenour ]
+  * Clarify input vs output streams
+  * Allow Qubes group to use all realtime priorities
+  * Allow carriage return in secure clipboard
+
+  [ Frédéric Pierret (fepitre) ]
+  * Watch qdb entry being set and modified on start or while playing
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 26 Apr 2024 16:33:43 +0200
+
 qubes-gui-agent (4.2.13-1) unstable; urgency=medium
 
   [ Demi Marie Obenour ]
