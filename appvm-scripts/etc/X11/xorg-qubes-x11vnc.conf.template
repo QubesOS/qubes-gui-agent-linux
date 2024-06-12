@@ -1,5 +1,6 @@
 Section "Module"
     Load "fb"
+    Load "glamoregl"
 EndSection
 
 Section "ServerLayout"
