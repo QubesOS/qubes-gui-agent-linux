@@ -1,3 +1,10 @@
+qubes-gui-agent (4.2.15-1) unstable; urgency=medium
+
+  * Fix missing glamoregl module in Xorg config for VNC GUIVM
+  * Run x11vnc with correct SELinux context
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 17 Jun 2024 04:28:10 +0200
+
 qubes-gui-agent (4.2.14-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
