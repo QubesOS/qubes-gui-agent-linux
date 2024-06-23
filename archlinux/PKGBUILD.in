@@ -52,6 +52,7 @@ build() {
 package_qubes-vm-gui() {
     depends=(
     'xorg-xinit'
+    'xorg-xrandr'
     'libxcomposite'
     'zenity'
     'qubes-libvchan'
