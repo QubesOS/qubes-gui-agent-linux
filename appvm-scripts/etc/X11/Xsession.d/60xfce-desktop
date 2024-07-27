@@ -26,5 +26,13 @@ fi
 
 export QT_QPA_PLATFORMTHEME=qt5ct
 
+if systemctl -q is-active qubes-gui-agent; then
+    # key repeat is handled on the gui-daemon side, do not duplicate the effort
+    # on the gui-agent side, as that leads to spurious key events
+    # xfsettingsd defaults to enable key repeat, unless it's disabled via a
+    # setting not present in default xml description files...
+    xfconf-query -c keyboards -p /Default/KeyRepeat -n -t bool -s false
+fi
+
 xfsettingsd --replace&
 fi
