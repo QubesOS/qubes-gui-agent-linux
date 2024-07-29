@@ -411,10 +411,70 @@ QubesPtrCtrlProc (DeviceIntPtr device, PtrCtrl *ctrl)
     /* This function intentionally left blank */
 }
 
+// We want to block generation of key repeats since they are already generated
+// in the GuiVM. The gui-agent already calls XAutoRepeatOff, but any X client
+// might turn it on later. So we filtering them out by setting a
+// xkbInfo->checkRepeat function.
+//
+// Key events are duplicated to our 'master' keyboard device (that normally is
+// the "Virtual core keyboard"). Unfortunately that keyboard device will also
+// generate key repeats. So we need to set checkRepeat there too. This is not
+// very clean and we rely on implementation details, but seems to be the best
+// way available.
+//
+// Should another driver start setting checkRepeat for our 'master' things will
+// break.
+static Bool QubesCheckRepeat(DeviceIntPtr dev,
+                             XkbSrvInfoPtr xkbi,
+                             unsigned keycode)
+{
+    DeviceIntPtr last = NULL;
+
+    if (dev->type != MASTER_KEYBOARD) {
+        // We are only set for our device and it's 'master'. So if it's not a
+        // master it must be the Qubes device. => Reject repeat event.
+        return FALSE;
+    }
+
+    // Unfortunately we don't see the actual event that triggered the
+    // generation of this repeat event. So we can't check it's source. As a
+    // workaround we rely on that for 'master' devices the X server keeps track
+    // of which device last generated an event.
+    //
+    // Not sure if this is accurate if multiple devices generate key events
+    // concurrently. But the repeat logic for a 'master' keyboard in the X
+    // server doesn't seem to handle that either.
+
+    last = dev->lastSlave;
+    if (last == NULL) {
+        // No last device, so no event from a Qubes device.
+        // => Don't reject event.
+        return TRUE;
+    }
+
+    if (last->ptrfeed != NULL && last->ptrfeed->CtrlProc == QubesPtrCtrlProc) {
+        // Last device is a Qubes device. => Reject event.
+        return FALSE;
+    }
+
+    if (strcmp(last->name, "Qubes Virtual Input Device") == 0) {
+        // Last device is the virtual input device from gui-agent.
+        // => Reject event.
+        // (Note this rejects the event only on the 'master' device. If
+        // something listens for events specifically from the virtual input
+        // device it will still see repeats from it.)
+        return FALSE;
+    }
+
+    // Last device is not a Qubes device. => Don't reject event.
+    return TRUE;
+}
+
 static int QubesControl(DeviceIntPtr device, int what)
 {
     InputInfoPtr pInfo = device->public.devicePrivate;
     QubesDevicePtr pQubes = pInfo->private;
+    DeviceIntPtr master_kbd = NULL;
 
     switch (what) {
     case DEVICE_INIT:
@@ -439,6 +499,18 @@ static int QubesControl(DeviceIntPtr device, int what)
                 sleep(1);
             }
         } while (pInfo->fd < 0);
+
+        // See QubesCheckRepeat for details.
+        master_kbd = GetMaster(device, MASTER_KEYBOARD);
+        if (master_kbd == NULL) {
+            // Something is odd about our X server ...
+            xf86Msg(X_ERROR,
+                    "%s: Failed to get 'master' keyboard, to set checkRepeat\n",
+                    pInfo->name);
+            return BadImplementation;
+        }
+        device->key->xkbInfo->checkRepeat = QubesCheckRepeat;
+        master_kbd->key->xkbInfo->checkRepeat = QubesCheckRepeat;
 
         xf86FlushInput(pInfo->fd);
         xf86AddEnabledDevice(pInfo);
