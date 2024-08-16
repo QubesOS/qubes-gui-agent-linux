@@ -51,6 +51,7 @@
 #include <linux/types.h>
 
 #include <xf86_OSproc.h>
+#include <xserver-properties.h>
 
 #include <unistd.h>
 
@@ -63,16 +64,6 @@
 
 #include <windowstr.h>
 
-#ifdef HAVE_PROPERTIES
-#include <xserver-properties.h>
-/* 1.6 has properties, but no labels */
-#ifdef AXIS_LABEL_PROP
-#define HAVE_LABELS
-#else
-#undef HAVE_LABELS
-#endif
-
-#endif
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 23
 #define HAVE_THREADED_INPUT 1
@@ -100,6 +91,7 @@
 #include <qubes-gui-protocol.h>
 #include "xdriver-shm-cmd.h"
 #include "qubes.h"
+#include "labels.h"
 
 #include "../../xf86-qubes-common/include/xf86-qubes-common.h"
 
@@ -125,7 +117,7 @@ static void QubesBlockHandler(void *arg, void *timeout);
 static void QubesWakeupHandler(void *arg, int result);
 #endif
 
-
+#define ArrayLength(x) (sizeof(x)/sizeof((x)[0]))
 
 _X_EXPORT InputDriverRec QUBES = {
     1,
@@ -275,6 +267,29 @@ static int _qubes_init_kbd(DeviceIntPtr device)
     return Success;
 }
 
+static void QubesInitButtonLabels(QubesDevicePtr pQubes, int natoms,
+                                  Atom * atoms)
+{
+    Atom atom;
+    int btn;
+    const char **labels;
+    int labels_len = 0;
+
+    labels = btn_labels;
+    labels_len = ArrayLength(btn_labels);
+
+    memset(atoms, 0, natoms * sizeof(Atom));
+
+    /* Now fill the ones we know */
+    for (btn = 0; btn < labels_len && btn < natoms; btn++) {
+        atom = XIGetKnownProperty(labels[btn]);
+        if (!atom)    /* Should not happen */
+            continue;
+
+        atoms[btn] = atom;
+    }
+}
+
 static int _qubes_init_buttons(DeviceIntPtr device)
 {
     InputInfoPtr pInfo = device->public.devicePrivate;
@@ -293,6 +308,7 @@ static int _qubes_init_buttons(DeviceIntPtr device)
 
     pQubes->labels = calloc(num_buttons, sizeof(Atom));
 
+    QubesInitButtonLabels(pQubes, num_buttons, pQubes->labels);
     if (!InitButtonClassDeviceStruct(device, num_buttons,
                                      pQubes->labels, map)) {
         xf86Msg(X_ERROR, "%s: Failed to register buttons.\n",
@@ -307,31 +323,24 @@ static int _qubes_init_buttons(DeviceIntPtr device)
 static void QubesInitAxesLabels(QubesDevicePtr pQubes, int natoms,
                                 Atom * atoms)
 {
-#ifdef HAVE_LABELS
     Atom atom;
     int axis;
-    char **labels;
+    const char **labels;
     int labels_len = 0;
-    char *misc_label;
 
     labels = rel_labels;
     labels_len = ArrayLength(rel_labels);
-    misc_label = AXIS_LABEL_PROP_REL_MISC;
 
     memset(atoms, 0, natoms * sizeof(Atom));
 
     /* Now fill the ones we know */
-    for (axis = 0; axis < labels_len; axis++) {
-        if (pQubes->axis_map[axis] == -1)
-            continue;
-
+    for (axis = 0; axis < labels_len && axis < natoms; axis++) {
         atom = XIGetKnownProperty(labels[axis]);
         if (!atom)    /* Should not happen */
             continue;
 
-        atoms[pQubes->axis_map[axis]] = atom;
+        atoms[axis] = atom;
     }
-#endif
 }
 
 
