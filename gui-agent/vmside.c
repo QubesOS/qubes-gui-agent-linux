@@ -74,7 +74,7 @@
 /* Supported protocol version */
 
 #define PROTOCOL_VERSION_MAJOR 1
-#define PROTOCOL_VERSION_MINOR 7
+#define PROTOCOL_VERSION_MINOR 8
 #define PROTOCOL_VERSION (PROTOCOL_VERSION_MAJOR << 16 | PROTOCOL_VERSION_MINOR)
 
 #if !(PROTOCOL_VERSION_MAJOR == QUBES_GUID_PROTOCOL_VERSION_MAJOR && \
@@ -980,14 +980,20 @@ static void process_xevent_configure(Ghandles * g, XID window,
     send_pixmap_grant_refs(g, window);
 }
 
-static void send_clipboard_data(libvchan_t *vchan, XID window, char *data, uint32_t len)
+static void send_clipboard_data(libvchan_t *vchan, XID window, char *data, uint32_t len, int protocol_version)
 {
     struct msg_hdr hdr;
     hdr.type = MSG_CLIPBOARD_DATA;
     hdr.window = window;
-    if (len > MAX_CLIPBOARD_SIZE)
-    {
+    if ((protocol_version < QUBES_GUID_MIN_CLIPBOARD_4X) && (len > MAX_CLIPBOARD_SIZE)) {
+        // The dumb case. Truncate the data to the old size. User might lose
+        // some inter-vm clipboard data without being notified.
         len = MAX_CLIPBOARD_SIZE;
+    } else if (len > MAX_CLIPBOARD_BUFFER_SIZE + 1) {
+        // xside is capable of receiving (up to) 4X of the previous size.
+        // it is also smarter. send one byte over the new buffer limit.
+        // A simple sign for xside to reject it.
+        len = MAX_CLIPBOARD_BUFFER_SIZE + 1;
     }
     hdr.untrusted_len = len;
     write_struct(vchan, hdr);
@@ -1052,11 +1058,18 @@ static void process_xevent_selection(Ghandles * g, XSelectionEvent * ev)
                 g->utf8_string_atom, g->qprop,
                 g->stub_win, ev->time);
     else
-        send_clipboard_data(g->vchan, g->stub_win, (char *) data, len);
-    /* even if the clipboard owner does not support UTF8 and we requested
-       XA_STRING, it is fine - ascii is legal UTF8 */
+        if (type == XInternAtom(g->display, "INCR", False)) {
+            char INCR_WARNING[] =
+                "Qube clipboard size over 256KiB and X11 INCR protocol support is not implemented!";
+            send_clipboard_data(g->vchan, g->stub_win, (char *) &INCR_WARNING,
+                                sizeof(INCR_WARNING)-1, g->protocol_version);
+        } else {
+            send_clipboard_data(g->vchan, g->stub_win, (char *) data, len,
+                                g->protocol_version);
+            /* even if the clipboard owner does not support UTF8 and we requested
+            XA_STRING, it is fine - ascii is legal UTF8 */
+        }
     XFree(data);
-
 }
 
 static void process_xevent_selection_req(Ghandles * g,
@@ -2097,7 +2110,7 @@ static void handle_clipboard_req(Ghandles * g, XID winid)
         fprintf(stderr, "clipboard req, owner=0x%x\n",
                 (int) owner);
     if (owner == None) {
-        send_clipboard_data(g->vchan, winid, NULL, 0);
+        send_clipboard_data(g->vchan, winid, NULL, 0, g->protocol_version);
         return;
     }
     XConvertSelection(g->display, Clp, g->targets, g->qprop, g->stub_win, g->time);
