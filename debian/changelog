@@ -1,3 +1,11 @@
+qubes-gui-agent (4.3.0-1) unstable; urgency=medium
+
+  [ Ali Mirjamali ]
+  * Handle oversized clipboard for GUI protocol 1.8
+  * Switching CI to R4.3
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 27 Oct 2024 04:32:31 +0100
+
 qubes-gui-agent (4.2.18-1) unstable; urgency=medium
 
   * Fix input device labels
