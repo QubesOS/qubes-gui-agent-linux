@@ -22,7 +22,7 @@ Build-Depends:
     lsb-release,
     libpipewire-0.3-dev,
     quilt,
-    qubes-gui-common (>= 4.1.0),
+    qubes-gui-common (>= 4.3.0),
     qubesdb-dev,
     libltdl-dev,
 Standards-Version: 4.4.0.1

@@ -71,7 +71,7 @@ BuildRequires:	mesa-libgbm-devel
 %endif
 BuildRequires:	pam-devel
 BuildRequires:	qubes-libvchan-devel
-BuildRequires:	qubes-gui-common-devel >= 4.1.0
+BuildRequires:	qubes-gui-common-devel >= 4.3.0
 BuildRequires:	qubes-db-devel
 BuildRequires:	xen-devel
 BuildRequires:	systemd-rpm-macros

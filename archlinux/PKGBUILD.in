@@ -25,7 +25,7 @@ makedepends=(
     libxdamage
     pixman
     lsb-release
-    qubes-vm-gui-common
+    'qubes-vm-gui-common>=4.3.0'
     qubes-libvchan
     qubes-db-vm
 )
