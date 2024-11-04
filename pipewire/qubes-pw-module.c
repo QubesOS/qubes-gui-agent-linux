@@ -1174,7 +1174,8 @@ static void stream_state_changed(void *data, enum pw_stream_state old,
         return;
     case PW_STREAM_STATE_PAUSED:
         pw_log_debug("%s paused", name);
-        set_stream_state(stream, false);
+        if (!qubes_stream_is_playback(stream))
+            set_stream_state(stream, false);
         break;
     case PW_STREAM_STATE_STREAMING:
         pw_log_debug("%s streaming", name);
@@ -1426,6 +1427,11 @@ doit:
     }
 }
 
+static void playback_stream_drained(void *data)
+{
+    set_stream_state(data, false);
+}
+
 static const struct pw_stream_events capture_stream_events = {
     .version = PW_VERSION_STREAM_EVENTS,
     .destroy = stream_destroy,
@@ -1448,6 +1454,7 @@ static const struct pw_stream_events playback_stream_events = {
     .add_buffer = NULL,
     .remove_buffer = NULL,
     .process = playback_stream_process,
+    .drained = playback_stream_drained,
 };
 
 static void core_error(void *data, uint32_t id, int seq, int res, const char *message)
