@@ -91,6 +91,9 @@ Requires:	qubes-db >= 4.1.4
 Requires:	python%{python3_pkgversion}-xcffib
 Requires:   xorg-x11-server-Xorg
 Requires:   xorg-x11-server-Xephyr
+%if 0%{?fedora} >= 41
+Requires:   cvt
+%endif
 Requires:   setxkbmap
 Requires:   xsetroot
 Requires:   xrdb
