@@ -1,3 +1,16 @@
+qubes-gui-agent (4.3.1-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * Bump required qubes-gui-common version
+
+  [ Demi Marie Obenour ]
+  * Use the drained callback on the playback stream
+
+  [ Marek Marczykowski-Górecki ]
+  * rpm: depend on cvt in F41+
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 08 Nov 2024 02:33:02 +0100
+
 qubes-gui-agent (4.3.0-1) unstable; urgency=medium
 
   [ Ali Mirjamali ]
