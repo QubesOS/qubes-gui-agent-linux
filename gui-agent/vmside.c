@@ -2380,7 +2380,7 @@ int main(int argc, char **argv)
 {
     int i;
     int xfd;
-    Ghandles g;
+    Ghandles g = { .x_pid = -1 };
 
     g.created_input_device = access("/run/qubes-service/gui-agent-virtual-input-device", F_OK) == 0;
 
@@ -2454,10 +2454,21 @@ int main(int argc, char **argv)
         libvchan_wait(g.vchan);
     saved_argv = argv;
     vchan_register_at_eof(handle_guid_disconnect);
+
+    ghandles_for_vchan_reinitialize = &g;
+    signal(SIGCHLD, SIG_IGN);
+    struct sigaction sigterm_handler = {
+        .sa_sigaction = handle_sigterm,
+        .sa_flags = SA_SIGINFO,
+    };
+    sigemptyset(&sigterm_handler.sa_mask);
+    if (sigaction(SIGTERM, &sigterm_handler, NULL))
+        err(1, "sigaction");
+
     handshake(&g);
     g.x_pid = get_xconf_and_run_x(&g);
+
     mkghandles(&g);
-    ghandles_for_vchan_reinitialize = &g;
     /* Turn on Composite for all children of root window. This way X server
      * keeps separate buffers for each (root child) window.
      * There are two modes:
@@ -2497,14 +2508,6 @@ int main(int argc, char **argv)
         fprintf(stderr, "XFixes not available, cursor shape handling off\n");
 
     XAutoRepeatOff(g.display);
-    signal(SIGCHLD, SIG_IGN);
-    struct sigaction sigterm_handler = {
-        .sa_sigaction = handle_sigterm,
-        .sa_flags = SA_SIGINFO,
-    };
-    sigemptyset(&sigterm_handler.sa_mask);
-    if (sigaction(SIGTERM, &sigterm_handler, NULL))
-        err(1, "sigaction");
     windows_list = list_new();
     embeder_list = list_new();
     XSetErrorHandler(dummy_handler);
