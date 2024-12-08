@@ -506,6 +506,12 @@ static int QubesControl(DeviceIntPtr device, int what)
                         "%s: cannot open device; sleeping...\n",
                         pInfo->name);
                 sleep(1);
+                if (xf86ServerIsExiting()) {
+                    xf86Msg(X_ERROR,
+                            "%s: cannot open device, server exiting, aborting\n",
+                            pInfo->name);
+                    return BadAlloc;
+                }
             }
         } while (pInfo->fd < 0);
 
