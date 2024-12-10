@@ -1558,9 +1558,16 @@ static void wait_for_unix_socket(Ghandles *g)
 
     addrlen = sizeof(peer);
     fprintf (stderr, "Waiting on %s socket...\n", SOCKET_ADDRESS);
+    if (g->x_pid == (pid_t)-1) {
+        fprintf(stderr, "Xorg exited in the meantime, aborting\n");
+        exit(1);
+    }
     g->xserver_fd = accept(g->xserver_listen_fd, (struct sockaddr *) &peer, &addrlen);
     if (g->xserver_fd == -1) {
-        perror("unix accept");
+        if (errno == EINTR && g->x_pid == (pid_t)-1)
+            fprintf(stderr, "Xorg exited in the meantime, aborting\n");
+        else
+            perror("unix accept");
         exit(1);
     }
     fprintf (stderr, "Ok, somebody connected.\n");
@@ -2317,6 +2324,21 @@ static _Noreturn void handle_sigterm(int UNUSED(sig),
     exit(0);
 }
 
+static void handle_sigchld(int UNUSED(sig),
+        siginfo_t *UNUSED(info), void *UNUSED(context))
+{
+    Ghandles *g = ghandles_for_vchan_reinitialize;
+    if (g->x_pid != (pid_t)-1) {
+        int status;
+        pid_t pid = waitpid(g->x_pid, &status, WNOHANG);
+        if (pid == g->x_pid && (WIFEXITED(status) || WIFSIGNALED(status)))
+            /* TODO: consider saving also exit status, but right now gui-agent
+             * would handle it the same regardless, so maybe later, just for
+             * logging purposes */
+            g->x_pid = -1;
+    }
+}
+
 static void usage(void)
 {
     fprintf(stderr, "Usage: qubes_gui [options]\n");
@@ -2380,7 +2402,7 @@ int main(int argc, char **argv)
 {
     int i;
     int xfd;
-    Ghandles g;
+    Ghandles g = { .x_pid = -1 };
 
     g.created_input_device = access("/run/qubes-service/gui-agent-virtual-input-device", F_OK) == 0;
 
@@ -2454,10 +2476,27 @@ int main(int argc, char **argv)
         libvchan_wait(g.vchan);
     saved_argv = argv;
     vchan_register_at_eof(handle_guid_disconnect);
+
+    ghandles_for_vchan_reinitialize = &g;
+    struct sigaction sigchld_handler = {
+        .sa_sigaction = handle_sigchld,
+        .sa_flags = SA_SIGINFO,
+    };
+    sigemptyset(&sigchld_handler.sa_mask);
+    if (sigaction(SIGCHLD, &sigchld_handler, NULL))
+        err(1, "sigaction");
+    struct sigaction sigterm_handler = {
+        .sa_sigaction = handle_sigterm,
+        .sa_flags = SA_SIGINFO,
+    };
+    sigemptyset(&sigterm_handler.sa_mask);
+    if (sigaction(SIGTERM, &sigterm_handler, NULL))
+        err(1, "sigaction");
+
     handshake(&g);
     g.x_pid = get_xconf_and_run_x(&g);
+
     mkghandles(&g);
-    ghandles_for_vchan_reinitialize = &g;
     /* Turn on Composite for all children of root window. This way X server
      * keeps separate buffers for each (root child) window.
      * There are two modes:
@@ -2497,14 +2536,6 @@ int main(int argc, char **argv)
         fprintf(stderr, "XFixes not available, cursor shape handling off\n");
 
     XAutoRepeatOff(g.display);
-    signal(SIGCHLD, SIG_IGN);
-    struct sigaction sigterm_handler = {
-        .sa_sigaction = handle_sigterm,
-        .sa_flags = SA_SIGINFO,
-    };
-    sigemptyset(&sigterm_handler.sa_mask);
-    if (sigaction(SIGTERM, &sigterm_handler, NULL))
-        err(1, "sigaction");
     windows_list = list_new();
     embeder_list = list_new();
     XSetErrorHandler(dummy_handler);
@@ -2540,6 +2571,11 @@ int main(int argc, char **argv)
     };
     for (;;) {
         int busy;
+
+        if (g.x_pid == -1) {
+            fprintf(stderr, "Xorg exited prematurely\n");
+            exit(1);
+        }
 
         fds[0].fd = libvchan_fd_for_select(g.vchan);
         wait_for_vchan_or_argfd(g.vchan, fds, QUBES_ARRAY_SIZE(fds));
