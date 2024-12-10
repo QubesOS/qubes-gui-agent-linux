@@ -1,3 +1,14 @@
+qubes-gui-agent (4.3.2-1) unstable; urgency=medium
+
+  * pipewire: prevent starting in root session
+  * Move signal registraion earlier
+  * Better handle premature Xorg exit
+  * Fix logging in xf86-input-mfndev
+  * xf86-input-mfndev: interrupt attempts to contact gui-agent on
+    SIGTERM
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 10 Dec 2024 19:21:06 +0100
+
 qubes-gui-agent (4.3.1-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
