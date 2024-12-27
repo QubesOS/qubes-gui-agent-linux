@@ -1,3 +1,10 @@
+qubes-gui-agent (4.3.3-1) unstable; urgency=medium
+
+  * archlinux: update pulseaudio dependency
+  * archlinux: make qubes-vm-pipewire replace qubes-vm-pulseaudio
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 27 Dec 2024 01:24:25 +0100
+
 qubes-gui-agent (4.3.2-1) unstable; urgency=medium
 
   * pipewire: prevent starting in root session
