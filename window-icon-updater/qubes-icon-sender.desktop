@@ -8,3 +8,4 @@ Type=Application
 Categories=
 GenericName=
 OnlyShowIn=X-QUBES;
+AutostartCondition=unless-exists /var/run/qubes-service/minimal-netvm;unless-exists /var/run/qubes-service/minimal-usbvm
