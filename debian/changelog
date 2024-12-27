@@ -1,3 +1,21 @@
+qubes-gui-agent (4.2.20-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * Move signal registraion earlier
+  * Better handle premature Xorg exit
+  * Fix logging in xf86-input-mfndev
+  * pipewire: prevent starting in root session
+  * xf86-input-mfndev: interrupt attempts to contact gui-agent on
+    SIGTERM
+
+  [ Rusty Bird ]
+  * Also set software rendering via the new $GDK_DISABLE variable
+
+  [ Marek Marczykowski-Górecki ]
+  * archlinux: update pulseaudio dependency
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 27 Dec 2024 03:04:30 +0100
+
 qubes-gui-agent (4.2.19-1) unstable; urgency=medium
 
   * rpm: depend on cvt in F41+
