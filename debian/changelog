@@ -1,3 +1,10 @@
+qubes-gui-agent (4.3.5-1) unstable; urgency=medium
+
+  [ Ali Mirjamali ]
+  * Pull in required Pipewire dependencies for Archlinux
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 26 Jan 2025 18:59:56 +0100
+
 qubes-gui-agent (4.3.4-1) unstable; urgency=medium
 
   [ Rusty Bird ]
