@@ -92,7 +92,7 @@ typedef struct dummyRec
     dummy_colors colors[256];
     pointer* FBBase;
     struct xf86_qubes_pixmap *FBBasePriv;
-    Bool        (*CreateWindow)() ;     /* wrapped CreateWindow */
+    CreateWindowProcPtr CreateWindow;     /* wrapped CreateWindow */
     Bool prop;
 
     struct genlist queue;
