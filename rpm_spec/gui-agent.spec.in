@@ -61,7 +61,7 @@ BuildRequires:	libtool-ltdl-devel
 BuildRequires:	libtool
 %if 0%{?is_opensuse}
 BuildRequires:	libpulse-devel >= 0.9.21
-BuildRequires:	libpulse-devel <= 16.99.1
+BuildRequires:	libpulse-devel <= 17.0
 BuildRequires:	xorg-x11-server-sdk
 BuildRequires:	libgbm-devel
 %else
