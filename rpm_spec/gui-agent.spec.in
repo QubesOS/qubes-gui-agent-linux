@@ -349,6 +349,7 @@ rm -f %{name}-%{version}
 %dir %_datadir/pipewire/pipewire.conf.d
 %_datadir/pipewire/pipewire.conf.d/30_qubes.conf
 %_userpresetdir/74-qubes-vm.preset
+%dir %_userunitdir/pipewire.service.d
 %_userunitdir/pipewire.service.d/30_qubes.conf
 %_libdir/pipewire-0.3/libpipewire-module-qubes.so
 %dir %_defaultlicensedir/pipewire-qubes
