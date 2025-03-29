@@ -28,6 +28,7 @@ BuildArch: noarch
 
 BuildRequires: selinux-policy
 BuildRequires: selinux-policy-devel
+BuildRequires: pkgconfig(systemd)
 BuildRequires: qubes-core-agent-selinux
 Requires(post): qubes-core-agent-selinux
 BuildRequires: qubes-core-qrexec-vm-selinux
