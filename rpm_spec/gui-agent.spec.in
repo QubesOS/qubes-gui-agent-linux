@@ -160,7 +160,7 @@ Summary: Remote GuiVM support using VNC
 Requires: x11vnc
 %if 0%{?is_opensuse}
 # for directory ownership
-BuildRequires: systemd
+BuildRequires: (systemd or systemd-mini)
 %endif
 
 %description -n qubes-gui-vnc
