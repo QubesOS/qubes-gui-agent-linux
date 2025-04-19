@@ -23,6 +23,7 @@ makedepends=(
     libxcomposite
     libxt
     libxdamage
+    libunistring
     pixman
     lsb-release
     'qubes-vm-gui-common>=4.3.0'
@@ -57,6 +58,7 @@ package_qubes-vm-gui() {
     'zenity'
     'qubes-libvchan'
     'python-xcffib'
+    'libunistring'
     # Xorg dependencies are on specific ABI versions: https://www.x.org/wiki/XorgModuleABIVersions/
     # These can also be verified with pacman -Qi xorg-server (Provides)
     # There is however a discrepancy if verifying via pkg-config --variable abi_videodrv xorg-server
