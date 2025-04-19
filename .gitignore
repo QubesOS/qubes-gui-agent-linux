@@ -12,4 +12,5 @@ xf86-qubes-common/libxf86-qubes-common.so
 /pipewire/pw-module-run
 *.dep
 /gui-agent/qubes-gui
+/gui-agent/qubes-gui-runuser
 /gui-common/qubes-gui-runuser
