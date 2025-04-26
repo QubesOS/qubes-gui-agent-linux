@@ -328,8 +328,8 @@ static void QubesInitAxesLabels(QubesDevicePtr pQubes, int natoms,
     const char **labels;
     int labels_len = 0;
 
-    labels = rel_labels;
-    labels_len = ArrayLength(rel_labels);
+    labels = abs_labels;
+    labels_len = ArrayLength(abs_labels);
 
     memset(atoms, 0, natoms * sizeof(Atom));
 
@@ -360,11 +360,12 @@ static int _qubes_init_axes(DeviceIntPtr device)
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
                                        atoms,
 #endif
-                                       GetMotionHistorySize(), 0))
+                                       GetMotionHistorySize(),
+                                       Absolute))
         return BadAlloc;
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
-    pInfo->dev->valuator->mode = Relative;
+    pInfo->dev->valuator->mode = Absolute;
 #endif
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 13
     if (!InitAbsoluteClassDeviceStruct(device))
@@ -372,10 +373,10 @@ static int _qubes_init_axes(DeviceIntPtr device)
 #endif
 
     for (i = 0; i < pQubes->axes; i++) {
-        xf86InitValuatorAxisStruct(device, i, *pQubes->labels, -1,
-                -1, 1, 1, 1
+        xf86InitValuatorAxisStruct(device, i, atoms[i], 0,
+                32767, 1, 1, 1
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
-                , Relative
+                , Absolute
 #endif
                 );
         xf86InitValuatorDefaults(device, i);
