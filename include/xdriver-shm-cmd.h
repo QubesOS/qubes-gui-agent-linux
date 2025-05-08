@@ -24,7 +24,7 @@
 #include <stdint.h>
 
 /* Messages are described here:
- * http://wiki.qubes-os.org/trac/wiki/GUIdocs
+ * https://www.qubes-os.org/doc/gui/
  */
 
 /* VM: gui-agent -> xdriver(xf86-input-mfndev( */
