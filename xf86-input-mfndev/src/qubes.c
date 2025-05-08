@@ -263,7 +263,8 @@ static void QubesUnInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
 
 static int _qubes_init_kbd(DeviceIntPtr device)
 {
-    InitKeyboardDeviceStruct(device, NULL, NULL, NULL);
+    if (!InitKeyboardDeviceStruct(device, NULL, NULL, NULL))
+        return BadAlloc;
     return Success;
 }
 
@@ -485,14 +486,22 @@ static int QubesControl(DeviceIntPtr device, int what)
     InputInfoPtr pInfo = device->public.devicePrivate;
     QubesDevicePtr pQubes = pInfo->private;
     DeviceIntPtr master_kbd = NULL;
+    int ret;
 
     switch (what) {
     case DEVICE_INIT:
         device->public.on = FALSE;
-        _qubes_init_buttons(device);
-        _qubes_init_axes(device);
-        _qubes_init_kbd(device);
-        InitPtrFeedbackClassDeviceStruct(device, QubesPtrCtrlProc);
+        ret = _qubes_init_buttons(device);
+        if (ret != Success)
+            return ret;
+        ret = _qubes_init_axes(device);
+        if (ret != Success)
+            return ret;
+        ret = _qubes_init_kbd(device);
+        if (ret != Success)
+            return ret;
+        if (!InitPtrFeedbackClassDeviceStruct(device, QubesPtrCtrlProc))
+            return BadAlloc;
         break;
 
         /* Switch device on.  Establish socket, start event delivery.  */
