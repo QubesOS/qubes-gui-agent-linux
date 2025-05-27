@@ -33,6 +33,9 @@ import time
 
 import xcffib
 from xcffib import xproto
+from Xlib.display import Display
+from Xlib import X
+from Xlib.error import XError
 
 ICON_MAX_SIZE = 256
 
@@ -49,6 +52,7 @@ class IconRetriever(object):
         self.conn = xcffib.connect()
         self.setup = self.conn.get_setup()
         self.root = self.setup.roots[0].root
+        self.display = Display()
 
         # just created windows for which icon wasn't sent yet - should
         # be send on MapNotifyEvent
@@ -60,6 +64,7 @@ class IconRetriever(object):
     def disconnect(self):
         log.info('disconnecting from X')
         self.conn.disconnect()
+        self.display.close()
 
     def watch_window(self, w):
         self.conn.core.ChangeWindowAttributesChecked(
@@ -80,9 +85,102 @@ class IconRetriever(object):
         except xproto.BadWindow:
             # Window disappeared in the meantime
             raise NoIconError()
-
         if icon.format == 0:
-            raise NoIconError()
+            # Ancient X11 applications (Xterm, Xcalc, Xlogo, Xeyes, Xclock, ...)
+            try:
+                window = self.display.create_resource_object('window', w)
+                wm_hints = window.get_wm_hints()
+                if not wm_hints:
+                    raise NoIconError()
+                geometry = wm_hints.icon_pixmap.get_geometry()
+                pixmap = wm_hints.icon_pixmap.get_image(
+                    0,
+                    0,
+                    geometry.width,
+                    geometry.height,
+                    X.ZPixmap,
+                    0xFFFFFFFF
+                )
+                pixmap_data = pixmap.data
+                icons = {}
+                try:
+                    mask = wm_hints.icon_mask.get_image(
+                        0,
+                        0,
+                        geometry.width,
+                        geometry.height,
+                        X.ZPixmap,
+                        0xFFFFFFFF
+                    )
+                    mask_geometry = wm_hints.icon_mask.get_geometry()
+                    mask_data = mask.data
+                except:
+                    # Icons without transparency
+                    mask = None
+                    mask_geometry = None
+                    mask_data = []
+            except XError:
+                raise NoIconError()
+
+            # Finally we have the required data to construct icon
+            if geometry.depth == 1:
+                # 1 bit per pixel icons (i.e. xlogo, xeyes, xcalc, ...)
+                icon_data = []
+                # There might be trailing bytes at the end of each row since
+                # each row should be multiples of 32 bits
+                row_width = int(len(pixmap_data) / geometry.height)
+                for y in range(0, geometry.height):
+                    offset = y * row_width
+                    for x in range(0, geometry.width):
+                        byte_offset = int(x / 8) + offset
+                        byte = int(pixmap_data[byte_offset])
+                        byte = byte >> (x % 8)
+                        bit = byte & 0x1
+                        if bit:
+                            # Can not decide the light/dark theme from vmside :/
+                            icon_data.append(0xff7f7f7f)
+                        else:
+                            icon_data.append(0x0)
+            elif geometry.depth == 24:
+                # 24 bit per pixel icons (i.e. Xterm)
+                # Technically this could handle other programs as well
+                icon_data = struct.unpack(
+                        "%dI" % (len(pixmap_data) / 4),
+                        pixmap_data
+                )
+                icon_data = [d | 0xff000000 for d in icon_data]
+            else:
+                # Could not find 8 bit icons of that era to work with
+                raise NoIconError()
+            if mask_data and mask_geometry.depth == 1:
+                # Even Xterm uses 1 bit/pixel mask. I do not know why
+                row_width = int(len(mask_data) / geometry.height)
+                for y in range(0, geometry.height):
+                    offset = y * row_width
+                    for x in range(0, geometry.width):
+                        byte_offset = int(x/8) + offset
+                        byte = int(mask_data[byte_offset])
+                        byte = byte >> (x % 8)
+                        bit = byte & 0x1
+                        pixel = x + y * geometry.height
+                        if bit:
+                            icon_data[pixel] = icon_data[pixel] & 0xffffffff
+                        else:
+                            icon_data[pixel] = icon_data[pixel] & 0x00ffffff
+            elif mask_data and mask_geometry.depth == 8:
+                # Technically this is not tested (No X prog uses 8bit/pix mask)
+                # At least not on Qubes OS 4.3 & default Xfwm4
+                for y in range(0, geometry.height):
+                    offset = y * row_width
+                    for x in range(0, geometry.width):
+                        byte_offset = x + offset
+                        byte = int(mask_data[byte_offset])
+                        pixmask = (byte < 24) | 0x00ffffff
+                        icon_data[pixel] = icon_data[pixel] & pixmask
+            size = (geometry.width, geometry.height)
+            icons[size] = icon_data
+            return icons
+
         # convert it later to a proper int array
         icon_data = icon.value.buf()
         if icon.bytes_after:
