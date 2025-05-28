@@ -263,7 +263,8 @@ static void QubesUnInit(InputDriverPtr drv, InputInfoPtr pInfo, int flags)
 
 static int _qubes_init_kbd(DeviceIntPtr device)
 {
-    InitKeyboardDeviceStruct(device, NULL, NULL, NULL);
+    if (!InitKeyboardDeviceStruct(device, NULL, NULL, NULL))
+        return BadAlloc;
     return Success;
 }
 
@@ -328,8 +329,8 @@ static void QubesInitAxesLabels(QubesDevicePtr pQubes, int natoms,
     const char **labels;
     int labels_len = 0;
 
-    labels = rel_labels;
-    labels_len = ArrayLength(rel_labels);
+    labels = abs_labels;
+    labels_len = ArrayLength(abs_labels);
 
     memset(atoms, 0, natoms * sizeof(Atom));
 
@@ -360,11 +361,12 @@ static int _qubes_init_axes(DeviceIntPtr device)
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 7
                                        atoms,
 #endif
-                                       GetMotionHistorySize(), 0))
+                                       GetMotionHistorySize(),
+                                       Absolute))
         return BadAlloc;
 
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 12
-    pInfo->dev->valuator->mode = Relative;
+    pInfo->dev->valuator->mode = Absolute;
 #endif
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) < 13
     if (!InitAbsoluteClassDeviceStruct(device))
@@ -372,10 +374,10 @@ static int _qubes_init_axes(DeviceIntPtr device)
 #endif
 
     for (i = 0; i < pQubes->axes; i++) {
-        xf86InitValuatorAxisStruct(device, i, *pQubes->labels, -1,
-                -1, 1, 1, 1
+        xf86InitValuatorAxisStruct(device, i, atoms[i], 0,
+                32767, 1, 1, 1
 #if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 12
-                , Relative
+                , Absolute
 #endif
                 );
         xf86InitValuatorDefaults(device, i);
@@ -484,14 +486,22 @@ static int QubesControl(DeviceIntPtr device, int what)
     InputInfoPtr pInfo = device->public.devicePrivate;
     QubesDevicePtr pQubes = pInfo->private;
     DeviceIntPtr master_kbd = NULL;
+    int ret;
 
     switch (what) {
     case DEVICE_INIT:
         device->public.on = FALSE;
-        _qubes_init_buttons(device);
-        _qubes_init_axes(device);
-        _qubes_init_kbd(device);
-        InitPtrFeedbackClassDeviceStruct(device, QubesPtrCtrlProc);
+        ret = _qubes_init_buttons(device);
+        if (ret != Success)
+            return ret;
+        ret = _qubes_init_axes(device);
+        if (ret != Success)
+            return ret;
+        ret = _qubes_init_kbd(device);
+        if (ret != Success)
+            return ret;
+        if (!InitPtrFeedbackClassDeviceStruct(device, QubesPtrCtrlProc))
+            return BadAlloc;
         break;
 
         /* Switch device on.  Establish socket, start event delivery.  */
