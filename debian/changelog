@@ -1,3 +1,17 @@
+qubes-gui-agent (4.2.21-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * xf86-video-dummy: fix type of CreateWindow field
+  * Format commands .qubesbuilder in single quotes
+
+  [ degletnour ]
+  * updated broken gui docs link
+
+  [ Marek Marczykowski-Górecki ]
+  * Add error checking on input device init
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 06 Jun 2025 05:17:23 +0200
+
 qubes-gui-agent (4.2.20-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
