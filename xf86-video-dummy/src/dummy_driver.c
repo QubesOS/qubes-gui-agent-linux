@@ -416,13 +416,41 @@ Bool DUMMYAdjustScreenPixmap(ScrnInfoPtr pScrn, int width, int height)
                 "Failed to get the screen pixmap.\n");
         return FALSE;
     }
-    if (cbLine > UINT32_MAX || cbLine * height > pScrn->videoRam * 1024)
-    {
+    if (cbLine > UINT32_MAX) {
         xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-                "Unable to set up a virtual screen size of %dx%d with %d Kb of video memory available.  Please increase the video memory size.\n",
-                width, height, pScrn->videoRam);
+                "Unable to set up a virtual screen size of %dx%d, cbLine "
+                "overflow\n",
+                width, height);
         return FALSE;
     }
+    if (cbLine * height > pScrn->videoRam * 1024) {
+        if (!dPtr->FBBasePriv) {
+            /* If there is no backing grant entries, it's easy enough to extend
+             */
+            pointer *newFBBase;
+            size_t new_size = (cbLine * height + 1023) & ~1023;
+
+            newFBBase = realloc(dPtr->FBBase, new_size);
+            if (!newFBBase) {
+                xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                        "Unable to set up a virtual screen size of %dx%d, "
+                        "cannot allocate memory (%zu bytes)\n",
+                        width, height, new_size);
+                return FALSE;
+            }
+            memset((char*)newFBBase + pScrn->videoRam * 1024,
+                   0,
+                   new_size - pScrn->videoRam * 1024);
+            dPtr->FBBase = newFBBase;
+            pScrn->videoRam = new_size / 1024;
+        } else {
+            xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                    "Unable to set up a virtual screen size of %dx%d with %d Kb of video memory available.  Please increase the video memory size.\n",
+                    width, height, pScrn->videoRam);
+            return FALSE;
+        }
+    }
+
     pScreen->ModifyPixmapHeader(pPixmap, width, height,
             pScrn->depth, xf86GetBppFromDepth(pScrn, pScrn->depth), cbLine,
             dPtr->FBBase);
