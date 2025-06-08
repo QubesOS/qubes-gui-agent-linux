@@ -87,6 +87,16 @@ static Bool     dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
 /* static void     DUMMYDisplayPowerManagementSet(ScrnInfoPtr pScrn, */
 /*          int PowerManagementMode, int flags); */
 
+/*
+ * Make FBBase grant-table backed if glamor is initialized. Currently it's
+ * believed to be unneeded, but if you get the
+ * "can't dump window without grant table allocation" message for a root
+ * window, set DUMMY_GLAMOR_GNT_BACKED_FBBASE to 1 and report an issue.
+ * See discussion at:
+ * https://github.com/QubesOS/qubes-gui-agent-linux/pull/233
+ */
+#define DUMMY_GLAMOR_GNT_BACKED_FBBASE 0
+
 #define DUMMY_VERSION 4000
 #define DUMMY_NAME "DUMMYQBS"
 #define DUMMY_DRIVER_NAME "dummyqbs"
@@ -915,9 +925,10 @@ qubes_create_screen_resources(ScreenPtr pScreen) {
     if (ret) {
         PixmapPtr pixmap = pScreen->GetScreenPixmap(pScreen);
         if (dPtr->glamor)
-           glamor_egl_create_textured_pixmap_from_gbm_bo(pixmap, dPtr->front_bo, FALSE);
-        xf86_qubes_pixmap_set_private(pixmap,
-                                      dPtr->FBBasePriv);
+            glamor_egl_create_textured_pixmap_from_gbm_bo(pixmap, dPtr->front_bo, FALSE);
+        if (dPtr->FBBasePriv)
+            xf86_qubes_pixmap_set_private(pixmap,
+                                          dPtr->FBBasePriv);
     }
 
     return ret;
@@ -1015,10 +1026,17 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
         return FALSE;
     }
 
-    dPtr->FBBasePriv = qubes_alloc_pixmap_private(pScrn->videoRam * 1024);
-    if (dPtr->FBBasePriv == NULL)
-        return FALSE;
-    dPtr->FBBase = (void *) dPtr->FBBasePriv->data;
+    if (DUMMY_GLAMOR_GNT_BACKED_FBBASE && dPtr->glamor) {
+        dPtr->FBBasePriv = qubes_alloc_pixmap_private(pScrn->videoRam * 1024);
+        if (dPtr->FBBasePriv == NULL)
+            return FALSE;
+        dPtr->FBBase = (void *) dPtr->FBBasePriv->data;
+    } else {
+        dPtr->FBBase = calloc(1, pScrn->videoRam * 1024);
+        if (dPtr->FBBase == NULL)
+            return FALSE;
+    }
+
     
     /*
      * next we save the current state and setup the first mode
@@ -1290,8 +1308,12 @@ DUMMYCloseScreen(CLOSE_SCREEN_ARGS_DECL)
         if (dPtr->FBBasePriv) {
             xf86_qubes_free_pixmap_private(dPtr->FBBasePriv);
             dPtr->FBBasePriv = NULL;
-            dPtr->FBBase = NULL;
+        } else {
+            if (dPtr->FBBase) {
+                free(dPtr->FBBase);
+            }
         }
+        dPtr->FBBase = NULL;
     }
 
     if (dPtr->CursorInfo)
