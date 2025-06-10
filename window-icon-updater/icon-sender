@@ -35,6 +35,8 @@ import xcffib
 from xcffib import xproto
 
 ICON_MAX_SIZE = 256
+IconPixmapHint = 0b1 << 2
+IconMaskHint = 0b1 << 5
 
 
 log = logging.getLogger('icon-sender')
@@ -82,7 +84,136 @@ class IconRetriever(object):
             raise NoIconError()
 
         if icon.format == 0:
-            raise NoIconError()
+            # Legacy case
+            # Ancient X11 applications (Xterm, Xcalc, Xlogo, Xeyes, Xclock, ...)
+            try:
+                prop_cookie = self.conn.core.GetProperty(
+                    False,  # delete
+                    w,  # window
+                    xproto.Atom.WM_HINTS,
+                    xproto.GetPropertyType.Any,
+                    0,  # long_offset
+                    48  # long_length -> XWMHints struct length on x86_64
+                )
+                reply = prop_cookie.reply()
+                if not reply.value_len:
+                    raise NoIconError()
+                atoms = reply.value.to_atoms()
+                flags = atoms[0]
+                if not flags & IconPixmapHint:
+                    # A menu, pop-up or similar icon-less window
+                    raise NoIconError()
+                icon_pixmap_geometry = self.conn.core.GetGeometry(
+                    atoms[3]
+                ).reply()
+                if (
+                        # Only 1bit/pixel & 24bit/pixel icons are tested
+                        not icon_pixmap_geometry.depth in [1, 24]
+                        or icon_pixmap_geometry.width > ICON_MAX_SIZE
+                        or icon_pixmap_geometry.height > ICON_MAX_SIZE
+                ):
+                    raise NoIconError()
+                image = self.conn.core.GetImage(
+                    xproto.ImageFormat.ZPixmap,
+                    atoms[3],
+                    0,
+                    0,
+                    icon_pixmap_geometry.width,
+                    icon_pixmap_geometry.height,
+                    0xFFFFFFFF
+                ).reply()
+                icon_pixmap_data = image.data.raw
+                if not flags & IconMaskHint:
+                    # We have an icon without transparency (mask)
+                    icon_mask_geometry = None
+                    icon_mask_data = None
+                else:
+                    icon_mask_geometry = self.conn.core.GetGeometry(
+                        atoms[7]
+                    ).reply()
+                    image = self.conn.core.GetImage(
+                        xproto.ImageFormat.ZPixmap,
+                        atoms[7],
+                        0,
+                        0,
+                        icon_mask_geometry.width,
+                        icon_mask_geometry.height,
+                        0xFFFFFFFF
+                    ).reply()
+                    icon_mask_data = image.data.raw
+            except (
+                    xproto.BadWindow,
+                    xproto.WindowError,
+                    xproto.AccessError,
+                    xproto.DrawableError
+                ):
+                raise NoIconError
+
+            # Finally we have the required data to construct icon
+            icons = {}
+            if icon_pixmap_geometry.depth == 1:
+                # 1 bit per pixel icons (i.e. xlogo, xeyes, xcalc, ...)
+                icon_data = []
+                # There might be trailing bytes at the end of each row since
+                # each row should be multiples of 32 bits
+                row_width = int(
+                    len(icon_pixmap_data) / icon_pixmap_geometry.height
+                )
+                for y in range(0, icon_pixmap_geometry.height):
+                    offset = y * row_width
+                    for x in range(0, icon_pixmap_geometry.width):
+                        byte_offset = int(x / 8) + offset
+                        byte = int(icon_pixmap_data[byte_offset])
+                        byte = byte >> (x % 8)
+                        bit = byte & 0x1
+                        if bit:
+                            # Can not decide the light/dark theme from vmside :/
+                            icon_data.append(0xff7f7f7f)
+                        else:
+                            icon_data.append(0x0)
+            elif icon_pixmap_geometry.depth == 24:
+                # 24 bit per pixel icons (i.e. Xterm)
+                # Technically this could handle modern programs as well
+                # However, _NET_WM_ICON is faster
+                icon_data = struct.unpack(
+                        "%dI" % (len(icon_pixmap_data) / 4),
+                        icon_pixmap_data
+                )
+                icon_data = [d | 0xff000000 for d in icon_data]
+            else:
+                # Could not find 8 bit icons of that era to work with
+                raise NoIconError()
+            if icon_mask_data and icon_mask_geometry.depth == 1:
+                # Even Xterm uses 1 bit/pixel mask. I do not know why
+                row_width = int(len(icon_mask_data) / icon_mask_geometry.height)
+                for y in range(0, icon_mask_geometry.height):
+                    offset = y * row_width
+                    for x in range(0, icon_mask_geometry.width):
+                        byte_offset = int(x/8) + offset
+                        byte = int(icon_mask_data[byte_offset])
+                        byte = byte >> (x % 8)
+                        bit = byte & 0x1
+                        pixel = x + y * icon_mask_geometry.height
+                        if bit:
+                            icon_data[pixel] = icon_data[pixel] & 0xffffffff
+                        else:
+                            icon_data[pixel] = icon_data[pixel] & 0x00ffffff
+            elif icon_mask_data and icon_mask_geometry.depth == 8:
+                # Technically this is not tested (No X prog uses 8bit/pix mask)
+                # At least not on Qubes OS 4.3 & default Xfwm4
+                row_width = int(len(icon_mask_data) / icon_mask_geometry.height)
+                for y in range(0, icon_mask_geometry.height):
+                    offset = y * row_width
+                    for x in range(0, icon_mask_geometry.width):
+                        byte_offset = x + offset
+                        byte = int(icon_mask_data[byte_offset])
+                        pixmask = (byte << 24) | 0x00ffffff
+                        icon_data[pixel] = icon_data[pixel] & pixmask
+            size = (icon_pixmap_geometry.width, icon_pixmap_geometry.height)
+            icons[size] = icon_data
+            return icons
+
+        # We have sane _NET_WM_ICON Atom for modern programs
         # convert it later to a proper int array
         icon_data = icon.value.buf()
         if icon.bytes_after:
