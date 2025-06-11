@@ -48,10 +48,6 @@
 #include <X11/Xproto.h>
 #include "scrnintstr.h"
 #include "servermd.h"
-#ifdef USE_DGA
-#define _XF86DGA_SERVER_
-#include <X11/extensions/xf86dgaproto.h>
-#endif
 
 /* glamor support */
 #define GLAMOR_FOR_XORG
@@ -1136,10 +1132,6 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
     ps->Glyphs = fbGlyphs;
     dPtr->CreateScreenResources = pScreen->CreateScreenResources;
     pScreen->CreateScreenResources = qubes_create_screen_resources;
-
-#ifdef USE_DGA
-    DUMMYDGAInit(pScreen);
-#endif
 
     /* initialize XRANDR */
     xf86CrtcConfigInit(pScrn, &DUMMYCrtcConfigFuncs);

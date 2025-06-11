@@ -44,7 +44,6 @@ LT_INIT
 AH_TOP([#include "xorg-server.h"])
 
 # Define a configure option for an alternate module directory
-AC_ARG_ENABLE(dga,           AS_HELP_STRING([--disable-dga], [Build DGA extension (default: yes)]), [DGA=$enableval], [DGA=yes])
 AC_ARG_WITH(xorg-module-dir, [  --with-xorg-module-dir=DIR ],
                              [ moduledir="$withval" ],
                              [ moduledir="$libdir/xorg/modules" ])
@@ -55,13 +54,6 @@ AC_SUBST(moduledir)
 XORG_DRIVER_CHECK_EXT(RANDR, randrproto)
 XORG_DRIVER_CHECK_EXT(RENDER, renderproto)
 XORG_DRIVER_CHECK_EXT(XV, videoproto)
-
-if test "x$DGA" = xyes; then
-	XORG_DRIVER_CHECK_EXT(XFreeXDGA, xf86dgaproto)
-	AC_DEFINE(USE_DGA, 1, [Support DGA extension])
-fi
-AC_SUBST([DGA])
-AM_CONDITIONAL([DGA], [test "x$DGA" = xyes])
 
 # Obtain compiler/linker options for the driver dependencies
 PKG_CHECK_MODULES(XORG, [xorg-server >= 1.0.99.901] xproto fontsproto $REQUIRED_MODULES)
