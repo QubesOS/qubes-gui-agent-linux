@@ -1,3 +1,32 @@
+qubes-gui-agent (4.3.7-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * rpm: update pulseaudio dep in openSUSE variant too
+  * rpm: include BR: pkgconfig(systemd) explicitly
+  * rpm: add BR: pkgconfig
+  * rpm: allow BR: systemd-mini on openSUSE too
+  * rpm: add missing directory ownership
+  * Format commands .qubesbuilder in single quotes
+
+  [ degletnour ]
+  * updated broken gui docs link
+
+  [ Marek Marczykowski-Górecki ]
+  * Correctly label pointing device as absolute, not relative
+  * Add error checking on input device init
+
+  [ Ali Mirjamali ]
+  * Send icons for legacy X11 Apps
+  * Rewrite legacy X11 App icons extraction in xcffib
+  * Change end of trimmed long window titles to U+2026
+
+  [ Marek Marczykowski-Górecki ]
+  * Do not allocate grants for framebuffer by default
+  * Drop DGA extension support
+  * Increase screen pixmap size beyond initial video RAM if needed
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 12 Jun 2025 11:25:34 +0200
+
 qubes-gui-agent (4.3.6-1) unstable; urgency=medium
 
   * xf86-video-dummy: fix type of CreateWindow field
