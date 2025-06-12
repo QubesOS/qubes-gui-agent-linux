@@ -53,6 +53,7 @@
 #include "encoding.h"
 #include <libvchan.h>
 #include <poll.h>
+#include "unistr.h"
 
 
 #include <linux/input.h>
@@ -651,6 +652,27 @@ void send_wmname(Ghandles * g, XID window)
     if (!get_net_wmname(g, window, msg.data, sizeof(msg.data)))
         if (!getwmname_tochar(g, window, msg.data, sizeof(msg.data)))
             return;
+    if (strlen(msg.data) == sizeof(msg.data) - 1) {
+        // Window title might had been longer than output buffer.
+        // Trim at correct utf8 boundary and set end to U+2026 (Horizontal Ellipsis)
+        msg.data[sizeof(msg.data) - 4] = 0;
+        for (int i=0; i < 4; i++) {
+            uint8_t * last_byte = (uint8_t *)msg.data + sizeof(msg.data) - 5 - i;
+            // check for valid 1, 2, 3 or 4 byte uft8 char at the end of string
+            if (
+                !u8_check(last_byte, 1) ||
+                !u8_check(last_byte - 1, 2) ||
+                !u8_check(last_byte - 2, 3) ||
+                !u8_check(last_byte - 3, 4)
+            ) {
+                break;
+            } else {
+                // trim one invalid byte at end of string
+                *last_byte = 0;
+            }
+        }
+        strncat(msg.data, "\xE2\x80\xA6", sizeof(msg.data) - 1);
+    }
     hdr.window = window;
     hdr.type = MSG_WMNAME;
     write_message(g->vchan, hdr, msg);

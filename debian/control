@@ -25,6 +25,7 @@ Build-Depends:
     qubes-gui-common (>= 4.3.0),
     qubesdb-dev,
     libltdl-dev,
+    libunistring-dev,
 Standards-Version: 4.4.0.1
 Homepage: http://www.qubes-os.org/
 #Vcs-Git: git://git.debian.org/collab-maint/qubes-gui-agent.git
