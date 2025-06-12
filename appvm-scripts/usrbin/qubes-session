@@ -35,6 +35,7 @@ loginctl activate "$XDG_SESSION_ID"
 set -a # export all variables
 env=$(systemctl --user show-environment) && eval "$env" || exit
 set +a
+unset env
 
 
 if qsvc guivm-gui-agent; then
