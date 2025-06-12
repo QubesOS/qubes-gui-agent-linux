@@ -48,10 +48,6 @@
 #include <X11/Xproto.h>
 #include "scrnintstr.h"
 #include "servermd.h"
-#ifdef USE_DGA
-#define _XF86DGA_SERVER_
-#include <X11/extensions/xf86dgaproto.h>
-#endif
 
 /* glamor support */
 #define GLAMOR_FOR_XORG
@@ -86,6 +82,16 @@ static Bool     dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
 
 /* static void     DUMMYDisplayPowerManagementSet(ScrnInfoPtr pScrn, */
 /*          int PowerManagementMode, int flags); */
+
+/*
+ * Make FBBase grant-table backed if glamor is initialized. Currently it's
+ * believed to be unneeded, but if you get the
+ * "can't dump window without grant table allocation" message for a root
+ * window, set DUMMY_GLAMOR_GNT_BACKED_FBBASE to 1 and report an issue.
+ * See discussion at:
+ * https://github.com/QubesOS/qubes-gui-agent-linux/pull/233
+ */
+#define DUMMY_GLAMOR_GNT_BACKED_FBBASE 0
 
 #define DUMMY_VERSION 4000
 #define DUMMY_NAME "DUMMYQBS"
@@ -410,13 +416,41 @@ Bool DUMMYAdjustScreenPixmap(ScrnInfoPtr pScrn, int width, int height)
                 "Failed to get the screen pixmap.\n");
         return FALSE;
     }
-    if (cbLine > UINT32_MAX || cbLine * height > pScrn->videoRam * 1024)
-    {
+    if (cbLine > UINT32_MAX) {
         xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-                "Unable to set up a virtual screen size of %dx%d with %d Kb of video memory available.  Please increase the video memory size.\n",
-                width, height, pScrn->videoRam);
+                "Unable to set up a virtual screen size of %dx%d, cbLine "
+                "overflow\n",
+                width, height);
         return FALSE;
     }
+    if (cbLine * height > pScrn->videoRam * 1024) {
+        if (!dPtr->FBBasePriv) {
+            /* If there is no backing grant entries, it's easy enough to extend
+             */
+            pointer *newFBBase;
+            size_t new_size = (cbLine * height + 1023) & ~1023;
+
+            newFBBase = realloc(dPtr->FBBase, new_size);
+            if (!newFBBase) {
+                xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                        "Unable to set up a virtual screen size of %dx%d, "
+                        "cannot allocate memory (%zu bytes)\n",
+                        width, height, new_size);
+                return FALSE;
+            }
+            memset((char*)newFBBase + pScrn->videoRam * 1024,
+                   0,
+                   new_size - pScrn->videoRam * 1024);
+            dPtr->FBBase = newFBBase;
+            pScrn->videoRam = new_size / 1024;
+        } else {
+            xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                    "Unable to set up a virtual screen size of %dx%d with %d Kb of video memory available.  Please increase the video memory size.\n",
+                    width, height, pScrn->videoRam);
+            return FALSE;
+        }
+    }
+
     pScreen->ModifyPixmapHeader(pPixmap, width, height,
             pScrn->depth, xf86GetBppFromDepth(pScrn, pScrn->depth), cbLine,
             dPtr->FBBase);
@@ -915,9 +949,10 @@ qubes_create_screen_resources(ScreenPtr pScreen) {
     if (ret) {
         PixmapPtr pixmap = pScreen->GetScreenPixmap(pScreen);
         if (dPtr->glamor)
-           glamor_egl_create_textured_pixmap_from_gbm_bo(pixmap, dPtr->front_bo, FALSE);
-        xf86_qubes_pixmap_set_private(pixmap,
-                                      dPtr->FBBasePriv);
+            glamor_egl_create_textured_pixmap_from_gbm_bo(pixmap, dPtr->front_bo, FALSE);
+        if (dPtr->FBBasePriv)
+            xf86_qubes_pixmap_set_private(pixmap,
+                                          dPtr->FBBasePriv);
     }
 
     return ret;
@@ -1015,10 +1050,17 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
         return FALSE;
     }
 
-    dPtr->FBBasePriv = qubes_alloc_pixmap_private(pScrn->videoRam * 1024);
-    if (dPtr->FBBasePriv == NULL)
-        return FALSE;
-    dPtr->FBBase = (void *) dPtr->FBBasePriv->data;
+    if (DUMMY_GLAMOR_GNT_BACKED_FBBASE && dPtr->glamor) {
+        dPtr->FBBasePriv = qubes_alloc_pixmap_private(pScrn->videoRam * 1024);
+        if (dPtr->FBBasePriv == NULL)
+            return FALSE;
+        dPtr->FBBase = (void *) dPtr->FBBasePriv->data;
+    } else {
+        dPtr->FBBase = calloc(1, pScrn->videoRam * 1024);
+        if (dPtr->FBBase == NULL)
+            return FALSE;
+    }
+
     
     /*
      * next we save the current state and setup the first mode
@@ -1118,10 +1160,6 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
     ps->Glyphs = fbGlyphs;
     dPtr->CreateScreenResources = pScreen->CreateScreenResources;
     pScreen->CreateScreenResources = qubes_create_screen_resources;
-
-#ifdef USE_DGA
-    DUMMYDGAInit(pScreen);
-#endif
 
     /* initialize XRANDR */
     xf86CrtcConfigInit(pScrn, &DUMMYCrtcConfigFuncs);
@@ -1290,8 +1328,12 @@ DUMMYCloseScreen(CLOSE_SCREEN_ARGS_DECL)
         if (dPtr->FBBasePriv) {
             xf86_qubes_free_pixmap_private(dPtr->FBBasePriv);
             dPtr->FBBasePriv = NULL;
-            dPtr->FBBase = NULL;
+        } else {
+            if (dPtr->FBBase) {
+                free(dPtr->FBBase);
+            }
         }
+        dPtr->FBBase = NULL;
     }
 
     if (dPtr->CursorInfo)

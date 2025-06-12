@@ -34,9 +34,6 @@ extern Bool DUMMYCursorInit(ScreenPtr pScrn);
 extern void DUMMYShowCursor(ScrnInfoPtr pScrn);
 extern void DUMMYHideCursor(ScrnInfoPtr pScrn);
 
-/* in dummy_dga.c */
-Bool DUMMYDGAInit(ScreenPtr pScreen);
-
 /* in dummy_video.c */
 extern void DUMMYInitVideo(ScreenPtr pScreen);
 
@@ -53,10 +50,6 @@ struct gbm_bo;
 
 typedef struct dummyRec 
 {
-    DGAModePtr		DGAModes;
-    int			numDGAModes;
-    Bool		DGAactive;
-    int			DGAViewportStatus;
     /* options */
     OptionInfoPtr Options;
     Bool swCursor;
