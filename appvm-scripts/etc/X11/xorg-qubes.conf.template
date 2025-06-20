@@ -6,7 +6,7 @@ EndSection
 Section "ServerLayout"   
         Identifier     "Default Layout"
         Screen      0  "Screen0" 0 0  
-        InputDevice "qubesdev"
+        InputDevice "qubesdev pointer"
 EndSection
 
 Section "Device"
@@ -39,6 +39,6 @@ EndSection
 
 
 Section "InputDevice"
-        Identifier  "qubesdev"
+        Identifier  "qubesdev pointer"
         Driver      "qubes"
 EndSection
