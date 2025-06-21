@@ -604,6 +604,19 @@ static void dump_window_grant_refs(int window_id, int fd)
         // the window is destroyed before the driver sees the req
         goto send_response;
 
+    if (!x_window->realized) {
+        // Composite redirect is setup/teared-down during Realize-/Unrealize-
+        // Window (called when a window gets mapped/unmapped). So if the window
+        // is not realized we don't have a per window pixmap we can send.
+        //
+        // This means that the configure of a window before mapping will not
+        // send grants. This should be fine since when compRealizeWindow
+        // replaces the pixmap it will trigger a damage event and we will send
+        // the grants then.
+        xf86Msg(X_ERROR, "can't dump not realized window\n");
+        goto send_response;
+    }
+
     screen = x_window->drawable.pScreen;
     pixmap = (*screen->GetWindowPixmap) (x_window);
 
