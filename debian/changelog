@@ -1,3 +1,11 @@
+qubes-gui-agent (4.3.8-1) unstable; urgency=medium
+
+  * Remove '$env' after it's loaded into environment
+  * Include 'pointer' in the qubes input device name
+  * Revert "Use the drained callback on the playback stream"
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 23 Jun 2025 01:59:35 +0200
+
 qubes-gui-agent (4.3.7-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
