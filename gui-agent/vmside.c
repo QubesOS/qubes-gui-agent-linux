@@ -148,6 +148,7 @@ struct window_data {
     int support_delete_window;
     int support_take_focus;
     int window_dump_pending; /* send MSG_WINDOW_DUMP at next damage notification */
+    int mapped;
 };
 
 struct embeder_data {
@@ -470,6 +471,7 @@ static void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
     wd->support_delete_window = False;
     wd->support_take_focus = False;
     wd->window_dump_pending = False;
+    wd->mapped = False;
     list_insert(windows_list, ev->window, wd);
 
     if (attr.border_width > 0) {
@@ -874,6 +876,7 @@ static void process_xevent_map(Ghandles * g, XID window)
 
     if (g->log_level > 1)
         fprintf(stderr, "MAP for window 0x%x\n", (int)window);
+    wd->mapped = True;
     wd->window_dump_pending = True;
     send_window_state(g, window);
     XGetWindowAttributes(g->display, window, &attr);
@@ -898,10 +901,14 @@ static void process_xevent_map(Ghandles * g, XID window)
 static void process_xevent_unmap(Ghandles * g, XID window)
 {
     struct msg_hdr hdr;
+    struct window_data *wd;
     SKIP_NONMANAGED_WINDOW;
+
+    wd = list_lookup(windows_list, window)->data;
 
     if (g->log_level > 1)
         fprintf(stderr, "UNMAP for window 0x%x\n", (int)window);
+    wd->mapped = False;
     hdr.type = MSG_UNMAP;
     hdr.window = window;
     hdr.untrusted_len = 0;
@@ -945,18 +952,23 @@ static void process_xevent_configure(Ghandles * g, XID window,
     struct msg_hdr hdr;
     struct msg_configure conf;
     struct genlist *l;
+    int mapped = False;
     /* SKIP_NONMANAGED_WINDOW; */
-    if (!(l=list_lookup(windows_list, window))) {
+    if ((l=list_lookup(windows_list, window))) {
+        mapped = ((struct window_data*)l->data)->mapped;
+    } else {
         /* if not real managed window, check if this is embeder for another window */
         struct genlist *e;
         if ((e=list_lookup(embeder_list, window))) {
+            struct genlist *i;
             window = ((struct embeder_data*)e->data)->icon_window;
-            if (!list_lookup(windows_list, window))
+            if (!(i = list_lookup(windows_list, window)))
                 /* probably icon window have just destroyed, so ignore message */
                 /* "l" not updated intentionally - when configure notify comes
                  * from the embeder, it should be passed to dom0 (in most cases as
                  * ACK for earlier configure request) */
                 return;
+            mapped = ((struct window_data*)i->data)->mapped;
         } else {
             /* ignore not managed windows */
             return;
@@ -999,7 +1011,10 @@ static void process_xevent_configure(Ghandles * g, XID window,
     conf.height = ev->height;
     conf.override_redirect = ev->override_redirect;
     write_message(g->vchan, hdr, conf);
-    send_pixmap_grant_refs(g, window);
+    if (mapped) {
+        // see comment in dump_window_grant_refs in the xdriver
+        send_pixmap_grant_refs(g, window);
+    }
 }
 
 static void send_clipboard_data(libvchan_t *vchan, XID window, char *data, uint32_t len, int protocol_version)
