@@ -20,6 +20,11 @@ if [ -z "$gui_xid" ]; then
 fi
 gui_opts="-d $gui_xid"
 
+background_color="$(qubesdb-read /qubes-gui-background-color 2>/dev/null)"
+if [ -n "$background_color" ] && [ "$background_color" -gt 0 ]; then
+    gui_opts="$gui_opts -b $background_color"
+fi
+
 debug_mode=$(qubesdb-read /qubes-debug-mode 2> /dev/null)
 if [ -n "$debug_mode" ] && [ "$debug_mode" -gt 0 ]; then
     gui_opts="$gui_opts -vv"
