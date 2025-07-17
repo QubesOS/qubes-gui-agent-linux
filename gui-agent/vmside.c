@@ -699,9 +699,11 @@ void send_wmname(Ghandles * g, XID window)
     write_message(g->vchan, hdr, msg);
 }
 
-/*	Retrieve the supported WM Protocols
-    We don't forward the info to dom0 as we only need specific client protocols
-    */
+/*
+ * Retrieve the supported WM Protocols
+ *
+ * We don't forward the info to dom0 as we only need specific client protocols.
+ */
 void retrieve_wmprotocols(Ghandles * g, XID window, int ignore_fail)
 {
     int nitems;
@@ -739,9 +741,12 @@ void retrieve_wmprotocols(Ghandles * g, XID window, int ignore_fail)
 }
 
 
-/* 	Retrieve the 'real' WMHints.
-    We don't forward the info to dom0 as we only need InputHint and dom0 doesn't care about it
-    */
+/*
+ * Retrieve the 'real' WMHints
+ *
+ * We don't forward the info to dom0 as we only need InputHint and dom0 doesn't
+ * care about it.
+ */
 void retrieve_wmhints(Ghandles * g, XID window, int ignore_fail)
 {
     XWMHints *wm_hints;
