@@ -1548,7 +1548,7 @@ static void wait_for_unix_socket(Ghandles *g)
         else
             prev_umask=umask(0000);
         if (bind(g->xserver_listen_fd, (struct sockaddr *)&sockname, addrlen) == -1) {
-            printf("bind() failed\n");
+            fprintf(stderr, "bind() failed\n");
             close(g->xserver_listen_fd);
             exit(1);
         }
