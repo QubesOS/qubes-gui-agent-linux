@@ -52,6 +52,7 @@
 #include "error.h"
 #include "encoding.h"
 #include "unix-addr.h"
+#include "video-ext-client.h"
 #include <libvchan.h>
 #include <poll.h>
 #include "unistr.h"
@@ -92,6 +93,7 @@
 
 static int damage_event, damage_error;
 static int xfixes_event, xfixes_error;
+static int qve_event;
 /* from gui-common/error.c */
 extern int print_x11_errors;
 
@@ -148,7 +150,8 @@ struct window_data {
     int input_hint; /* the window should get input focus - False=Never */
     int support_delete_window;
     int support_take_focus;
-    int window_dump_pending; /* send MSG_WINDOW_DUMP at next damage notification */
+    int realized;
+    int input_only;
 };
 
 struct embeder_data {
@@ -346,7 +349,8 @@ static void send_event(Ghandles * g, const struct input_event *iev) {
 static void send_wmname(Ghandles * g, XID window);
 static void send_wmnormalhints(Ghandles * g, XID window, int ignore_fail);
 static void send_wmclass(Ghandles * g, XID window, int ignore_fail);
-static void send_pixmap_grant_refs(Ghandles * g, XID window);
+static void send_pixmap_grant_refs(Ghandles * g, XID window,
+                                   struct window_data * wd);
 static void retrieve_wmhints(Ghandles * g, XID window, int ignore_fail);
 static void retrieve_wmprotocols(Ghandles * g, XID window, int ignore_fail);
 
@@ -355,18 +359,9 @@ static void process_xevent_damage(Ghandles * g, XID window,
 {
     struct msg_shmimage mx;
     struct msg_hdr hdr;
-    struct genlist *l;
-    struct window_data *wd;
 
-    l = lookup_window(g, windows_list, window, __func__);
-    if (!l)
+    if (!lookup_window(g, windows_list, window, __func__))
         return;
-    wd = l->data;
-
-    if (wd->window_dump_pending) {
-        send_pixmap_grant_refs(g, window);
-        wd->window_dump_pending = False;
-    }
 
     hdr.type = MSG_SHMIMAGE;
     hdr.window = window;
@@ -375,6 +370,26 @@ static void process_xevent_damage(Ghandles * g, XID window,
     mx.width = width;
     mx.height = height;
     write_message(g->vchan, hdr, mx);
+}
+
+static void process_xevent_realized(Ghandles *g, XQVEWindowRealizedEvent *ev)
+{
+    struct genlist *l;
+    struct window_data *wd;
+
+    l = lookup_window(g, windows_list, ev->window, __func__);
+    if (!l) {
+        return;
+    }
+    wd = l->data;
+
+    wd->realized = !ev->unrealized;
+
+    if (g->log_level > 1) {
+        fprintf(stderr, "window 0x%lx realized=%d\n", ev->window, wd->realized);
+    }
+
+    send_pixmap_grant_refs(g, ev->window, wd);
 }
 
 static void send_cursor(Ghandles *g, XID window, uint32_t cursor)
@@ -490,14 +505,15 @@ static void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
     wd->input_hint = True;
     wd->support_delete_window = False;
     wd->support_take_focus = False;
-    wd->window_dump_pending = False;
+    wd->realized = False;
+    wd->input_only = attr.class == InputOnly;
     list_insert(windows_list, ev->window, wd);
 
     if (attr.border_width > 0) {
         XSetWindowBorderWidth(g->display, ev->window, 0);
     }
 
-    if (attr.class != InputOnly)
+    if (!wd->input_only)
         XDamageCreate(g->display, ev->window,
                 XDamageReportRawRectangles);
     // the following hopefully avoids missed damage events
@@ -539,13 +555,19 @@ static void feed_xdriver(Ghandles * g, int type, int arg1, int arg2)
     }
 }
 
-void send_pixmap_grant_refs(Ghandles * g, XID window)
+static void send_pixmap_grant_refs(Ghandles * g, XID window,
+                                   struct window_data * wd)
 {
     struct msg_hdr hdr;
     uint8_t *wd_msg_buf;
     size_t wd_msg_len;
     size_t rcvd;
     int ret;
+
+    if (wd->input_only || !wd->realized) {
+        // see comment in dump_window_grant_refs in the input driver
+        return;
+    }
 
     feed_xdriver(g, 'W', (int) window, 0);
     if (read(g->xserver_fd, &wd_msg_len, sizeof(wd_msg_len)) != sizeof(wd_msg_len))
@@ -897,18 +919,13 @@ static void process_xevent_map(Ghandles * g, XID window)
     struct msg_hdr hdr;
     struct msg_map_info map_info;
     Window transient;
-    struct genlist *l;
-    struct window_data *wd;
 
-    l = lookup_window(g, windows_list, window, __func__);
-    if (!l) {
+    if (!lookup_window(g, windows_list, window, __func__)) {
         return;
     }
-    wd = l->data;
 
     if (g->log_level > 1)
         fprintf(stderr, "MAP for window 0x%lx\n", window);
-    wd->window_dump_pending = True;
     send_window_state(g, window);
     XGetWindowAttributes(g->display, window, &attr);
     if (XGetTransientForHint(g->display, window, &transient))
@@ -986,21 +1003,27 @@ static void process_xevent_configure(Ghandles * g, XID window,
     struct msg_configure conf;
     struct genlist *l;
     struct window_data *wd = NULL;
+    struct window_data *wd_msg;
 
     l = lookup_window(g, windows_list, window, NULL);
     if (l) {
         wd = l->data;
+        wd_msg = wd;
     } else {
         /* if not real managed window, check if this is embeder for another window */
         struct genlist *e = lookup_window(g, embeder_list, window, NULL);
         if (e) {
+            struct genlist *i;
             window = ((struct embeder_data*)e->data)->icon_window;
-            if (!list_lookup(windows_list, window))
-                /* probably icon window have just destroyed, so ignore message */
+            i = lookup_window(g, windows_list, window, NULL);
+            if (!i)
+                /* probably icon window has just been destroyed, so ignore
+                 * message */
                 return;
             /* l and wd not updated intentionally - when configure notify comes
              * from the embeder, it should be passed to dom0 (in most cases as
              * ACK for earlier configure request) */
+            wd_msg = i->data;
         } else {
             /* ignore not managed windows */
             log_unmanaged_window(g, __func__, window);
@@ -1044,7 +1067,7 @@ static void process_xevent_configure(Ghandles * g, XID window,
     conf.height = ev->height;
     conf.override_redirect = ev->override_redirect;
     write_message(g->vchan, hdr, conf);
-    send_pixmap_grant_refs(g, window);
+    send_pixmap_grant_refs(g, window, wd_msg);
 }
 
 static void send_clipboard_data(libvchan_t *vchan, XID window, char *data, uint32_t len, int protocol_version)
@@ -1467,6 +1490,10 @@ static void process_xevent(Ghandles * g)
                 process_xevent_cursor(
                     g,
                     (XFixesCursorNotifyEvent *) &event_buffer);
+            } else if (event_buffer.type == (qve_event + QVEWindowRealized)) {
+                process_xevent_realized(
+                        g,
+                        (XQVEWindowRealizedEvent *)&event_buffer);
             } else if (g->log_level > 1) {
                 fprintf(stderr,
                         "%s: unhandled event of type %d\n",
@@ -1544,7 +1571,22 @@ static int send_full_window_info(Ghandles *g, XID w, struct window_data *wd)
     conf.height = attr.height;
     conf.override_redirect = attr.override_redirect;
     write_message(g->vchan, hdr, conf);
-    send_pixmap_grant_refs(g, w);
+
+    int realized = attr.map_state == IsViewable;
+    if (realized != wd->realized) {
+        fprintf(stderr, "Error: Internal \"realized\" state does not match "
+                        "X server state\n");
+        wd->realized = realized;
+    }
+
+    int input_only = attr.class == InputOnly;
+    if (input_only != wd->input_only) {
+        fprintf(stderr, "Error: Internal \"input_only\" state does not match "
+                        "X server state\n");
+        wd->input_only = input_only;
+    }
+
+    send_pixmap_grant_refs(g, w, wd);
 
     send_wmclass(g, w, 1);
     send_wmnormalhints(g, w, 1);
@@ -2613,6 +2655,16 @@ int main(int argc, char **argv)
     if (!XDamageQueryExtension(g.display, &damage_event,
                 &damage_error)) {
         perror("XDamageQueryExtension");
+        exit(1);
+    }
+
+    if (!XQVEQueryExtension(g.display, &qve_event)) {
+        fprintf(stderr, QVE_NAME " is not available\n");
+        exit(1);
+    }
+
+    if (!XQVERegister(g.display)) {
+        fprintf(stderr, "Failed to register with " QVE_NAME "\n");
         exit(1);
     }
 

@@ -23,9 +23,9 @@ CC ?= gcc
 CFLAGS += -I../include/ `pkg-config --cflags vchan` -g -Wall -Wextra -Werror -fPIC \
 	  -Wmissing-prototypes -Wstrict-prototypes -Wold-style-declaration \
 	  -Wold-style-definition
-OBJS = vmside.o txrx-vchan.o error.o list.o encoding.o
+OBJS = vmside.o txrx-vchan.o error.o list.o encoding.o video-ext-client.o
 LIBS = -lX11 -lXdamage -lXcomposite -lXfixes `pkg-config --libs vchan` -lqubesdb \
-	   -lunistring
+	   -lunistring -lXext
 
 
 all: qubes-gui qubes-gui-runuser
