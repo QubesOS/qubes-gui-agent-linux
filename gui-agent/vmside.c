@@ -482,7 +482,7 @@ static void process_xevent_createnotify(Ghandles * g, XCreateWindowEvent * ev)
     /* Initialize window_data structure */
     wd = (struct window_data*)malloc(sizeof(struct window_data));
     if (!wd) {
-        fprintf(stderr, "OUT OF MEMORY\n");
+        fprintf(stderr, "%s: OUT OF MEMORY\n", __func__);
         return;
     }
     /* Default values for window_data. By default, window should receive InputFocus events */
@@ -1318,11 +1318,11 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
                             g->screen));
                 wd->is_docked=True;
                 if (g->log_level > 1)
-                    fprintf(stderr, " created embeder 0x%lx\n", wd->embeder);
+                    fprintf(stderr, "created embeder 0x%lx\n", wd->embeder);
                 XSelectInput(g->display, wd->embeder, SubstructureNotifyMask);
                 ed = (struct embeder_data*)malloc(sizeof(struct embeder_data));
                 if (!ed) {
-                    fprintf(stderr, "OUT OF MEMORY\n");
+                    fprintf(stderr, "%s: OUT OF MEMORY\n", __func__);
                     return;
                 }
                 ed->icon_window = w;
@@ -1446,22 +1446,28 @@ static void process_xevent(Ghandles * g)
             if (event_buffer.type == (damage_event + XDamageNotify)) {
                 dev = (XDamageNotifyEvent *) & event_buffer;
                 g->time = dev->timestamp;
-                //      fprintf(stderr, "x=%hd y=%hd gx=%hd gy=%hd w=%hd h=%hd\n",
-                //        dev->area.x, dev->area.y, dev->geometry.x, dev->geometry.y, dev->area.width, dev->area.height); 
+                if (g->log_level > 1) {
+                      fprintf(stderr,
+                              "DamageNotify x=%hd y=%hd gx=%hd gy=%hd w=%hd h=%hd\n",
+                              dev->area.x, dev->area.y,
+                              dev->geometry.x, dev->geometry.y,
+                              dev->area.width, dev->area.height);
+                }
                 process_xevent_damage(g, dev->drawable,
                         dev->area.x,
                         dev->area.y,
                         dev->area.width,
                         dev->area.height);
-                //                      fprintf(stderr, "@");
             } else if (event_buffer.type == (xfixes_event + XFixesCursorNotify)) {
                 process_xevent_cursor(
                     g,
                     (XFixesCursorNotifyEvent *) &event_buffer);
-            } else if (g->log_level > 1)
-                fprintf(stderr, "#");
+            } else if (g->log_level > 1) {
+                fprintf(stderr,
+                        "%s: unhandled event of type %d\n",
+                        __func__, event_buffer.type);
+            }
     }
-
 }
 
 /* return 1 if info sent, 0 otherwise */
