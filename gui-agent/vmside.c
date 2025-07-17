@@ -329,11 +329,11 @@ static void send_event(Ghandles * g, const struct input_event *iev) {
         }
         g->created_input_device = 0;
     }
-    
+
     // send syn
     const struct input_event syn = {.type = EV_SYN, .code = 0, .value = 0};
     status = write(g->uinput_fd, &(syn), sizeof(struct input_event));
-    
+
     if ( status < 0 ) {
         if (g->log_level > 0) {
             fprintf(stderr, "writing SYN failed, falling back to xdriver. WRITE ERROR CODE: %d\n", status);
@@ -1790,7 +1790,7 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
                 XFreeModifiermap(modmap);
             }
         }
-        
+
         feed_xdriver(g, 'K', key.keycode, key.type == KeyPress ? 1 : 0);
     } else {
         int mod_mask;
@@ -1799,7 +1799,7 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
         iev.type = EV_KEY;
         XModifierKeymap *modmap;
         modmap = XGetModifierMapping(g->display);
-        
+
         if (!modmap) {
                 if (g->log_level > 0)
                     fprintf(stderr, "failed to get modifier mapping\n");
@@ -1833,7 +1833,7 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
                         // update state for this modifier
                         g->last_known_modifier_states ^= mod_mask;
                     }
-                    
+
                     // last modifier state was up, modifier has since been pressed down
                     else if (!(g->last_known_modifier_states & mod_mask) && (key.state & mod_mask)) {
                         iev.code = modmap->modifiermap[mod_index*modmap->max_keypermod] - 8;
@@ -1846,7 +1846,7 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
                 }
             }
         }
-        
+
         XFreeModifiermap(modmap);
 
         // caps lock needs to be excluded to not send down, up, down or down, up, up on a caps lock sync instead of down, up
@@ -1855,7 +1855,7 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
             iev.value = (key.type == KeyPress ? 1 : 0);
             send_event(g, &iev);
         }
-        
+
     }
 }
 
@@ -2501,17 +2501,17 @@ int main(int argc, char **argv)
         g.uinput_fd = open("/dev/uinput", O_WRONLY | O_NDELAY);
         if(g.uinput_fd < 0) {
             g.uinput_fd = open("/dev/input/uinput", O_WRONLY | O_NDELAY);
-            
+
             if(g.uinput_fd < 0) {
                 fprintf(stderr, "Couldn't open uinput, falling back to xdriver\n");
                 g.created_input_device = 0;
             }
         }
     }
-    
+
     // input device creation
     if(g.created_input_device) {
-        
+
         if (ioctl(g.uinput_fd, UI_SET_EVBIT, EV_SYN) < 0) {
             fprintf(stderr, "error setting EVBIT for EV_SYN, falling back to xdriver\n");
             g.created_input_device = 0;
@@ -2528,22 +2528,22 @@ int main(int argc, char **argv)
                 fprintf(stderr, "Not able to set KEYBIT %d\n", i);
             }
         }
-        
+
         struct uinput_setup usetup;
         memset(&usetup, 0, sizeof(usetup));
         strcpy(usetup.name, "Qubes Virtual Input Device");
-        
+
         if(ioctl(g.uinput_fd, UI_DEV_SETUP, &usetup) < 0) {
             fprintf(stderr, "Input device setup failed, falling back to xdriver\n");
             g.created_input_device = 0;
         } else {
-            
+
             if(ioctl(g.uinput_fd, UI_DEV_CREATE) < 0) {
                 fprintf(stderr, "Input device creation failed, falling back to xdriver\n");
                 g.created_input_device = 0;
             }
         }
-        
+
         g.last_known_modifier_states = 0;
     }
 
