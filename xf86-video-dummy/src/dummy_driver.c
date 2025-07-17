@@ -568,7 +568,7 @@ DUMMYProbe(DriverPtr drv, int flags)
 
         for (i = 0; i < numUsed; i++) {
             ScrnInfoPtr pScrn = NULL;
-            int entityIndex = 
+            int entityIndex =
                 xf86ClaimNoSlot(drv,DUMMY_CHIP,devSections[i],TRUE);
             /* Allocate a ScrnInfoRec and claim the slot */
             if ((pScrn = xf86AllocateScreen(drv,0 ))) {
@@ -589,7 +589,7 @@ DUMMYProbe(DriverPtr drv, int flags)
                 foundScreen = TRUE;
             }
         }
-    }    
+    }
     return foundScreen;
 }
 
@@ -609,21 +609,21 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
     GDevPtr device = xf86GetEntityInfo(pScrn->entityList[0])->device;
     const char *render, *defaultRender = "/dev/dri/renderD128";
 
-    if (flags & PROBE_DETECT) 
+    if (flags & PROBE_DETECT)
         return TRUE;
-    
+
     /* Allocate the DummyRec driverPrivate */
     if (!DUMMYGetRec(pScrn)) {
         return FALSE;
     }
-    
+
     dPtr = DUMMYPTR(pScrn);
 
     pScrn->chipset = (char *)xf86TokenToString(DUMMYChipsets,
             DUMMY_CHIP);
 
     xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Chipset is a DUMMY\n");
-    
+
     pScrn->monitor = pScrn->confScreen->monitor;
 
     if (!xf86SetDepthBpp(pScrn, 0, 0, 0,  Support24bppFb | Support32bppFb))
@@ -668,7 +668,7 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
         }
     }
 
-    if (!xf86SetDefaultVisual(pScrn, -1)) 
+    if (!xf86SetDefaultVisual(pScrn, -1))
         return FALSE;
 
     if (pScrn->depth > 1) {
@@ -719,7 +719,7 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
     clockRanges->minClock = 11000;   /* guessed §§§ */
     clockRanges->maxClock = maxClock;
     clockRanges->clockIndex = -1;		/* programmable */
-    clockRanges->interlaceAllowed = TRUE; 
+    clockRanges->interlaceAllowed = TRUE;
     clockRanges->doubleScanAllowed = TRUE;
 
     /* Subtract memory for HW cursor */
@@ -755,8 +755,8 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
      * driver and if the driver doesn't provide code to set them.  They
      * are not pre-initialised at all.
      */
-    xf86SetCrtcForModes(pScrn, 0); 
- 
+    xf86SetCrtcForModes(pScrn, 0);
+
     /* Set the current mode to the first in the list */
     pScrn->currentMode = pScrn->modes;
 
@@ -774,7 +774,7 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
         if (!xf86LoadSubModule(pScrn, "ramdac"))
             RETURN;
     }
-    
+
     /* We have no contiguous physical fb in physical memory */
     pScrn->memPhysBase = 0;
     pScrn->fbOffset = 0;
@@ -784,7 +784,7 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
 
     if (!render)
         render = defaultRender;
- 
+
     dPtr->fd = open(render, O_RDWR);
     if (dPtr->fd < 0)
         xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "Open render %s fail\n", render);
@@ -809,7 +809,7 @@ static Bool
 DUMMYEnterVT(VT_FUNC_ARGS_DECL)
 {
     SCRN_INFO_PTR(arg);
-    
+
     /* Should we re-save the text mode on each VT enter? */
     if(!dummyModeInit(pScrn, pScrn->currentMode))
       return FALSE;
@@ -843,7 +843,7 @@ DUMMYLoadPalette(
        shift = Gshift = 1;
        break;
    case 16:
-       shift = 0; 
+       shift = 0;
        Gshift = 0;
        break;
    default:
@@ -856,7 +856,7 @@ DUMMYLoadPalette(
        dPtr->colors[index].red = colors[index].red << shift;
        dPtr->colors[index].green = colors[index].green << Gshift;
        dPtr->colors[index].blue = colors[index].blue << shift;
-   } 
+   }
 
 }
 
@@ -1061,12 +1061,12 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
             return FALSE;
     }
 
-    
+
     /*
      * next we save the current state and setup the first mode
      */
     dummySave(pScrn);
-    
+
     if (!dummyModeInit(pScrn,pScrn->currentMode))
         return FALSE;
     DUMMYAdjustFrame(ADJUST_FRAME_ARGS(pScrn, pScrn->frameX0, pScrn->frameY0));
@@ -1075,9 +1075,9 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
      * Reset visual list.
      */
     miClearVisualTypes();
-    
+
     /* Setup the visuals we support. */
-    
+
     if (!miSetVisualTypes(pScrn->depth,
                 miGetDefaultVisualMask(pScrn->depth),
                 pScrn->rgbBits, pScrn->defaultVisual))
@@ -1211,7 +1211,7 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
     }
 
     /* XRANDR initialization end */
-    
+
     if (dPtr->swCursor)
         xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Using Software Cursor.\n");
 
@@ -1225,9 +1225,9 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
         AvailFBArea.y1 = 0;
         AvailFBArea.x2 = pScrn->displayWidth;
         AvailFBArea.y2 = lines;
-        xf86InitFBManager(pScreen, &AvailFBArea); 
+        xf86InitFBManager(pScreen, &AvailFBArea);
 
-        xf86DrvMsg(pScrn->scrnIndex, X_INFO, 
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO,
                 "Using %i scanlines of offscreen memory \n"
                 , lines - pScrn->virtualY);
     }
@@ -1253,8 +1253,8 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
         return FALSE;
 
     if (!xf86HandleColormaps(pScreen, 256, pScrn->rgbBits,
-                DUMMYLoadPalette, NULL, 
-                CMAP_PALETTED_TRUECOLOR 
+                DUMMYLoadPalette, NULL,
+                CMAP_PALETTED_TRUECOLOR
                 | CMAP_RELOAD_ON_MODE_SWITCH))
         return FALSE;
 
@@ -1292,7 +1292,7 @@ DUMMYSwitchMode(SWITCH_MODE_ARGS_DECL)
 DUMMYAdjustFrame(ADJUST_FRAME_ARGS_DECL)
 {
     SCRN_INFO_PTR(arg);
-    int Base; 
+    int Base;
 
     Base = (y * pScrn->displayWidth + x) >> 2;
 
@@ -1363,7 +1363,7 @@ DUMMYSaveScreen(ScreenPtr pScreen, int mode)
         dPtr = DUMMYPTR(pScrn);
 
         dPtr->screenSaver = xf86IsUnblank(mode);
-    } 
+    }
     return TRUE;
 }
 
@@ -1379,7 +1379,7 @@ dummySave(ScrnInfoPtr pScrn)
 {
 }
 
-    static void 
+    static void
 dummyRestore(ScrnInfoPtr pScrn, Bool restoreText)
 {
 }
@@ -1421,7 +1421,7 @@ DUMMYCreateWindow(WindowPtr pWin)
             VFB_PROP = MakeAtom(VFB_PROP_NAME, strlen(VFB_PROP_NAME), 1);
 
 #if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) < 21
-        ret = ChangeWindowProperty(pWinRoot, VFB_PROP, XA_STRING, 
+        ret = ChangeWindowProperty(pWinRoot, VFB_PROP, XA_STRING,
                 8, PropModeReplace, (int)4, (pointer)"TRUE", FALSE);
 #else
         ret = dixChangeWindowProperty(serverClient, pWinRoot,
