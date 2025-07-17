@@ -1650,7 +1650,7 @@ static void mkghandles(Ghandles * g)
 
     g->xserver_listen_fd = -1;
     g->xserver_fd = -1;
-    wait_for_unix_socket(g);	// wait for Xorg qubes_drv to connect to us
+    wait_for_unix_socket(g); // wait for Xorg qubes_drv to connect to us
     do {
         g->display = XOpenDisplay(NULL);
         if (!g->display && errno != EAGAIN) {
@@ -1661,8 +1661,8 @@ static void mkghandles(Ghandles * g)
     if (g->log_level > 0)
         fprintf(stderr,
                 "Connection to local X server established.\n");
-    g->screen = DefaultScreen(g->display);	/* get CRT id number */
-    g->root_win = RootWindow(g->display, g->screen);	/* get default attributes */
+    g->screen = DefaultScreen(g->display); /* get CRT id number */
+    g->root_win = RootWindow(g->display, g->screen); /* get default attributes */
     g->context = XCreateGC(g->display, g->root_win, 0, NULL);
     g->stub_win = XCreateSimpleWindow(g->display, g->root_win,
             0, 0, 1, 1,
