@@ -159,14 +159,38 @@ static struct genlist *windows_list;
 static struct genlist *embeder_list;
 static Ghandles *ghandles_for_vchan_reinitialize;
 
-#define SKIP_NONMANAGED_WINDOW do {                                    \
-    if (!list_lookup(windows_list, window)) {                          \
-        if (g->log_level > 0)                                          \
-            fprintf(stderr, "Skipping unmanaged window 0x%lx\n",       \
-                    window);                                           \
-        return;                                                        \
-    }                                                                  \
-} while (0)
+static void log_unmanaged_window(Ghandles *g, const char *context, XID window) {
+    if (g->log_level > 0) {
+        fprintf(stderr,
+                "%s: window 0x%lx not managed\n",
+                context, window);
+    }
+}
+
+static struct genlist *lookup_window(
+        Ghandles *g,
+        struct genlist *list,
+        XID window,
+        const char *log_context)
+{
+    struct genlist *l = list_lookup(list, window);
+    if (l == NULL) {
+        if (log_context != NULL) {
+            log_unmanaged_window(g, log_context, window);
+        }
+        return NULL;
+    }
+
+    if (l->data == NULL) {
+        // Should be unreachable.
+        fprintf(stderr,
+                "Error: list entry (for window 0x%lx) without data found!\n",
+                window);
+        exit(1);
+    }
+
+    return l;
+}
 
 /* Cursor name translation. See X11/cursorfont.h. */
 
@@ -334,11 +358,11 @@ static void process_xevent_damage(Ghandles * g, XID window,
     struct genlist *l;
     struct window_data *wd;
 
-    l = list_lookup(windows_list, window);
+    l = lookup_window(g, windows_list, window, __func__);
     if (!l)
         return;
-
     wd = l->data;
+
     if (wd->window_dump_pending) {
         send_pixmap_grant_refs(g, window);
         wd->window_dump_pending = False;
@@ -410,7 +434,7 @@ static void process_xevent_cursor(Ghandles *g, XFixesCursorNotifyEvent *ev)
         if (!ret || window_under_pointer == None)
             return;
 
-        if (!list_lookup(windows_list, window_under_pointer))
+        if (!lookup_window(g, windows_list, window_under_pointer, __func__))
             return;
 
         cursor = find_cursor(g, ev->cursor_name);
@@ -684,11 +708,13 @@ void retrieve_wmprotocols(Ghandles * g, XID window, int ignore_fail)
     Atom *supported_protocols;
     int i;
     struct genlist *l;
+    struct window_data *wd;
 
-    if (!((l=list_lookup(windows_list, window)) && (l->data))) {
-        fprintf(stderr, "ERROR retrieve_wmprotocols: Window 0x%lx data not initialized\n", window);
+    l = lookup_window(g, windows_list, window, __func__);
+    if (!l) {
         return;
     }
+    wd = l->data;
 
     if (XGetWMProtocols(g->display, window, &supported_protocols, &nitems) == 1) {
         for (i=0; i < nitems; i++) {
@@ -696,12 +722,12 @@ void retrieve_wmprotocols(Ghandles * g, XID window, int ignore_fail)
                 if (g->log_level > 1)
                     fprintf(stderr, "Protocol take_focus supported for Window 0x%lx\n", window);
 
-                ((struct window_data*)l->data)->support_take_focus = True;
+                wd->support_take_focus = True;
             } else if (supported_protocols[i] == g->wmDeleteWindow) {
                 if (g->log_level > 1)
                     fprintf(stderr, "Protocol delete_window supported for Window 0x%lx\n", window);
 
-                ((struct window_data*)l->data)->support_delete_window = True;
+                wd->support_delete_window = True;
             }
         }
     } else {
@@ -720,11 +746,13 @@ void retrieve_wmhints(Ghandles * g, XID window, int ignore_fail)
 {
     XWMHints *wm_hints;
     struct genlist *l;
+    struct window_data *wd;
 
-    if (!((l=list_lookup(windows_list, window)) && (l->data))) {
-        fprintf(stderr, "ERROR retrieve_wmhints: Window 0x%lx data not initialized\n", window);
+    l = lookup_window(g, windows_list, window, __func__);
+    if (!l) {
         return;
     }
+    wd = l->data;
 
     if (!(wm_hints = XGetWMHints(g->display, window))) {
         if (!ignore_fail)
@@ -733,7 +761,7 @@ void retrieve_wmhints(Ghandles * g, XID window, int ignore_fail)
     }
 
     if (wm_hints->flags & InputHint) {
-        ((struct window_data*)l->data)->input_hint = wm_hints->input;
+        wd->input_hint = wm_hints->input;
 
         if (g->log_level > 1)
             fprintf(stderr, "Received input hint 0x%x for Window 0x%lx\n", wm_hints->input, window);
@@ -741,7 +769,7 @@ void retrieve_wmhints(Ghandles * g, XID window, int ignore_fail)
         // Default value
         if (g->log_level > 1)
             fprintf(stderr, "Received WMHints without input hint set for Window 0x%lx\n", window);
-        ((struct window_data*)l->data)->input_hint = True;
+        wd->input_hint = True;
     }
     XFree(wm_hints);
 }
@@ -864,10 +892,14 @@ static void process_xevent_map(Ghandles * g, XID window)
     struct msg_hdr hdr;
     struct msg_map_info map_info;
     Window transient;
+    struct genlist *l;
     struct window_data *wd;
-    SKIP_NONMANAGED_WINDOW;
 
-    wd = list_lookup(windows_list, window)->data;
+    l = lookup_window(g, windows_list, window, __func__);
+    if (!l) {
+        return;
+    }
+    wd = l->data;
 
     if (g->log_level > 1)
         fprintf(stderr, "MAP for window 0x%lx\n", window);
@@ -895,7 +927,10 @@ static void process_xevent_map(Ghandles * g, XID window)
 static void process_xevent_unmap(Ghandles * g, XID window)
 {
     struct msg_hdr hdr;
-    SKIP_NONMANAGED_WINDOW;
+
+    if (!lookup_window(g, windows_list, window, __func__)) {
+        return;
+    }
 
     if (g->log_level > 1)
         fprintf(stderr, "UNMAP for window 0x%lx\n", window);
@@ -911,28 +946,31 @@ static void process_xevent_destroy(Ghandles * g, XID window)
 {
     struct msg_hdr hdr;
     struct genlist *l;
-    /* embeders are not manged windows, so must be handled before SKIP_NONMANAGED_WINDOW */
-    if ((l = list_lookup(embeder_list, window))) {
-        if (l->data) {
-            free(l->data);
-        }
+    struct window_data *wd;
+
+    /* embeders are not manged windows, so must be handled first */
+    l = lookup_window(g, embeder_list, window, NULL);
+    if (l) {
+        free(l->data);
         list_remove(l);
+        return;
     }
 
-    SKIP_NONMANAGED_WINDOW;
+    l = lookup_window(g, windows_list, window, __func__);
+    if (!l) {
+        return;
+    }
+    wd = l->data;
     if (g->log_level > 0)
         fprintf(stderr, "handle destroy 0x%lx\n", window);
     hdr.type = MSG_DESTROY;
     hdr.window = window;
     hdr.untrusted_len = 0;
     write_struct(g->vchan, hdr);
-    l = list_lookup(windows_list, window);
-    if (l->data) {
-        if (((struct window_data*)l->data)->is_docked) {
-            XDestroyWindow(g->display, ((struct window_data*)l->data)->embeder);
-        }
-        free(l->data);
+    if (wd->is_docked) {
+        XDestroyWindow(g->display, wd->embeder);
     }
+    free(l->data);
     list_remove(l);
 }
 
@@ -942,20 +980,25 @@ static void process_xevent_configure(Ghandles * g, XID window,
     struct msg_hdr hdr;
     struct msg_configure conf;
     struct genlist *l;
-    /* SKIP_NONMANAGED_WINDOW; */
-    if (!(l=list_lookup(windows_list, window))) {
+    struct window_data *wd = NULL;
+
+    l = lookup_window(g, windows_list, window, NULL);
+    if (l) {
+        wd = l->data;
+    } else {
         /* if not real managed window, check if this is embeder for another window */
-        struct genlist *e;
-        if ((e=list_lookup(embeder_list, window))) {
+        struct genlist *e = lookup_window(g, embeder_list, window, NULL);
+        if (e) {
             window = ((struct embeder_data*)e->data)->icon_window;
             if (!list_lookup(windows_list, window))
                 /* probably icon window have just destroyed, so ignore message */
-                /* "l" not updated intentionally - when configure notify comes
-                 * from the embeder, it should be passed to dom0 (in most cases as
-                 * ACK for earlier configure request) */
                 return;
+            /* l and wd not updated intentionally - when configure notify comes
+             * from the embeder, it should be passed to dom0 (in most cases as
+             * ACK for earlier configure request) */
         } else {
             /* ignore not managed windows */
+            log_unmanaged_window(g, __func__, window);
             return;
         }
     }
@@ -965,17 +1008,17 @@ static void process_xevent_configure(Ghandles * g, XID window,
                 "handle configure event 0x%lx w=%d h=%d ovr=%d\n",
                 window, ev->width, ev->height,
                 ev->override_redirect);
-    if (l && l->data && ((struct window_data*)l->data)->is_docked) {
+    if (wd && wd->is_docked) {
         /* for docked icon, ensure that it fills embeder window; don't send any
          * message to dom0 - it will be done for embeder itself*/
         XWindowAttributes attr;
         int ret;
 
-        ret = XGetWindowAttributes(g->display, ((struct window_data*)l->data)->embeder, &attr);
+        ret = XGetWindowAttributes(g->display, wd->embeder, &attr);
         if (ret != 1) {
             fprintf(stderr,
                     "XGetWindowAttributes for 0x%lx failed in "
-                    "handle_xevent_configure, ret=0x%x\n", ((struct window_data*)l->data)->embeder, ret);
+                    "handle_xevent_configure, ret=0x%x\n", wd->embeder, ret);
             return;
         }
         if (ev->x != 0 || ev->y != 0 || ev->width != attr.width || ev->height != attr.height) {
@@ -1169,8 +1212,17 @@ static void process_xevent_selection_req(Ghandles * g,
 
 static void process_xevent_property(Ghandles * g, XID window, XPropertyEvent * ev)
 {
+    struct genlist *l;
+    struct window_data *wd;
+
     g->time = ev->time;
-    SKIP_NONMANAGED_WINDOW;
+
+    l = lookup_window(g, windows_list, window, __func__);
+    if (!l) {
+        return;
+    }
+    wd = l->data;
+
     if (g->log_level > 1)
         fprintf(stderr, "handle property %s for window 0x%lx\n",
                 XGetAtomName(g->display, ev->atom), ev->window);
@@ -1187,13 +1239,12 @@ static void process_xevent_property(Ghandles * g, XID window, XPropertyEvent * e
     else if (ev->atom == g->wmProtocols)
         retrieve_wmprotocols(g,window, 0);
     else if (ev->atom == g->xembed_info) {
-        struct genlist *l = list_lookup(windows_list, window);
         Atom act_type;
         unsigned long nitems, bytesafter;
         unsigned char *data;
         int ret, act_fmt;
 
-        if (!l->data || !((struct window_data*)l->data)->is_docked)
+        if (wd->is_docked)
             /* ignore _XEMBED_INFO change on non-docked windows */
             return;
         ret = XGetWindowProperty(g->display, window, g->xembed_info, 0, 2, False,
@@ -1233,10 +1284,12 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
             case SYSTEM_TRAY_REQUEST_DOCK:
                 w = ev->data.l[2];
 
-                if (!(l=list_lookup(windows_list, w))) {
-                    fprintf(stderr, "ERROR process_xevent_message: Window 0x%lx not initialized\n", w);
+                l = lookup_window(g, windows_list, w, "SYSTEM_TRAY_REQUEST_DOCK");
+                if (!l) {
                     return;
                 }
+                wd = l->data;
+
                 if (g->log_level > 0)
                     fprintf(stderr, "tray request dock for window 0x%lx\n", w);
                 ret = XGetWindowProperty(g->display, w, g->xembed_info, 0, 2,
@@ -1256,11 +1309,6 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
                 if (ret == Success && nitems > 0)
                     XFree(data);
 
-                if (!(l->data)) {
-                    fprintf(stderr, "ERROR process_xevent_message: Window 0x%lx data not initialized\n", w);
-                    return;
-                }
-                wd = (struct window_data*)(l->data);
                 /* TODO: error checking */
                 wd->embeder = XCreateSimpleWindow(g->display, g->root_win,
                         0, 0, 32, 32, /* default icon size, will be changed by dom0 */
@@ -1324,8 +1372,8 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
         struct msg_hdr hdr;
         struct msg_window_flags msg;
 
-        /* SKIP_NONMANAGED_WINDOW */
-        if (!list_lookup(windows_list, ev->window)) return;
+        if (!lookup_window(g, windows_list, ev->window, "_NET_WM_STATE"))
+            return;
 
         msg.flags_set = 0;
         msg.flags_unset = 0;
@@ -1808,13 +1856,18 @@ static void handle_keypress(Ghandles * g, XID UNUSED(winid))
 static void handle_button(Ghandles * g, XID winid)
 {
     struct msg_button key;
-    struct genlist *l = list_lookup(windows_list, winid);
+    struct genlist *l;
+    struct window_data *wd = NULL;
 
+    l = lookup_window(g, windows_list, winid, NULL);
+    if (l) {
+        wd = l->data;
+    }
 
     read_data(g->vchan, (char *) &key, sizeof(key));
-    if (l && l->data && ((struct window_data*)l->data)->is_docked) {
+    if (wd && wd->is_docked) {
         /* get position of embeder, not icon itself*/
-        winid = ((struct window_data*)l->data)->embeder;
+        winid = wd->embeder;
         XRaiseWindow(g->display, winid);
     }
 
@@ -1831,12 +1884,18 @@ static void handle_motion(Ghandles * g, XID winid)
     //      XMotionEvent event;
     XWindowAttributes attr;
     int ret;
-    struct genlist *l = list_lookup(windows_list, winid);
+    struct genlist *l;
+    struct window_data *wd = NULL;
+
+    l = lookup_window(g, windows_list, winid, NULL);
+    if (l) {
+        wd = l->data;
+    }
 
     read_data(g->vchan, (char *) &key, sizeof(key));
-    if (l && l->data && ((struct window_data*)l->data)->is_docked) {
+    if (wd && wd->is_docked) {
         /* get position of embeder, not icon itself*/
-        winid = ((struct window_data*)l->data)->embeder;
+        winid = wd->embeder;
     }
     ret = XGetWindowAttributes(g->display, winid, &attr);
     if (ret != 1) {
@@ -1856,13 +1915,19 @@ static void handle_crossing(Ghandles * g, XID winid)
     struct msg_crossing key;
     XWindowAttributes attr;
     int ret;
-    struct genlist *l = list_lookup(windows_list, winid);
+    struct genlist *l;
+    struct window_data *wd = NULL;
+
+    l = lookup_window(g, windows_list, winid, NULL);
+    if (l) {
+        wd = l->data;
+    }
 
     /* we want to always get root window child (as this we get from
      * XQueryPointer and can compare to window_under_pointer), so for embeded
      * window get the embeder */
-    if (l && l->data && ((struct window_data*)l->data)->is_docked) {
-        winid = ((struct window_data*)l->data)->embeder;
+    if (wd && wd->is_docked) {
+        winid = wd->embeder;
     }
 
     read_data(g->vchan, (char *) &key, sizeof(key));
@@ -1933,6 +1998,7 @@ static void handle_focus(Ghandles * g, XID winid)
 {
     struct msg_focus key;
     struct genlist *l;
+    struct window_data *wd;
     int input_hint;
     int use_take_focus;
 
@@ -1942,13 +2008,14 @@ static void handle_focus(Ghandles * g, XID winid)
 
         XRaiseWindow(g->display, winid);
 
-        if ( (l=list_lookup(windows_list, winid)) && (l->data) ) {
-            input_hint = ((struct window_data*)l->data)->input_hint;
-            use_take_focus = ((struct window_data*)l->data)->support_take_focus;
-            if (((struct window_data*)l->data)->is_docked)
-                XRaiseWindow(g->display, ((struct window_data*)l->data)->embeder);
+        l = lookup_window(g, windows_list, winid, "FocusIn");
+        if (l) {
+            wd = l->data;
+            input_hint = wd->input_hint;
+            use_take_focus = wd->support_take_focus;
+            if (wd->is_docked)
+                XRaiseWindow(g->display, wd->embeder);
         } else {
-            fprintf(stderr, "WARNING handle_focus: FocusIn: Window 0x%lx data not initialized\n", winid);
             input_hint = True;
             use_take_focus = False;
         }
@@ -1966,10 +2033,11 @@ static void handle_focus(Ghandles * g, XID winid)
     } else if (key.type == FocusOut
             && (key.mode == NotifyNormal
                 || key.mode == NotifyUngrab)) {
-        if ( (l=list_lookup(windows_list, winid)) && (l->data) )
-            input_hint = ((struct window_data*)l->data)->input_hint;
-        else {
-            fprintf(stderr, "WARNING handle_focus: FocusOut: Window 0x%lx data not initialized\n", winid);
+        l = lookup_window(g, windows_list, winid, "FocusOut");
+        if (l) {
+            wd = l->data;
+            input_hint = wd->input_hint;
+        } else {
             input_hint = True;
         }
         if (input_hint)
@@ -2007,12 +2075,19 @@ static void handle_keymap_notify(Ghandles * g)
 static void handle_configure(Ghandles * g, XID winid)
 {
     struct msg_configure r;
-    struct genlist *l = list_lookup(windows_list, winid);
+    struct genlist *l;
+    struct window_data *wd = NULL;
     XWindowAttributes attr;
+
+    l = lookup_window(g, windows_list, winid, __func__);
+    if (l) {
+        wd = l->data;
+    }
+
     XGetWindowAttributes(g->display, winid, &attr);
     read_data(g->vchan, (char *) &r, sizeof(r));
-    if (l && l->data && ((struct window_data*)l->data)->is_docked) {
-        XMoveResizeWindow(g->display, ((struct window_data*)l->data)->embeder, r.x, r.y, r.width, r.height);
+    if (wd && wd->is_docked) {
+        XMoveResizeWindow(g->display, wd->embeder, r.x, r.y, r.width, r.height);
         XMoveResizeWindow(g->display, winid, 0, 0, r.width, r.height);
     } else {
         XMoveResizeWindow(g->display, winid, r.x, r.y, r.width, r.height);
@@ -2041,13 +2116,14 @@ static void handle_map(Ghandles * g, XID winid)
 static void handle_close(Ghandles * g, XID winid)
 {
     struct genlist *l;
+    struct window_data *wd;
     int use_delete_window;
 
-    if ( (l=list_lookup(windows_list, winid)) && (l->data) ) {
-        use_delete_window = ((struct window_data*)l->data)->support_delete_window;
+    l = lookup_window(g, windows_list, winid, __func__);
+    if (l) {
+        wd = l->data;
+        use_delete_window = wd->support_delete_window;
     } else {
-        fprintf(stderr, "WARNING handle_close: Window 0x%lx data not initialized\n",
-                winid);
         use_delete_window = True; /* gentler, though it may be a no-op */
     }
 
