@@ -137,8 +137,8 @@ _X_EXPORT DriverRec DUMMY = {
 };
 
 static SymTabRec DUMMYChipsets[] = {
-    { DUMMY_CHIP,   "dummy" },
-    { -1,		 NULL }
+    { DUMMY_CHIP, "dummy" },
+    { -1,         NULL }
 };
 
 typedef enum {
@@ -148,10 +148,10 @@ typedef enum {
 } DUMMYOpts;
 
 static const OptionInfoRec DUMMYOptions[] = {
-    { OPTION_SW_CURSOR,	"SWcursor",	OPTV_BOOLEAN,	{0}, FALSE },
-    { OPTION_RENDER,	"Render",	OPTV_STRING,	{0}, FALSE },
+    { OPTION_SW_CURSOR, "SWcursor",     OPTV_BOOLEAN,   {0}, FALSE },
+    { OPTION_RENDER,    "Render",       OPTV_STRING,    {0}, FALSE },
     { OPTION_GUI_DOMID, "GUIDomID",     OPTV_INTEGER,   {0}, FALSE },
-    { -1,                  NULL,           OPTV_NONE,	{0}, FALSE }
+    { -1,                  NULL,           OPTV_NONE,   {0}, FALSE }
 };
 
 #ifdef XFree86LOADER
@@ -718,7 +718,7 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
     clockRanges->ClockMulFactor = 1;
     clockRanges->minClock = 11000;   /* guessed §§§ */
     clockRanges->maxClock = maxClock;
-    clockRanges->clockIndex = -1;		/* programmable */
+    clockRanges->clockIndex = -1; /* programmable */
     clockRanges->interlaceAllowed = TRUE;
     clockRanges->doubleScanAllowed = TRUE;
 
