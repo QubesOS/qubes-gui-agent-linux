@@ -51,6 +51,7 @@
 #include "list.h"
 #include "error.h"
 #include "encoding.h"
+#include "unix-addr.h"
 #include <libvchan.h>
 #include <poll.h>
 #include "unistr.h"
@@ -1539,25 +1540,28 @@ static void send_all_windows_info(Ghandles *g) {
 static void wait_for_unix_socket(Ghandles *g)
 {
     struct sockaddr_un sockname, peer;
-    unsigned int addrlen;
+    socklen_t addrlen;
     int prev_umask;
     struct group *qubes_group;
 
     /* setup listening socket only once; in case of qubes_drv reconnections,
      * simply pickup next waiting connection there (using accept below) */
     if (g->xserver_listen_fd == -1) {
+        addrlen = sockaddr_un_from_path(&sockname, SOCKET_ADDRESS);
+        if (addrlen == 0) {
+            fprintf(stderr, "invalid socket path: %s\n", SOCKET_ADDRESS);
+            exit(1);
+        }
+
         unlink(SOCKET_ADDRESS);
         g->xserver_listen_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-        memset(&sockname, 0, sizeof(sockname));
-        sockname.sun_family = AF_UNIX;
-        memcpy(sockname.sun_path, SOCKET_ADDRESS, strlen(SOCKET_ADDRESS));
 
         qubes_group = getgrnam("qubes");
         if (qubes_group)
             prev_umask=umask(0007);
         else
             prev_umask=umask(0000);
-        if (bind(g->xserver_listen_fd, (struct sockaddr *) &sockname, sizeof(sockname)) == -1) {
+        if (bind(g->xserver_listen_fd, (struct sockaddr *)&sockname, addrlen) == -1) {
             printf("bind() failed\n");
             close(g->xserver_listen_fd);
             exit(1);

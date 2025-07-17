@@ -92,6 +92,7 @@
 #include "xdriver-shm-cmd.h"
 #include "qubes.h"
 #include "labels.h"
+#include "unix-addr.h"
 
 #include "../../xf86-qubes-common/include/xf86-qubes-common.h"
 
@@ -388,19 +389,22 @@ static int _qubes_init_axes(DeviceIntPtr device)
 int connect_unix_socket(QubesDevicePtr pQubes);
 int connect_unix_socket(QubesDevicePtr pQubes)
 {
-    int s, len;
+    int s;
     struct sockaddr_un remote;
+    socklen_t len;
+
+    len = sockaddr_un_from_path(&remote, pQubes->device);
+    if (len == 0) {
+        xf86Msg(X_ERROR, "invalid socket path: %s\n", pQubes->device);
+        return -1;
+    }
 
     if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
         xf86Msg(X_ERROR, "socket(%s): %s\n", pQubes->device, strerror(errno));
         return -1;
     }
 
-
-    remote.sun_family = AF_UNIX;
-    strncpy(remote.sun_path, pQubes->device, sizeof(remote.sun_path));
-    len = strlen(remote.sun_path) + sizeof(remote.sun_family);
-    if (connect(s, (struct sockaddr *) &remote, len) == -1) {
+    if (connect(s, (struct sockaddr *)&remote, len) == -1) {
         xf86Msg(X_ERROR, "connect(%s): %s\n", pQubes->device, strerror(errno));
         close(s);
         return -1;
