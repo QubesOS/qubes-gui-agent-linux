@@ -1328,7 +1328,7 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
                     return;
                 }
                 if (act_type != g->xembed_info) {
-                    fprintf(stderr, "window 0x%x havn't proper _XEMBED_INFO property, assuming defaults (workaround for buggy applications)\n", (unsigned int)w);
+                    fprintf(stderr, "window 0x%lx havn't proper _XEMBED_INFO property, assuming defaults (workaround for buggy applications)\n", w);
                 }
                 if (act_type == g->xembed_info && nitems == 2) {
                     mapwindow = ((int*)data)[1] & XEMBED_MAPPED;
@@ -1534,21 +1534,17 @@ static int send_full_window_info(Ghandles *g, XID w, struct window_data *wd)
     if (children_list)
         XFree(children_list);
     if (parent != g->root_win) {
-        fprintf(stderr, "Window 0x%x has parent 0x%x, which isn't root 0x%x.\n"
+        fprintf(stderr, "Window 0x%lx has parent 0x%lx, which isn't root 0x%lx.\n"
                 " Presumably window has been reparented at some point.\n"
                 " Skipping it.\n",
-                (unsigned int)window_to_query,
-                (unsigned int)parent,
-                (unsigned int)g->root_win);
+                window_to_query, parent, g->root_win);
         return 0;
     }
     if (root != g->root_win) {
-        fprintf(stderr, "Window 0x%x has root 0x%x, which isn't expected root 0x%x.\n"
+        fprintf(stderr, "Window 0x%lx has root 0x%lx, which isn't expected root 0x%lx.\n"
                 " This is rather strange and probably indicates a bug somewhere.\n"
                 " Skipping it.\n",
-                (unsigned int)window_to_query,
-                (unsigned int)root,
-                (unsigned int)g->root_win);
+                window_to_query, root, g->root_win);
         return 0;
     }
     if (!XGetTransientForHint(g->display, w, &transient))
