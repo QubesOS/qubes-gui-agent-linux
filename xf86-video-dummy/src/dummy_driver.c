@@ -1093,18 +1093,20 @@ qubes_destroy_pixmap(PixmapPtr pixmap) {
 
 static void
 sendRealizedNotify(WindowPtr win, Bool unrealized) {
-    if (agentClient) {
-        xQVEWindowRealizedEvent e = {};
-        e.type = QVE->eventBase + QVEWindowRealized;
-
-        if (unrealized) {
-            e.detail |= QVEWindowRealizedDetailUnrealized;
-        }
-
-        e.window = win->drawable.id;
-
-        WriteEventsToClient(agentClient, 1, (xEvent *)&e);
+    if (!agentClient) {
+        return;
     }
+
+    xQVEWindowRealizedEvent e = {};
+    e.type = QVE->eventBase + QVEWindowRealized;
+
+    if (unrealized) {
+        e.detail |= QVEWindowRealizedDetailUnrealized;
+    }
+
+    e.window = win->drawable.id;
+
+    WriteEventsToClient(agentClient, 1, (xEvent *)&e);
 }
 
 static Bool
