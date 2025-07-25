@@ -135,6 +135,7 @@ typedef struct {
     int log_level;
     int sync_all_modifiers;
     int composite_redirect_automatic;
+    long background_color;
     pid_t x_pid;
     uint32_t domid;
     uint32_t protocol_version;
@@ -1340,10 +1341,7 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
                 /* TODO: error checking */
                 wd->embeder = XCreateSimpleWindow(g->display, g->root_win,
                         0, 0, 32, 32, /* default icon size, will be changed by dom0 */
-                        0, BlackPixel(g->display,
-                            g->screen),
-                        WhitePixel(g->display,
-                            g->screen));
+                        0, g->background_color, g->background_color);
                 wd->is_docked=True;
                 if (g->log_level > 1)
                     fprintf(stderr, "created embeder 0x%lx\n", wd->embeder);
@@ -2482,6 +2480,7 @@ static void usage(void)
     fprintf(stderr, "       -c  turn off composite \"redirect automatic\" mode\n");
     fprintf(stderr, "       -h  print this message\n");
     fprintf(stderr, "       -d  GUI domain id (default: 0)\n");
+    fprintf(stderr, "       -b  Background color (default: 0)\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "Log levels:\n");
     fprintf(stderr, " 0 - only errors\n");
@@ -2498,7 +2497,8 @@ static void parse_args(Ghandles * g, int argc, char **argv)
     g->sync_all_modifiers = 1;
     g->composite_redirect_automatic = 1;
     g->domid = 0;
-    while ((opt = getopt(argc, argv, "qvchmMd:")) != -1) {
+    g->background_color = 0xFFFFFFFF;
+    while ((opt = getopt(argc, argv, "qvchmMd:b:")) != -1) {
         switch (opt) {
             case 'q':
                 g->log_level--;
@@ -2520,6 +2520,9 @@ static void parse_args(Ghandles * g, int argc, char **argv)
                 exit(0);
             case 'd':
                 g->domid = atoi(optarg);
+                break;
+            case 'b':
+                g->background_color = atol(optarg);
                 break;
             default:
                 usage();
