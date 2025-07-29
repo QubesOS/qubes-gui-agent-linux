@@ -116,6 +116,7 @@ typedef struct {
     Atom net_wm_state;     /* Atom: _NET_WM_STATE */
     Atom wm_state_fullscreen; /* Atom: _NET_WM_STATE_FULLSCREEN */
     Atom wm_state_demands_attention; /* Atom: _NET_WM_STATE_DEMANDS_ATTENTION */
+    Atom wm_state_hidden;  /* Atom: _NET_WM_STATE_HIDDEN */
     Atom wm_take_focus;    /* Atom: WM_TAKE_FOCUS */
     Atom net_wm_name;      /* Atom: _NET_WM_NAME */
     Atom wm_normal_hints;  /* Atom: WM_NORMAL_HINTS */
@@ -878,6 +879,8 @@ static inline uint32_t flags_from_atom(Ghandles * g, Atom a) {
         return WINDOW_FLAG_FULLSCREEN;
     else if (a == g->wm_state_demands_attention)
         return WINDOW_FLAG_DEMANDS_ATTENTION;
+    else if (a == g->wm_state_hidden)
+        return WINDOW_FLAG_MINIMIZE;
     else {
         /* ignore unsupported states */
     }
@@ -1729,6 +1732,7 @@ static void mkghandles(Ghandles * g)
         { &g->net_wm_state,     "_NET_WM_STATE" },
         { &g->wm_state_fullscreen, "_NET_WM_STATE_FULLSCREEN" },
         { &g->wm_state_demands_attention, "_NET_WM_STATE_DEMANDS_ATTENTION" },
+        { &g->wm_state_hidden, "_NET_WM_STATE_HIDDEN" },
         { &g->wm_take_focus,    "WM_TAKE_FOCUS" },
         { &g->net_wm_name,      "_NET_WM_NAME" },
         { &g->wm_normal_hints,  "WM_NORMAL_HINTS" },
@@ -1748,6 +1752,7 @@ static void mkghandles(Ghandles * g)
         "_NET_WM_STATE",
         "_NET_WM_STATE_FULLSCREEN",
         "_NET_WM_STATE_DEMANDS_ATTENTION",
+        "_NET_WM_STATE_HIDDEN",
     };
     for (size_t i = 0; i < QUBES_ARRAY_SIZE(atoms_to_intern); ++i)
         names[SUPPORTED_ATOMS + i] = atoms_to_intern[i].name;
@@ -2320,6 +2325,8 @@ static void handle_window_flags(Ghandles *g, XID winid)
         new_state_list[j++] = g->wm_state_fullscreen;
     if (msg_flags.flags_set & WINDOW_FLAG_DEMANDS_ATTENTION)
         new_state_list[j++] = g->wm_state_demands_attention;
+    if (msg_flags.flags_set & WINDOW_FLAG_MINIMIZE)
+        new_state_list[j++] = g->wm_state_hidden;
 
     if (msg_flags.flags_set)
         changed = 1;
