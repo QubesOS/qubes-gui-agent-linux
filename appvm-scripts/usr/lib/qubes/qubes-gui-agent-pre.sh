@@ -29,3 +29,9 @@ echo "GUI_OPTS=$gui_opts" >> /var/run/qubes-service-environment
 
 # 2**30
 echo 1073741824 > /sys/module/xen_gntalloc/parameters/limit
+
+# unbind Xen VGA adapter from bochs
+vga_adapter=$(lspci -nD | grep "1234:1111" | awk '{print $1}')
+if [ -n "$vga_adapter" ] && [ -e /sys/bus/pci/drivers/bochs-drm/unbind ]; then
+    echo "$vga_adapter" > /sys/bus/pci/drivers/bochs-drm/unbind
+fi
