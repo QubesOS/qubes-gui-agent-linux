@@ -56,7 +56,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "../../include/list.h"
-#include "../../include/qubes-video-ext.h"
 
 /* Mandatory functions */
 static const OptionInfoRec *DUMMYAvailableOptions(int chipid, int busid);
@@ -106,11 +105,6 @@ static Bool     dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
 #define DUMMY_MAX_HEIGHT 32767
 
 static ScrnInfoPtr DUMMYScrn; /* static-globalize it */
-
-static ClientPtr agentClient;
-
-static ExtensionEntry *QVE;
-
 
 /*
  * This is intentionally screen-independent.  It indicates the binding
@@ -477,43 +471,6 @@ Bool DUMMYAdjustScreenPixmap(ScrnInfoPtr pScrn, int width, int height)
  */
 _X_EXPORT XF86ModuleData dummyqbsModuleData = { &dummyVersRec, dummySetup, NULL };
 
-static int
-QVEDispatch(ClientPtr client)
-{
-    REQUEST(xQVEReq);
-    REQUEST_SIZE_MATCH(xQVEReq);
-    switch (stuff->QVEReqType) {
-        case X_QVERegister:
-            agentClient = client;
-            return Success;
-        case X_QVEUnregister:
-            if (agentClient == client) {
-                agentClient = NULL;
-            }
-            return Success;
-        default:
-            return BadRequest;
-    }
-}
-
-static int
-QVEDispatchSwapped(ClientPtr client)
-{
-    xf86Msg(X_ERROR, QVE_NAME " doesn't support swapped clients\n");
-    return BadRequest;
-}
-
-static void
-QubesClientStateCallback(CallbackListPtr *cbl, void *cb_private, void *data)
-{
-    NewClientInfoRec *clientinfo = data;
-    ClientPtr client = clientinfo->client;
-
-    if (client == agentClient && client->clientState == ClientStateGone) {
-        agentClient = NULL;
-    }
-}
-
 static pointer
 dummySetup(pointer module, pointer opts, int *errmaj, int *errmin)
 {
@@ -527,30 +484,6 @@ dummySetup(pointer module, pointer opts, int *errmaj, int *errmin)
          * Modules that this driver always requires can be loaded here
          * by calling LoadSubModule().
          */
-
-        if (!AddCallback(&ClientStateCallback, QubesClientStateCallback, NULL)) {
-            xf86Msg(X_ERROR, "Failed to register ClientStateCallback\n");
-            if (errmaj) {
-                *errmaj = LDR_MODSPECIFIC;
-            }
-            return NULL;
-        }
-
-        QVE = AddExtension(QVE_NAME,
-                               QVENumberEvents,
-                               0 /* number of errors */,
-                               QVEDispatch,
-                               QVEDispatchSwapped,
-                               NULL /* CloseDownProc */,
-                               StandardMinorOpcode);
-        if (QVE == NULL) {
-            xf86Msg(X_ERROR, "Failed to register " QVE_NAME " extentions\n");
-            if (errmaj) {
-                *errmaj = LDR_MODSPECIFIC;
-            }
-            return NULL;
-        }
-        EventSwapVector[QVE->eventBase + QVEWindowRealized] = NotImplemented;
 
         /*
          * The return value must be non-NULL on success even though there
@@ -1091,36 +1024,6 @@ qubes_destroy_pixmap(PixmapPtr pixmap) {
     return fbDestroyPixmap(pixmap);
 }
 
-static void
-sendRealizedNotify(WindowPtr win, Bool unrealized) {
-    if (!agentClient) {
-        return;
-    }
-
-    xQVEWindowRealizedEvent e = {};
-    e.type = QVE->eventBase + QVEWindowRealized;
-
-    if (unrealized) {
-        e.detail |= QVEWindowRealizedDetailUnrealized;
-    }
-
-    e.window = win->drawable.id;
-
-    WriteEventsToClient(agentClient, 1, (xEvent *)&e);
-}
-
-static Bool
-qubesRealizeWindow(WindowPtr win) {
-    sendRealizedNotify(win, FALSE);
-    return TRUE;
-}
-
-static Bool
-qubesUnrealizeWindow(WindowPtr win) {
-    sendRealizedNotify(win, TRUE);
-    return TRUE;
-}
-
 /* Mandatory */
 static Bool
 DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
@@ -1253,8 +1156,6 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
 
     pScreen->CreatePixmap = qubes_create_pixmap;
     pScreen->DestroyPixmap = qubes_destroy_pixmap;
-    pScreen->RealizeWindow = qubesRealizeWindow;
-    pScreen->UnrealizeWindow = qubesUnrealizeWindow;
     PictureScreenPtr ps = GetPictureScreenIfSet(pScreen);
     ps->Glyphs = fbGlyphs;
     dPtr->CreateScreenResources = pScreen->CreateScreenResources;

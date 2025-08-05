@@ -604,41 +604,12 @@ static void dump_window_grant_refs(int window_id, int fd)
         // the window is destroyed before the driver sees the req
         goto send_response;
 
-    if (x_window->drawable.class == InputOnly) {
-        // Composite redirect doesn't handle InputOnly windows. There should be
-        // nothing to display anyway.
-        xf86Msg(X_ERROR, "can't dump InputOnly windows 0x%x\n", window_id);
-        goto send_response;
-    }
-
-    if (!x_window->realized) {
-        // Composite redirect is setup/teared-down during Realize-/Unrealize-
-        // Window (called when a window gets mapped/unmapped). So if the window
-        // is not realized we don't have a per window pixmap we can send.
-        //
-        // Note that the map notification is sent before calling RealizeWindow.
-        // Therefore our video driver sends the agent a custom event when the
-        // window has actually been realized.
-        //
-        // This means that the configure of a window before realization will
-        // not send grants. This should be fine since we will send grants when
-        // it's realized and it needs to redraw on expose anyway.
-        //
-        // We can get here in a race when a window is being unrealized and/or
-        // destroyed, as described above for the window lookup. So we might
-        // have to improve or silence this error message in the furture.
-        xf86Msg(X_ERROR, "can't dump not realized window 0x%x\n", window_id);
-        goto send_response;
-    }
-
     screen = x_window->drawable.pScreen;
     pixmap = (*screen->GetWindowPixmap) (x_window);
 
     priv = xf86_qubes_pixmap_get_private(pixmap);
     if (priv == NULL) {
-        xf86Msg(X_ERROR,
-                "can't dump window 0x%x without grant table allocation\n",
-                window_id);
+        xf86Msg(X_ERROR, "can't dump window without grant table allocation\n");
         goto send_response;
     }
 
