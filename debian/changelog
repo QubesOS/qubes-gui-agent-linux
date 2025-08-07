@@ -1,3 +1,26 @@
+qubes-gui-agent (4.3.10-1) unstable; urgency=medium
+
+  [ Simon Gaiser ]
+  * vmside: Use correct format string instead of casting part 2
+  * xf86-video-dummy: codestyle: avoid unnecessary indent
+
+  [ Marcus Ofenhed ]
+  * Fixed ignored X property NET_WM_STATE_HIDDEN
+
+  [ Demi Marie Obenour ]
+  * pipewire: Use recommended driver and session priorities
+
+  [ Marek Marczykowski-Górecki ]
+  * Revert "Don't try to send grants for not realized windows"
+
+  [ Simon Gaiser ]
+  * Don't try to send grants for not realized windows
+
+  [ Vertex X7-53 ]
+  * Unbind Xen VGA adapter from bochs-drm on boot
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 07 Aug 2025 03:10:40 +0200
+
 qubes-gui-agent (4.3.9-1) unstable; urgency=medium
 
   [ Simon Gaiser ]
