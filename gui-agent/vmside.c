@@ -2049,7 +2049,7 @@ static void handle_focus(Ghandles * g, XID winid)
         }
 
         // Give input focus only to window that set the input hint
-        if (input_hint)
+        if (input_hint || use_take_focus)
             XSetInputFocus(g->display, winid, RevertToParent, g->time);
 
         // Do not send take focus if the window doesn't support it
