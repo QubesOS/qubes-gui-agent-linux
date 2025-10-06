@@ -76,6 +76,7 @@ BuildRequires:	qubes-db-devel
 BuildRequires:	xen-devel
 BuildRequires:	systemd-rpm-macros
 BuildRequires:	libunistring-devel
+BuildRequires:  dbus-devel
 %if 0%{?is_opensuse}
 # for directory ownership
 BuildRequires:  xinit
