@@ -16,7 +16,7 @@ makedepends=(
     automake
     autoconf
     libtool
-    'libpulse<=17.0+r43+g3e2bb8a1e'
+    'libpulse<=17.0+r88+geee0e8f22'
     'pipewire>=1:0.3.53-2'
     xorg-server-devel
     xorg-util-macros
