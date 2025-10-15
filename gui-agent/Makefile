@@ -20,7 +20,8 @@
 #
 
 CC ?= gcc
-CFLAGS += -I../include/ `pkg-config --cflags vchan` -g -Wall -Wextra -Werror -fPIC \
+CFLAGS += -I../include/ `pkg-config --cflags vchan` \
+	  `pkg-config --cflags dbus-1` -g -Wall -Wextra -Werror -fPIC \
 	  -Wmissing-prototypes -Wstrict-prototypes -Wold-style-declaration \
 	  -Wold-style-definition
 OBJS = vmside.o txrx-vchan.o error.o list.o encoding.o
@@ -33,7 +34,7 @@ qubes-gui: $(OBJS)
 	$(CC) $(LDFLAGS) -pie -g -o qubes-gui $(OBJS) \
 		$(LIBS)
 qubes-gui-runuser: CFLAGS += -g -Wall -Wextra -Werror -pie -fPIC
-qubes-gui-runuser: LDLIBS += -lpam -lqubesdb
+qubes-gui-runuser: LDLIBS += -lpam -lqubesdb -ldbus-1
 qubes-gui-runuser: qubes-gui-runuser.c
 clean:
 	rm -f qubes-gui qubes-gui-runuser ./*.o ./*~
