@@ -1,3 +1,14 @@
+qubes-gui-agent (4.3.12-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * archlinux: bump pulseaudio version
+
+  [ Aaron Rainbolt ]
+  * qubes-gui-runner: get environment from systemd user instance and
+    pass it through to the session
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 20 Oct 2025 20:03:20 +0200
+
 qubes-gui-agent (4.3.11-1) unstable; urgency=medium
 
   * Avoid using lspci in qubes-gui-agent-pre.sh
