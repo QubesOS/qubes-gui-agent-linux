@@ -27,17 +27,6 @@
 
 loginctl activate "$XDG_SESSION_ID"
 
-# Now import the environment from the systemd user session.
-# This is necessary to enable users to configure their
-# Qubes environment using the standard environment.d
-# facility.  Documentation for the facility is at:
-# https://www.freedesktop.org/software/systemd/man/environment.d.html
-set -a # export all variables
-env=$(systemctl --user show-environment) && eval "$env" || exit
-set +a
-unset env
-
-
 if qsvc guivm-gui-agent; then
     if [ -e "$HOME/.xinitrc" ]; then
         . "$HOME/.xinitrc"
