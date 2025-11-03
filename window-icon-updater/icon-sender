@@ -235,7 +235,7 @@ class IconRetriever(object):
         # split the array into icons
         while index < len(icon_data):
             size = (icon_data[index], icon_data[index + 1])
-            if size[0] < ICON_MAX_SIZE and size[1] < ICON_MAX_SIZE:
+            if size[0] <= ICON_MAX_SIZE and size[1] <= ICON_MAX_SIZE:
                 icons[size] = icon_data[index + 2:
                                         index + 2 + (size[0] * size[1])]
             index += 2 + (size[0] * size[1])
