@@ -1,3 +1,10 @@
+qubes-gui-agent (4.3.13-1) unstable; urgency=medium
+
+  [ Ali Mirjamali ]
+  * Do not exclude 256x256 icons from icon-sender
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 05 Nov 2025 15:43:01 +0100
+
 qubes-gui-agent (4.3.12-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
