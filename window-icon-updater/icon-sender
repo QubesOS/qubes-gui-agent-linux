@@ -34,7 +34,18 @@ import time
 import xcffib
 from xcffib import xproto
 
-ICON_MAX_SIZE = 256
+ICON_MAX_SIZE = 1024
+# Chronological order of preferred icon sizes based on certified HW and defaults
+ICON_PREFERRED_SIZES = (
+    (128, 128),
+    (96, 96),
+    (64, 64),
+    (48, 48),
+    (256, 256),
+    (512, 512),
+    (32, 32),
+)
+
 IconPixmapHint = 0b1 << 2
 IconMaskHint = 0b1 << 5
 
@@ -247,7 +258,13 @@ class IconRetriever(object):
     def describe_icon(self, w):
         try:
             icons = self.get_icons(w)
-            chosen_size = sorted(icons.keys())[-1]
+            # Override the largest icon with our preferred sizes (if possible)
+            for size in ICON_PREFERRED_SIZES:
+                if size in icons.keys():
+                    chosen_size = size
+                    break
+            else:
+                chosen_size = sorted(icons.keys())[-1]
 
             data = b''
             data += "{}\n".format(w).encode('ascii')
