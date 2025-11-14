@@ -2176,12 +2176,11 @@ static void handle_close(Ghandles * g, XID winid)
 
 /* start X server, returns its PID
  */
-static pid_t do_execute_xorg(
-        char *w_str, char *h_str, char *mem_str, char *depth_str,
-        char *gui_domid_str)
+static pid_t do_execute_xorg(Ghandles *g)
 {
     pid_t pid;
     int fd;
+    char gui_domid_str[12];
 
     pid = fork();
     switch (pid) {
@@ -2189,10 +2188,7 @@ static pid_t do_execute_xorg(
             perror("fork");
             return -1;
         case 0:
-            setenv("W", w_str, 1);
-            setenv("H", h_str, 1);
-            setenv("MEM", mem_str, 1);
-            setenv("DEPTH", depth_str, 1);
+            snprintf(gui_domid_str, sizeof(gui_domid_str), "%u", g->domid);
             setenv("GUI_DOMID", gui_domid_str, 1);
             /* don't leak other FDs */
             for (fd = 3; fd < 256; fd++)
@@ -2374,27 +2370,11 @@ static void handle_message(Ghandles * g)
     }
 }
 
-static pid_t get_xconf_and_run_x(Ghandles *g)
-{
-    struct msg_xconf xconf;
-    char w_str[12], h_str[12], mem_str[12], depth_str[12], gui_domid_str[12];
-    pid_t x_pid;
-    read_struct(g->vchan, xconf);
-    snprintf(w_str, sizeof(w_str), "%d", xconf.w);
-    snprintf(h_str, sizeof(h_str), "%d", xconf.h);
-    snprintf(mem_str, sizeof(mem_str), "%d", xconf.mem);
-    snprintf(depth_str, sizeof(depth_str), "%d", xconf.depth);
-    snprintf(gui_domid_str, sizeof(gui_domid_str), "%u", g->domid);
-    x_pid = do_execute_xorg(w_str, h_str, mem_str, depth_str, gui_domid_str);
-    if (x_pid == (pid_t)-1) {
-        errx(1, "X server startup failed");
-    }
-    return x_pid;
-}
-
 static void handshake(Ghandles *g)
 {
     uint32_t version = PROTOCOL_VERSION;
+    struct msg_xconf xconf;
+
     write_struct(g->vchan, version);
     version = 0;
     read_struct(g->vchan, version);
@@ -2407,12 +2387,14 @@ static void handshake(Ghandles *g)
                 PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR,
                 major_version, minor_version);
     g->protocol_version = version;
+
+    /* discard */
+    read_struct(g->vchan, xconf);
 }
 
 static void handle_guid_disconnect(void)
 {
     Ghandles *g = ghandles_for_vchan_reinitialize;
-    struct msg_xconf xconf;
 
     if (!ghandles_for_vchan_reinitialize) {
         fprintf(stderr, "gui-daemon disconnected before fully initialized, "
@@ -2425,8 +2407,6 @@ static void handle_guid_disconnect(void)
     while (libvchan_is_open(g->vchan) == VCHAN_WAITING)
         libvchan_wait(g->vchan);
     handshake(g);
-    /* discard */
-    read_struct(g->vchan, xconf);
     send_all_windows_info(g);
 }
 
@@ -2580,18 +2560,8 @@ int main(int argc, char **argv)
     g.clipboard_wipe =
         access("/run/qubes-service/gui-agent-clipboard-wipe", F_OK) == 0;
 
-    g.vchan = libvchan_server_init(g.domid, 6000, 4096, 4096);
-    if (!g.vchan) {
-        fprintf(stderr, "vchan initialization failed\n");
-        exit(1);
-    }
-    /* wait for gui daemon */
-    while (libvchan_is_open(g.vchan) == VCHAN_WAITING)
-        libvchan_wait(g.vchan);
-    saved_argv = argv;
-    vchan_register_at_eof(handle_guid_disconnect);
-
     ghandles_for_vchan_reinitialize = &g;
+
     struct sigaction sigchld_handler = {
         .sa_sigaction = handle_sigchld,
         .sa_flags = SA_SIGINFO,
@@ -2607,8 +2577,10 @@ int main(int argc, char **argv)
     if (sigaction(SIGTERM, &sigterm_handler, NULL))
         err(1, "sigaction");
 
-    handshake(&g);
-    g.x_pid = get_xconf_and_run_x(&g);
+    g.x_pid = do_execute_xorg(&g);
+    if (g.x_pid == (pid_t)-1) {
+        errx(1, "X server startup failed");
+    }
 
     mkghandles(&g);
     /* Turn on Composite for all children of root window. This way X server
@@ -2677,6 +2649,20 @@ int main(int argc, char **argv)
             fprintf(stderr,
                     "Acquired MANAGER selection for tray\n");
     }
+
+    g.vchan = libvchan_server_init(g.domid, 6000, 4096, 4096);
+    if (!g.vchan) {
+        fprintf(stderr, "vchan initialization failed\n");
+        exit(1);
+    }
+    /* wait for gui daemon */
+    while (libvchan_is_open(g.vchan) == VCHAN_WAITING)
+        libvchan_wait(g.vchan);
+    saved_argv = argv;
+    vchan_register_at_eof(handle_guid_disconnect);
+
+    handshake(&g);
+
     xfd = ConnectionNumber(g.display);
     struct pollfd fds[] = {
         { .fd = -1, .events = POLLIN | POLLHUP, .revents = 0 },
