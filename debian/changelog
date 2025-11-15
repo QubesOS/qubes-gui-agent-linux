@@ -1,3 +1,13 @@
+qubes-gui-agent (4.3.14-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * archlinux: relax libpulse dependency
+
+  [ Ali Mirjamali ]
+  * Send optimized icon size
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 15 Nov 2025 14:55:14 +0100
+
 qubes-gui-agent (4.3.13-1) unstable; urgency=medium
 
   [ Ali Mirjamali ]
