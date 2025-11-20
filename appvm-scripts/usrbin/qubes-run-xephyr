@@ -1,6 +1,6 @@
 #!/bin/sh
 DISPLAY_XEPHYR="$1"
-OPTIONS_XEPHYR="-no-host-grab -fullscreen"
+OPTIONS_XEPHYR="-no-host-grab -output DUMMY0"
 
 if [ -e /usr/lib/x86_64-linux-gnu/qubes-gui-daemon/shmoverride.so ]; then
     SHMOVERRIDE=/usr/lib/x86_64-linux-gnu/qubes-gui-daemon/shmoverride.so
