@@ -1,3 +1,12 @@
+qubes-gui-agent (4.3.15-1) unstable; urgency=medium
+
+  * debian: install cvt tool
+  * Switch to tty7 instead of calling loginctl activate
+  * Fix (partially) setting resolution on sys-gui
+  * sys-gui: connect Xephyr to DUMMY0 output
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 24 Nov 2025 00:03:34 +0100
+
 qubes-gui-agent (4.3.14-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
