@@ -4,6 +4,11 @@
 # on having DISPLAY set from there
 export DISPLAY=:0
 
+if [ -e /run/qubes-service/guivm-gui-agent ]; then
+    # on sys-gui, adjust monitor layout of the parent Xorg
+    export DISPLAY=:1
+fi
+
 # Wait for Xorg complete startup
 while ! xrandr -q &>/dev/null; do sleep 0.1; done
 
