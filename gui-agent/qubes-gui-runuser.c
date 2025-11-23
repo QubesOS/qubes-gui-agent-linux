@@ -25,6 +25,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <linux/vt.h>
+#include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <errno.h>
@@ -444,6 +446,9 @@ static pid_t do_execute(char *user, char *path, char **argv)
             retval = pam_putenv(pamh, env_buf);
             if (retval != PAM_SUCCESS)
                 goto error;
+            retval = ioctl(0, VT_ACTIVATE, atoi(tty+8));
+            if (retval)
+                perror("ioctl(VT_ACTIVATE)");
         }
     }
 
