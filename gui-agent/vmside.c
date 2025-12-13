@@ -73,6 +73,8 @@
     }) + sizeof(x)/sizeof((x)[0]))
 #define SOCKET_ADDRESS  "/var/run/xf86-qubes-socket"
 
+#define STATUS_FILE_PATH  "/run/qubes/gui-agent.status"
+
 /* Supported protocol version */
 
 #define PROTOCOL_VERSION_MAJOR 1
@@ -2392,6 +2394,31 @@ static void handshake(Ghandles *g)
     read_struct(g->vchan, xconf);
 }
 
+static void write_status_file(const char *status)
+{
+    int fd = open(STATUS_FILE_PATH, O_CREAT | O_WRONLY | O_NOFOLLOW | O_TRUNC, 0644);
+    if (fd < 0) {
+        perror("open status file");
+        return;
+    }
+    FILE *f = fdopen(fd, "w");
+    if (!f) {
+        perror("fdopen status file");
+        close(fd);
+        return;
+    }
+    if (fwrite(status, strlen(status), 1, f) != 1) {
+        perror("write error");
+    }
+    fclose(f);
+    close(fd);
+}
+
+static void cleanup_status_file(void)
+{
+    unlink(STATUS_FILE_PATH);
+}
+
 static void handle_guid_disconnect(void)
 {
     Ghandles *g = ghandles_for_vchan_reinitialize;
@@ -2401,6 +2428,7 @@ static void handle_guid_disconnect(void)
                 "cannot reconnect, exiting!\n");
         exit(1);
     }
+    write_status_file("started\n");
     libvchan_close(g->vchan);
     g->vchan = libvchan_server_init(g->domid, 6000, 4096, 4096);
     /* wait for gui daemon */
@@ -2408,6 +2436,7 @@ static void handle_guid_disconnect(void)
         libvchan_wait(g->vchan);
     handshake(g);
     send_all_windows_info(g);
+    write_status_file("connected\n");
 }
 
 static _Noreturn void handle_sigterm(int UNUSED(sig),
@@ -2498,6 +2527,9 @@ int main(int argc, char **argv)
     int xfd;
     Ghandles g = { .x_pid = -1 };
 
+    write_status_file("starting\n");
+    atexit(cleanup_status_file);
+
     g.created_input_device = access("/run/qubes-service/gui-agent-virtual-input-device", F_OK) == 0;
 
     if(g.created_input_device) {
@@ -2550,7 +2582,6 @@ int main(int argc, char **argv)
 
         g.last_known_modifier_states = 0;
     }
-
 
     parse_args(&g, argc, argv);
 
@@ -2650,6 +2681,8 @@ int main(int argc, char **argv)
                     "Acquired MANAGER selection for tray\n");
     }
 
+    write_status_file("started\n");
+
     g.vchan = libvchan_server_init(g.domid, 6000, 4096, 4096);
     if (!g.vchan) {
         fprintf(stderr, "vchan initialization failed\n");
@@ -2662,6 +2695,8 @@ int main(int argc, char **argv)
     vchan_register_at_eof(handle_guid_disconnect);
 
     handshake(&g);
+
+    write_status_file("connected\n");
 
     xfd = ConnectionNumber(g.display);
     struct pollfd fds[] = {
