@@ -7,6 +7,9 @@ require {
 	class tcp_socket name_connect;
 }
 
+type qubes_gui_agent_state_file_t;
+files_type(qubes_gui_agent_state_file_t)
+
 allow xdm_t etc_t:file { create write };
 allow xdm_t self:passwd rootok;
 allow domain local_login_t:unix_stream_socket { rw_inherited_sock_file_perms ioctl };
@@ -16,6 +19,11 @@ init_domtrans_script(xdm_t)
 type_transition xdm_t qubes_var_run_t:sock_file qubes_qrexec_socket_t;
 manage_sock_files_pattern(xdm_t, qubes_var_run_t, qubes_qrexec_socket_t)
 write_sock_files_pattern(xdm_t, qubes_var_run_t, qubes_var_run_t)
+
+allow xdm_t qubes_gui_agent_state_file_t:file { create_file_perms write_file_perms delete_file_perms };
+allow xdm_t qubes_var_run_t:dir { add_entry_dir_perms del_entry_dir_perms };
+filetrans_pattern(xdm_t, qubes_var_run_t, qubes_gui_agent_state_file_t, file, "gui-agent.status")
+
 optional {
     pulseaudio_domtrans(xdm_t)
     dev_rw_xen(pulseaudio_t)

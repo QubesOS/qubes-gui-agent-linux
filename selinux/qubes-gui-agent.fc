@@ -2,3 +2,4 @@
 /usr/bin/qubes-gui-runuser   -- gen_context(system_u:object_r:xdm_exec_t,s0)
 /usr/lib/qubes/qubes-xorg-wrapper -- gen_context(system_u:object_r:xserver_exec_t,s0)
 /usr/bin/qubes-run-xephyr -- gen_context(system_u:object_r:xserver_exec_t,s0)
+/run/qubes/gui-agent.status -- gen_context(system_u:object_r:qubes_gui_agent_state_file_t,s0)

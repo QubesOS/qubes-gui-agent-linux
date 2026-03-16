@@ -315,6 +315,7 @@ rm -f %{name}-%{version}
 /etc/qubes-rpc/qubes.SetMonitorLayout
 /etc/qubes-rpc/qubes.GuiVMSession
 /etc/qubes/post-install.d/20-qubes-guivm-gui-agent.sh
+/etc/qubes/post-install.d/20-qubes-gui-agent.sh
 %if 0%{?is_opensuse}
 %{_fillupdir}/desktop.qubes-gui-agent
 %else
