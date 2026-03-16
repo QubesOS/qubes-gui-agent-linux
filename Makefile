@@ -223,6 +223,8 @@ endif
 		$(DESTDIR)/etc/xdg/autostart/qubes-keymap.desktop
 	install -m 0644 -D appvm-scripts/etc/xdgautostart/qubes-gtk4-workarounds.desktop \
 		$(DESTDIR)/etc/xdg/autostart/qubes-gtk4-workarounds.desktop
+	install -m 0644 -D appvm-scripts/etc/xdgautostart/qubes-set-xsettings-xfconf-query.desktop \
+		$(DESTDIR)/etc/xdg/autostart/qubes-set-xsettings-xfconf-query.desktop
 	install -D -m 0644 appvm-scripts/usr/lib/sysctl.d/30-qubes-gui-agent.conf \
 		$(DESTDIR)/usr/lib/sysctl.d/30-qubes-gui-agent.conf
 	install -D -m 0644 appvm-scripts/lib/udev/rules.d/70-master-of-seat.rules \

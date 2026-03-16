@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=xfconf-query for Xfce-based QubesVM
+Exec=/usr/bin/xfconf-query --channel xsettings --property /Gtk/DecorationLayout --set ""
+Terminal=false
+Type=Application
+OnlyShowIn=X-QUBES;
