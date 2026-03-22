@@ -1,5 +1,7 @@
-setenv DISPLAY ":0"
-setenv _JAVA_AWT_WM_NONREPARENTING "1"
+if (! ($?SSH_CLIENT || $SSH_TTY)) ; then
+  setenv DISPLAY ":0"
+  setenv _JAVA_AWT_WM_NONREPARENTING "1"
+endif
 if ( -f /var/run/qubes-service/software-rendering )
   setenv GSK_RENDERER "cairo"
   setenv GDK_DISABLE "gl vulkan"
