@@ -2,6 +2,9 @@
 
 # This file may be also executed by qubes-change-keyboard-layout
 
+# User-saved layout file (written by qubes-change-keyboard-layout)
+CUSTOM_LAYOUT_FILE="${HOME:-/root}/.config/qubes-keyboard-layout.rc"
+
 set_keyboard_layout() {
     KEYMAP="$1"
     # Default value
@@ -32,14 +35,45 @@ set_keyboard_layout() {
     done
 }
 
-QUBES_KEYMAP="$(/usr/bin/qubesdb-read /keyboard-layout)"
+# Read current live X11 keymap, return as layout+variant+options string
+get_live_layout() {
+    for x in /tmp/.X11-unix/X*; do
+        display="$(basename "$x")"
+        QUERY="$(setxkbmap -display ":${display#X}" -query 2>/dev/null)" || continue
+        LAYOUT="$(echo "$QUERY"  | awk '/^layout:/  {sub(/^layout:[[:space:]]+/,""); print}')"
+        VARIANT="$(echo "$QUERY" | awk '/^variant:/ {sub(/^variant:[[:space:]]+/,""); print}')"
+        OPTIONS="$(echo "$QUERY" | awk '/^options:/ {sub(/^options:[[:space:]]+/,""); print}')"
+        if [ -n "$LAYOUT" ]; then
+            echo "${LAYOUT}+${VARIANT}+${OPTIONS}"
+            return
+        fi
+    done
+}
+
+get_effective_layout() {
+    # Priority 1: user explicitly saved a layout via qubes-change-keyboard-layout
+    if [ -r "$CUSTOM_LAYOUT_FILE" ]; then
+        cat "$CUSTOM_LAYOUT_FILE"
+        return
+    fi
+    # Priority 2: preserve whatever X11 currently has (survives NetVM changes)
+    LIVE="$(get_live_layout)"
+    if [ -n "$LIVE" ]; then
+        echo "$LIVE"
+        return
+    fi
+    # Priority 3: fall back to dom0/GuiVM default
+    /usr/bin/qubesdb-read /keyboard-layout 2>/dev/null
+}
+
+QUBES_KEYMAP="$(/usr/bin/qubesdb-read /keyboard-layout 2>/dev/null)"
 
 if [ -n "$QUBES_KEYMAP" ]; then
   set_keyboard_layout "$QUBES_KEYMAP"
 fi
 
 while qubesdb-watch /keyboard-layout ; do
-  QUBES_KEYMAP="$(/usr/bin/qubesdb-read /keyboard-layout)"
+  QUBES_KEYMAP="$(get_effective_layout)"
   if [ -n "$QUBES_KEYMAP" ]; then
     set_keyboard_layout "$QUBES_KEYMAP"
   fi
