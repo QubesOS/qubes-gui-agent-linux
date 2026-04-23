@@ -7,7 +7,6 @@ CUSTOM_LAYOUT_FILE="${HOME:-/root}/.config/qubes-keyboard-layout.rc"
 
 set_keyboard_layout() {
     KEYMAP="$1"
-    # Default value
     if [ -z "$KEYMAP" ]; then
         KEYMAP=us
     fi
@@ -18,20 +17,16 @@ set_keyboard_layout() {
         KEYMAP_LAYOUT="$KEYMAP_LAYOUT,us"
         KEYMAP_VARIANT="$KEYMAP_VARIANT,"
     fi
-
     if [ -n "$KEYMAP_VARIANT" ]; then
         KEYMAP_VARIANT="-variant $KEYMAP_VARIANT"
     fi
-
     if [ -n "$KEYMAP_OPTIONS" ]; then
         KEYMAP_OPTIONS="-option -option $KEYMAP_OPTIONS"
     fi
-
-    # Set layout on all DISPLAY
-    for x in /tmp/.X11-unix/X*
-    do
+    for x in /tmp/.X11-unix/X*; do
         display="$(basename "$x")"
-        setxkbmap -display ":${display#X}" -layout "$KEYMAP_LAYOUT" $KEYMAP_VARIANT $KEYMAP_OPTIONS
+        setxkbmap -display ":${display#X}" -layout "$KEYMAP_LAYOUT" \
+            $KEYMAP_VARIANT $KEYMAP_OPTIONS
     done
 }
 
@@ -66,15 +61,16 @@ get_effective_layout() {
     /usr/bin/qubesdb-read /keyboard-layout 2>/dev/null
 }
 
+# On first start: apply dom0 default unconditionally (normal startup behaviour)
 QUBES_KEYMAP="$(/usr/bin/qubesdb-read /keyboard-layout 2>/dev/null)"
-
 if [ -n "$QUBES_KEYMAP" ]; then
-  set_keyboard_layout "$QUBES_KEYMAP"
+    set_keyboard_layout "$QUBES_KEYMAP"
 fi
 
-while qubesdb-watch /keyboard-layout ; do
-  QUBES_KEYMAP="$(get_effective_layout)"
-  if [ -n "$QUBES_KEYMAP" ]; then
-    set_keyboard_layout "$QUBES_KEYMAP"
-  fi
+# On subsequent QubesDB changes (e.g. NetVM change): preserve user's layout
+while qubesdb-watch /keyboard-layout; do
+    QUBES_KEYMAP="$(get_effective_layout)"
+    if [ -n "$QUBES_KEYMAP" ]; then
+        set_keyboard_layout "$QUBES_KEYMAP"
+    fi
 done
