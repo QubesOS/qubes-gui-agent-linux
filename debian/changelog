@@ -1,3 +1,14 @@
+qubes-gui-agent (4.3.16-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * archlinux: relax runtime pulseaudio dependency too
+
+  [ Aaron Rainbolt ]
+  * Sync environment variables from the user session into systemd and
+    dbus
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 01 May 2026 14:56:49 +0200
+
 qubes-gui-agent (4.3.15-1) unstable; urgency=medium
 
   * debian: install cvt tool
