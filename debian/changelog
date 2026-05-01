@@ -1,3 +1,11 @@
+qubes-gui-agent (4.4.1-1) unstable; urgency=medium
+
+  [ Aaron Rainbolt ]
+  * Sync environment variables from the user session into systemd and
+    dbus
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 01 May 2026 14:55:53 +0200
+
 qubes-gui-agent (4.4.0-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
