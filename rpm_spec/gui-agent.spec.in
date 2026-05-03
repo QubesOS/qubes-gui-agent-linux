@@ -54,6 +54,7 @@ URL:		https://www.qubes-os.org
 BuildRequires:	gcc
 BuildRequires:	libX11-devel
 BuildRequires:	libXcomposite-devel
+BuildRequires:  libXcursor-devel
 BuildRequires:	libXdamage-devel
 BuildRequires:	libXfixes-devel
 BuildRequires:	libXt-devel
