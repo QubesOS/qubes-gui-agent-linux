@@ -454,24 +454,29 @@ static uint64_t hash_cursor(uint32_t w, uint32_t h,
 
 // Fallback function to lookup an unnamed cursor by its bitmap
 static uint32_t find_cursor_by_image(Ghandles *g) {
-    XFixesCursorImage *img = XFixesGetCursorImage(g->display);
-    if (!img) return CURSOR_DEFAULT;
+    XFixesCursorImage *live_img = XFixesGetCursorImage(g->display);
+    if (!live_img) return CURSOR_DEFAULT;
 
-    /* Narrow unsigned long pixels to uint32_t */
-    size_t npx = (size_t)img->width * img->height;
-    uint32_t *live_px = malloc(npx * sizeof(uint32_t));
-    if (!live_px) {
-        XFree(img);
+    // SEC: Abort immediately on suspiciously huge cursors to avoid mallocating too much RAM
+    if (live_img->width > 512 || live_img->height > 512) {
         return CURSOR_DEFAULT;
     }
-    for (size_t i = 0; i < npx; i++) live_px[i] = (uint32_t)img->pixels[i];
 
-    uint64_t live_hash = hash_cursor(img->width, img->height, img->xhot, img->yhot, live_px);
+    /* Narrow unsigned long pixels to uint32_t */
+    size_t npx = (size_t)live_img->width * live_img->height;
+    uint32_t *live_px = malloc(npx * sizeof(uint32_t));
+    if (!live_px) {
+        XFree(live_img);
+        return CURSOR_DEFAULT;
+    }
+    for (size_t i = 0; i < npx; i++) live_px[i] = (uint32_t)live_img->pixels[i];
+
+    uint64_t live_hash = hash_cursor(live_img->width, live_img->height, live_img->xhot, live_img->yhot, live_px);
     free(live_px);
 
     /* Use the live cursor's own size to avoid potential discrepancies between root's and the user's themes */
-    uint32_t size = (img->width > img->height) ? img->width : img->height;
-    XFree(img);
+    uint32_t size = (live_img->width > live_img->height) ? live_img->width : live_img->height;
+    XFree(live_img);
 
     char *theme = XcursorGetTheme(g->display);
     for (size_t i = 0; i < NUM_SUPPORTED_CURSORS; i++) {
@@ -483,7 +488,10 @@ static uint32_t find_cursor_by_image(Ghandles *g) {
 
         if (hash == live_hash) {
             uint32_t found = CURSOR_X11 + supported_cursors[i].cursor_id;
-            assert(found < CURSOR_X11_MAX);
+            // SEC: Check bounds at runtime
+            if (found >= CURSOR_X11_MAX) {
+                return CURSOR_DEFAULT;
+            }
             return found;
         }
     }
