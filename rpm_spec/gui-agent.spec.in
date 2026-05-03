@@ -365,6 +365,7 @@ rm -f %{name}-%{version}
 
 %files xfce
 %{xinitrc_dir}/60xfce-desktop.sh
+/etc/xdg/autostart/qubes-set-xsettings-xfconf-query.desktop
 
 %files -n qubes-gui-vnc
 #/lib/systemd/system/qubes-gui-vncserver.service

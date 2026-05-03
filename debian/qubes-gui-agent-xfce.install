@@ -1,1 +1,2 @@
 etc/X11/Xsession.d/60xfce-desktop
+etc/xdg/autostart/qubes-set-xsettings-xfconf-query.desktop
