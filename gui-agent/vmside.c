@@ -320,6 +320,14 @@ static struct supported_cursor supported_cursors[] = {
 
 #define NUM_SUPPORTED_CURSORS (QUBES_ARRAY_SIZE(supported_cursors))
 
+struct hashed_cursor {
+    uint64_t hash;
+    uint32_t cursor_id;
+};
+
+static struct hashed_cursor *hashed_cursors = NULL;
+static size_t num_hashed_cursors = 0;
+
 static int compare_supported_cursors(const void *a, const void *b) {
     return strcmp(((const struct supported_cursor *)a)->name,
                   ((const struct supported_cursor *)b)->name);
@@ -424,7 +432,6 @@ static uint32_t find_cursor(Ghandles *g, Atom atom)
 /*
  * Some applications don't set cursor names properly when sending XfixesDisplayCursorNotify events, notably Chromium and derivatives.
  * Before falling back to CURSOR_DEFAULT, we'll try to match (quick hashes of) the live cursor's bitmap with each supported cursor's bitmap.
- * TODO: Precompute the hashes of supported_cursors once during init to avoid redundant computations everytime a cursor changes (this might not be trivial).
 **/
 
 // Generic Fowler-Noll-Vo quick hash function (FNV-1a), magic mix number from WikiPedia's entry
@@ -452,6 +459,28 @@ static uint64_t hash_cursor(uint32_t w, uint32_t h,
     return hash;
 }
 
+// Precompute a table of cursor hashes (for a given cursor size) to accelerate matching unnamed cursors
+static void precompute_hashed_cursors(Ghandles *g, uint32_t cursor_size) {
+    char *theme = XcursorGetTheme(g->display);
+
+    free(hashed_cursors);
+    hashed_cursors = NULL;
+    num_hashed_cursors = 0;
+
+    hashed_cursors = calloc(NUM_SUPPORTED_CURSORS, sizeof(*hashed_cursors));
+    if (!hashed_cursors) return;
+
+    for (size_t i = 0; i < NUM_SUPPORTED_CURSORS; i++) {
+        XcursorImage *img = XcursorLibraryLoadImage(supported_cursors[i].name, theme, (int)cursor_size);
+        if (!img) continue;
+
+        hashed_cursors[num_hashed_cursors].hash = hash_cursor(img->width, img->height, img->xhot, img->yhot, img->pixels);
+        hashed_cursors[num_hashed_cursors].cursor_id = supported_cursors[i].cursor_id;
+        num_hashed_cursors++;
+        XcursorImageDestroy(img);
+    }
+}
+
 // Fallback function to lookup an unnamed cursor by its bitmap
 static uint32_t find_cursor_by_image(Ghandles *g) {
     XFixesCursorImage *live_img = XFixesGetCursorImage(g->display);
@@ -473,22 +502,11 @@ static uint32_t find_cursor_by_image(Ghandles *g) {
 
     uint64_t live_hash = hash_cursor(live_img->width, live_img->height, live_img->xhot, live_img->yhot, live_px);
     free(live_px);
-
-    /* Use the live cursor's own size to avoid potential discrepancies between root's and the user's themes */
-    uint32_t size = (live_img->width > live_img->height) ? live_img->width : live_img->height;
     XFree(live_img);
 
-    char *theme = XcursorGetTheme(g->display);
-    for (size_t i = 0; i < NUM_SUPPORTED_CURSORS; i++) {
-        XcursorImage *img = XcursorLibraryLoadImage(supported_cursors[i].name, theme, size);
-        if (!img) continue;
-
-        uint64_t hash = hash_cursor(img->width, img->height, img->xhot, img->yhot, img->pixels);
-        XcursorImageDestroy(img);
-
-        if (hash == live_hash) {
-            uint32_t found = CURSOR_X11 + supported_cursors[i].cursor_id;
-            // SEC: Check bounds at runtime
+    for (size_t i = 0; i < num_hashed_cursors; i++) {
+        if (hashed_cursors[i].hash == live_hash) {
+            uint32_t found = CURSOR_X11 + hashed_cursors[i].cursor_id;
             if (found >= CURSOR_X11_MAX) {
                 return CURSOR_DEFAULT;
             }
@@ -523,6 +541,17 @@ static void process_xevent_cursor(Ghandles *g, XFixesCursorNotifyEvent *ev)
         if (ev->cursor_name != None) {
             cursor = find_cursor(g, ev->cursor_name);
         } else {
+            // Precompute the table of hashed cursors based on the actual cursor size
+            if (num_hashed_cursors == 0) {
+                XFixesCursorImage *live_img = XFixesGetCursorImage(g->display);
+                if (live_img) {
+                    uint32_t size = (live_img->width > live_img->height) ? live_img->width : live_img->height;
+                    XFree(live_img);
+                    fprintf(stderr, "Precomputing hashed cursors to accelerate subsequent lookups");
+                    precompute_hashed_cursors(g, size);
+                }
+            }
+
             cursor = find_cursor_by_image(g);
         }
 
