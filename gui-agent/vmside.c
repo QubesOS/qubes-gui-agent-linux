@@ -44,6 +44,7 @@
 #include <X11/XKBlib.h>
 #include <X11/Xatom.h>
 #include <X11/cursorfont.h>
+#include <X11/Xcursor/Xcursor.h>
 #include <qubes-gui-protocol.h>
 #include <qubes-xorg-tray-defs.h>
 #include "xdriver-shm-cmd.h"
@@ -319,6 +320,14 @@ static struct supported_cursor supported_cursors[] = {
 
 #define NUM_SUPPORTED_CURSORS (QUBES_ARRAY_SIZE(supported_cursors))
 
+struct hashed_cursor {
+    uint64_t hash;
+    uint32_t cursor_id;
+};
+
+static struct hashed_cursor *hashed_cursors = NULL;
+static size_t num_hashed_cursors = 0;
+
 static int compare_supported_cursors(const void *a, const void *b) {
     return strcmp(((const struct supported_cursor *)a)->name,
                   ((const struct supported_cursor *)b)->name);
@@ -420,6 +429,94 @@ static uint32_t find_cursor(Ghandles *g, Atom atom)
     return CURSOR_DEFAULT;
 }
 
+/*
+ * Some applications don't set cursor names properly when sending XfixesDisplayCursorNotify events, notably Chromium and derivatives.
+ * Before falling back to CURSOR_DEFAULT, we'll try to match (quick hashes of) the live cursor's bitmap with each supported cursor's bitmap.
+**/
+
+// Generic Fowler-Noll-Vo quick hash function (FNV-1a), magic mix number from WikiPedia's entry
+static uint64_t fnv1a64(const void *data, size_t len, uint64_t seed) {
+    const uint8_t *p = data;
+    uint64_t hash = seed;
+    for (size_t i = 0; i < len; i++) {
+        hash ^= p[i];
+        hash *= 1099511628211ULL;
+    }
+
+    return hash;
+}
+
+// Specialized FNV-1a hash of a cursor, magic seed number from WikiPedia's entry
+static uint64_t hash_cursor(uint32_t w, uint32_t h,
+                            uint32_t xhot, uint32_t yhot,
+                            const uint32_t *pixels) {
+    uint64_t hash = 14695981039346656037ULL;
+
+    uint32_t hdr[4] = { w, h, xhot, yhot };
+    hash = fnv1a64(hdr, sizeof(hdr), hash);
+    hash = fnv1a64(pixels, (size_t)(w * h * sizeof(uint32_t)), hash);
+
+    return hash;
+}
+
+// Precompute a table of cursor hashes (for a given cursor size) to accelerate matching unnamed cursors
+static void precompute_hashed_cursors(Ghandles *g, uint32_t cursor_size) {
+    char *theme = XcursorGetTheme(g->display);
+
+    free(hashed_cursors);
+    hashed_cursors = NULL;
+    num_hashed_cursors = 0;
+
+    hashed_cursors = calloc(NUM_SUPPORTED_CURSORS, sizeof(*hashed_cursors));
+    if (!hashed_cursors) return;
+
+    for (size_t i = 0; i < NUM_SUPPORTED_CURSORS; i++) {
+        XcursorImage *img = XcursorLibraryLoadImage(supported_cursors[i].name, theme, (int)cursor_size);
+        if (!img) continue;
+
+        hashed_cursors[num_hashed_cursors].hash = hash_cursor(img->width, img->height, img->xhot, img->yhot, img->pixels);
+        hashed_cursors[num_hashed_cursors].cursor_id = supported_cursors[i].cursor_id;
+        num_hashed_cursors++;
+        XcursorImageDestroy(img);
+    }
+}
+
+// Fallback function to lookup an unnamed cursor by its bitmap
+static uint32_t find_cursor_by_image(Ghandles *g) {
+    XFixesCursorImage *live_img = XFixesGetCursorImage(g->display);
+    if (!live_img) return CURSOR_DEFAULT;
+
+    // SEC: Abort immediately on suspiciously huge cursors to avoid mallocating too much RAM
+    if (live_img->width > 512 || live_img->height > 512) {
+        return CURSOR_DEFAULT;
+    }
+
+    /* Narrow unsigned long pixels to uint32_t */
+    size_t npx = (size_t)live_img->width * live_img->height;
+    uint32_t *live_px = malloc(npx * sizeof(uint32_t));
+    if (!live_px) {
+        XFree(live_img);
+        return CURSOR_DEFAULT;
+    }
+    for (size_t i = 0; i < npx; i++) live_px[i] = (uint32_t)live_img->pixels[i];
+
+    uint64_t live_hash = hash_cursor(live_img->width, live_img->height, live_img->xhot, live_img->yhot, live_px);
+    free(live_px);
+    XFree(live_img);
+
+    for (size_t i = 0; i < num_hashed_cursors; i++) {
+        if (hashed_cursors[i].hash == live_hash) {
+            uint32_t found = CURSOR_X11 + hashed_cursors[i].cursor_id;
+            if (found >= CURSOR_X11_MAX) {
+                return CURSOR_DEFAULT;
+            }
+            return found;
+        }
+    }
+
+    return CURSOR_DEFAULT;
+}
+
 static void process_xevent_cursor(Ghandles *g, XFixesCursorNotifyEvent *ev)
 {
     if (ev->subtype == XFixesDisplayCursorNotify) {
@@ -430,7 +527,6 @@ static void process_xevent_cursor(Ghandles *g, XFixesCursorNotifyEvent *ev)
         int root_x, root_y, win_x, win_y;
         unsigned int mask;
         Bool ret;
-        int cursor;
 
         ret = XQueryPointer(g->display, ev->window, &root,
                             &window_under_pointer,
@@ -441,7 +537,24 @@ static void process_xevent_cursor(Ghandles *g, XFixesCursorNotifyEvent *ev)
         if (!lookup_window(g, windows_list, window_under_pointer, __func__))
             return;
 
-        cursor = find_cursor(g, ev->cursor_name);
+        uint32_t cursor;
+        if (ev->cursor_name != None) {
+            cursor = find_cursor(g, ev->cursor_name);
+        } else {
+            // Precompute the table of hashed cursors based on the actual cursor size
+            if (num_hashed_cursors == 0) {
+                XFixesCursorImage *live_img = XFixesGetCursorImage(g->display);
+                if (live_img) {
+                    uint32_t size = (live_img->width > live_img->height) ? live_img->width : live_img->height;
+                    XFree(live_img);
+                    fprintf(stderr, "Precomputing hashed cursors to accelerate subsequent lookups");
+                    precompute_hashed_cursors(g, size);
+                }
+            }
+
+            cursor = find_cursor_by_image(g);
+        }
+
         send_cursor(g, window_under_pointer, cursor);
     }
 }
