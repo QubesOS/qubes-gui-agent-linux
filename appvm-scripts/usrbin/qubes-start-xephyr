@@ -1,8 +1,15 @@
 #!/bin/sh
 
-if [ $(whoami) == "root" ]; then
-    echo "Should be run as normal user!"
-    exit 1
+# Start under new service unit, to detach from the current non-gui logind
+# session
+if [ -z "$INVOCATION_ID" ]; then
+    exec systemd-run --system \
+        --unit=qubes-gui-agent-session.service \
+        --description="Start GUI session via Xephyr" \
+        --property=TTYPath=/dev/tty8 \
+        --property=StandardInput=tty \
+        --wait \
+        -- "$0" "$@"
 fi
 
 # do not let child processes believe they are running as qrexec service
@@ -29,6 +36,11 @@ if ! timeout 30s sh -c "while ! xdpyinfo -display $DISPLAY_XORG > /dev/null 2>&1
     exit 1
 fi
 
+# parameters for logind session
+export DISPLAY=$DISPLAY_XEPHYR
+export XDG_SEAT=seat0
+export XDG_SESSION_CLASS=user
+
 # Run xsession into Xephyr
-export DISPLAY=$DISPLAY_XORG
-exec /usr/bin/xinit $XSESSION -- /usr/bin/qubes-run-xephyr $DISPLAY_XEPHYR > ~/.xsession-errors 2>&1
+user=$(qubesdb-read --default=user /default-user)
+exec /usr/bin/qubes-gui-runuser $user /usr/bin/env env DISPLAY=$DISPLAY_XORG /usr/bin/xinit $XSESSION -- /usr/bin/qubes-run-xephyr $DISPLAY_XEPHYR > ~/.xsession-errors 2>&1
