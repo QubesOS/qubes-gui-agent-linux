@@ -211,6 +211,8 @@ endif
 		$(DESTDIR)/etc/qubes-rpc/qubes.SetMonitorLayout
 	ln -sf ../../usr/bin/qubes-start-xephyr \
 		$(DESTDIR)/etc/qubes-rpc/qubes.GuiVMSession
+	install -d $(DESTDIR)/etc/qubes/rpc-config
+	echo "force-user='root'" > $(DESTDIR)/etc/qubes/rpc-config/qubes.GuiVMSession
 	install -D window-icon-updater/icon-sender \
 		$(DESTDIR)/usr/lib/qubes/icon-sender
 	install -m 0644 -D window-icon-updater/qubes-icon-sender.desktop \
