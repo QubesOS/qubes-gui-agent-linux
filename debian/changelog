@@ -1,3 +1,19 @@
+qubes-gui-agent (4.3.17-1) unstable; urgency=medium
+
+  [ Thomas GRIM ]
+  * When handling a cursor change event with an empty cursor_name
+    (Chromium), try matching on the cursor's bitmap image before falling
+    back to the default cursor
+  * Rename variables, check bounds, add missing deps, start signing
+    commits
+  * Precompute the hashed cursors lookup table the first time we see an
+    unnamed cursor
+
+  [ Marek Marczykowski-Górecki ]
+  * Fix registering user session in sys-gui
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 24 May 2026 15:40:02 +0200
+
 qubes-gui-agent (4.3.16-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
