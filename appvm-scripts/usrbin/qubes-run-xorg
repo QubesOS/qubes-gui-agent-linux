@@ -26,14 +26,7 @@
 
 ## This script is triggered by qubes-gui-agent systemd service.
 
-#expects W, H, MEM and DEPTH env vars to be set by invoker, but use default
-# values if they aren't
-
-[ -n "$W" ] || W=1920
-[ -n "$H" ] || H=1080
-[ -n "$MEM" ] || MEM=$(( W * H * 4 / 1024 ))
-[ -n "$DEPTH" ] || DEPTH=24
-
+#expects W, H, MEM and DEPTH env vars to be set by invoker
 DUMMY_MAX_CLOCK=300 #hardcoded in dummy_drv
 PREFERRED_HSYNC=50
 RES="$W"x"$H"

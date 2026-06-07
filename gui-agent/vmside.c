@@ -44,7 +44,6 @@
 #include <X11/XKBlib.h>
 #include <X11/Xatom.h>
 #include <X11/cursorfont.h>
-#include <X11/Xcursor/Xcursor.h>
 #include <qubes-gui-protocol.h>
 #include <qubes-xorg-tray-defs.h>
 #include "xdriver-shm-cmd.h"
@@ -73,8 +72,6 @@
         8 - 16*__builtin_types_compatible_p(__typeof__(x), __typeof__(&((x)[0]))); \
     }) + sizeof(x)/sizeof((x)[0]))
 #define SOCKET_ADDRESS  "/var/run/xf86-qubes-socket"
-
-#define STATUS_FILE_PATH  "/run/qubes/gui-agent.status"
 
 /* Supported protocol version */
 
@@ -320,14 +317,6 @@ static struct supported_cursor supported_cursors[] = {
 
 #define NUM_SUPPORTED_CURSORS (QUBES_ARRAY_SIZE(supported_cursors))
 
-struct hashed_cursor {
-    uint64_t hash;
-    uint32_t cursor_id;
-};
-
-static struct hashed_cursor *hashed_cursors = NULL;
-static size_t num_hashed_cursors = 0;
-
 static int compare_supported_cursors(const void *a, const void *b) {
     return strcmp(((const struct supported_cursor *)a)->name,
                   ((const struct supported_cursor *)b)->name);
@@ -429,94 +418,6 @@ static uint32_t find_cursor(Ghandles *g, Atom atom)
     return CURSOR_DEFAULT;
 }
 
-/*
- * Some applications don't set cursor names properly when sending XfixesDisplayCursorNotify events, notably Chromium and derivatives.
- * Before falling back to CURSOR_DEFAULT, we'll try to match (quick hashes of) the live cursor's bitmap with each supported cursor's bitmap.
-**/
-
-// Generic Fowler-Noll-Vo quick hash function (FNV-1a), magic mix number from WikiPedia's entry
-static uint64_t fnv1a64(const void *data, size_t len, uint64_t seed) {
-    const uint8_t *p = data;
-    uint64_t hash = seed;
-    for (size_t i = 0; i < len; i++) {
-        hash ^= p[i];
-        hash *= 1099511628211ULL;
-    }
-
-    return hash;
-}
-
-// Specialized FNV-1a hash of a cursor, magic seed number from WikiPedia's entry
-static uint64_t hash_cursor(uint32_t w, uint32_t h,
-                            uint32_t xhot, uint32_t yhot,
-                            const uint32_t *pixels) {
-    uint64_t hash = 14695981039346656037ULL;
-
-    uint32_t hdr[4] = { w, h, xhot, yhot };
-    hash = fnv1a64(hdr, sizeof(hdr), hash);
-    hash = fnv1a64(pixels, (size_t)(w * h * sizeof(uint32_t)), hash);
-
-    return hash;
-}
-
-// Precompute a table of cursor hashes (for a given cursor size) to accelerate matching unnamed cursors
-static void precompute_hashed_cursors(Ghandles *g, uint32_t cursor_size) {
-    char *theme = XcursorGetTheme(g->display);
-
-    free(hashed_cursors);
-    hashed_cursors = NULL;
-    num_hashed_cursors = 0;
-
-    hashed_cursors = calloc(NUM_SUPPORTED_CURSORS, sizeof(*hashed_cursors));
-    if (!hashed_cursors) return;
-
-    for (size_t i = 0; i < NUM_SUPPORTED_CURSORS; i++) {
-        XcursorImage *img = XcursorLibraryLoadImage(supported_cursors[i].name, theme, (int)cursor_size);
-        if (!img) continue;
-
-        hashed_cursors[num_hashed_cursors].hash = hash_cursor(img->width, img->height, img->xhot, img->yhot, img->pixels);
-        hashed_cursors[num_hashed_cursors].cursor_id = supported_cursors[i].cursor_id;
-        num_hashed_cursors++;
-        XcursorImageDestroy(img);
-    }
-}
-
-// Fallback function to lookup an unnamed cursor by its bitmap
-static uint32_t find_cursor_by_image(Ghandles *g) {
-    XFixesCursorImage *live_img = XFixesGetCursorImage(g->display);
-    if (!live_img) return CURSOR_DEFAULT;
-
-    // SEC: Abort immediately on suspiciously huge cursors to avoid mallocating too much RAM
-    if (live_img->width > 512 || live_img->height > 512) {
-        return CURSOR_DEFAULT;
-    }
-
-    /* Narrow unsigned long pixels to uint32_t */
-    size_t npx = (size_t)live_img->width * live_img->height;
-    uint32_t *live_px = malloc(npx * sizeof(uint32_t));
-    if (!live_px) {
-        XFree(live_img);
-        return CURSOR_DEFAULT;
-    }
-    for (size_t i = 0; i < npx; i++) live_px[i] = (uint32_t)live_img->pixels[i];
-
-    uint64_t live_hash = hash_cursor(live_img->width, live_img->height, live_img->xhot, live_img->yhot, live_px);
-    free(live_px);
-    XFree(live_img);
-
-    for (size_t i = 0; i < num_hashed_cursors; i++) {
-        if (hashed_cursors[i].hash == live_hash) {
-            uint32_t found = CURSOR_X11 + hashed_cursors[i].cursor_id;
-            if (found >= CURSOR_X11_MAX) {
-                return CURSOR_DEFAULT;
-            }
-            return found;
-        }
-    }
-
-    return CURSOR_DEFAULT;
-}
-
 static void process_xevent_cursor(Ghandles *g, XFixesCursorNotifyEvent *ev)
 {
     if (ev->subtype == XFixesDisplayCursorNotify) {
@@ -527,6 +428,7 @@ static void process_xevent_cursor(Ghandles *g, XFixesCursorNotifyEvent *ev)
         int root_x, root_y, win_x, win_y;
         unsigned int mask;
         Bool ret;
+        int cursor;
 
         ret = XQueryPointer(g->display, ev->window, &root,
                             &window_under_pointer,
@@ -537,24 +439,7 @@ static void process_xevent_cursor(Ghandles *g, XFixesCursorNotifyEvent *ev)
         if (!lookup_window(g, windows_list, window_under_pointer, __func__))
             return;
 
-        uint32_t cursor;
-        if (ev->cursor_name != None) {
-            cursor = find_cursor(g, ev->cursor_name);
-        } else {
-            // Precompute the table of hashed cursors based on the actual cursor size
-            if (num_hashed_cursors == 0) {
-                XFixesCursorImage *live_img = XFixesGetCursorImage(g->display);
-                if (live_img) {
-                    uint32_t size = (live_img->width > live_img->height) ? live_img->width : live_img->height;
-                    XFree(live_img);
-                    fprintf(stderr, "Precomputing hashed cursors to accelerate subsequent lookups");
-                    precompute_hashed_cursors(g, size);
-                }
-            }
-
-            cursor = find_cursor_by_image(g);
-        }
-
+        cursor = find_cursor(g, ev->cursor_name);
         send_cursor(g, window_under_pointer, cursor);
     }
 }
@@ -2291,11 +2176,12 @@ static void handle_close(Ghandles * g, XID winid)
 
 /* start X server, returns its PID
  */
-static pid_t do_execute_xorg(Ghandles *g)
+static pid_t do_execute_xorg(
+        char *w_str, char *h_str, char *mem_str, char *depth_str,
+        char *gui_domid_str)
 {
     pid_t pid;
     int fd;
-    char gui_domid_str[12];
 
     pid = fork();
     switch (pid) {
@@ -2303,7 +2189,10 @@ static pid_t do_execute_xorg(Ghandles *g)
             perror("fork");
             return -1;
         case 0:
-            snprintf(gui_domid_str, sizeof(gui_domid_str), "%u", g->domid);
+            setenv("W", w_str, 1);
+            setenv("H", h_str, 1);
+            setenv("MEM", mem_str, 1);
+            setenv("DEPTH", depth_str, 1);
             setenv("GUI_DOMID", gui_domid_str, 1);
             /* don't leak other FDs */
             for (fd = 3; fd < 256; fd++)
@@ -2485,11 +2374,27 @@ static void handle_message(Ghandles * g)
     }
 }
 
+static pid_t get_xconf_and_run_x(Ghandles *g)
+{
+    struct msg_xconf xconf;
+    char w_str[12], h_str[12], mem_str[12], depth_str[12], gui_domid_str[12];
+    pid_t x_pid;
+    read_struct(g->vchan, xconf);
+    snprintf(w_str, sizeof(w_str), "%d", xconf.w);
+    snprintf(h_str, sizeof(h_str), "%d", xconf.h);
+    snprintf(mem_str, sizeof(mem_str), "%d", xconf.mem);
+    snprintf(depth_str, sizeof(depth_str), "%d", xconf.depth);
+    snprintf(gui_domid_str, sizeof(gui_domid_str), "%u", g->domid);
+    x_pid = do_execute_xorg(w_str, h_str, mem_str, depth_str, gui_domid_str);
+    if (x_pid == (pid_t)-1) {
+        errx(1, "X server startup failed");
+    }
+    return x_pid;
+}
+
 static void handshake(Ghandles *g)
 {
     uint32_t version = PROTOCOL_VERSION;
-    struct msg_xconf xconf;
-
     write_struct(g->vchan, version);
     version = 0;
     read_struct(g->vchan, version);
@@ -2502,54 +2407,27 @@ static void handshake(Ghandles *g)
                 PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR,
                 major_version, minor_version);
     g->protocol_version = version;
-
-    /* discard */
-    read_struct(g->vchan, xconf);
-}
-
-static void write_status_file(const char *status)
-{
-    int fd = open(STATUS_FILE_PATH, O_CREAT | O_WRONLY | O_NOFOLLOW | O_TRUNC, 0644);
-    if (fd < 0) {
-        perror("open status file");
-        return;
-    }
-    FILE *f = fdopen(fd, "w");
-    if (!f) {
-        perror("fdopen status file");
-        close(fd);
-        return;
-    }
-    if (fwrite(status, strlen(status), 1, f) != 1) {
-        perror("write error");
-    }
-    fclose(f);
-    close(fd);
-}
-
-static void cleanup_status_file(void)
-{
-    unlink(STATUS_FILE_PATH);
 }
 
 static void handle_guid_disconnect(void)
 {
     Ghandles *g = ghandles_for_vchan_reinitialize;
+    struct msg_xconf xconf;
 
     if (!ghandles_for_vchan_reinitialize) {
         fprintf(stderr, "gui-daemon disconnected before fully initialized, "
                 "cannot reconnect, exiting!\n");
         exit(1);
     }
-    write_status_file("started\n");
     libvchan_close(g->vchan);
     g->vchan = libvchan_server_init(g->domid, 6000, 4096, 4096);
     /* wait for gui daemon */
     while (libvchan_is_open(g->vchan) == VCHAN_WAITING)
         libvchan_wait(g->vchan);
     handshake(g);
+    /* discard */
+    read_struct(g->vchan, xconf);
     send_all_windows_info(g);
-    write_status_file("connected\n");
 }
 
 static _Noreturn void handle_sigterm(int UNUSED(sig),
@@ -2640,9 +2518,6 @@ int main(int argc, char **argv)
     int xfd;
     Ghandles g = { .x_pid = -1 };
 
-    write_status_file("starting\n");
-    atexit(cleanup_status_file);
-
     g.created_input_device = access("/run/qubes-service/gui-agent-virtual-input-device", F_OK) == 0;
 
     if(g.created_input_device) {
@@ -2696,6 +2571,7 @@ int main(int argc, char **argv)
         g.last_known_modifier_states = 0;
     }
 
+
     parse_args(&g, argc, argv);
 
     /* Clipboard wipe functionality is controlled by the
@@ -2704,8 +2580,18 @@ int main(int argc, char **argv)
     g.clipboard_wipe =
         access("/run/qubes-service/gui-agent-clipboard-wipe", F_OK) == 0;
 
-    ghandles_for_vchan_reinitialize = &g;
+    g.vchan = libvchan_server_init(g.domid, 6000, 4096, 4096);
+    if (!g.vchan) {
+        fprintf(stderr, "vchan initialization failed\n");
+        exit(1);
+    }
+    /* wait for gui daemon */
+    while (libvchan_is_open(g.vchan) == VCHAN_WAITING)
+        libvchan_wait(g.vchan);
+    saved_argv = argv;
+    vchan_register_at_eof(handle_guid_disconnect);
 
+    ghandles_for_vchan_reinitialize = &g;
     struct sigaction sigchld_handler = {
         .sa_sigaction = handle_sigchld,
         .sa_flags = SA_SIGINFO,
@@ -2721,10 +2607,8 @@ int main(int argc, char **argv)
     if (sigaction(SIGTERM, &sigterm_handler, NULL))
         err(1, "sigaction");
 
-    g.x_pid = do_execute_xorg(&g);
-    if (g.x_pid == (pid_t)-1) {
-        errx(1, "X server startup failed");
-    }
+    handshake(&g);
+    g.x_pid = get_xconf_and_run_x(&g);
 
     mkghandles(&g);
     /* Turn on Composite for all children of root window. This way X server
@@ -2793,24 +2677,6 @@ int main(int argc, char **argv)
             fprintf(stderr,
                     "Acquired MANAGER selection for tray\n");
     }
-
-    write_status_file("started\n");
-
-    g.vchan = libvchan_server_init(g.domid, 6000, 4096, 4096);
-    if (!g.vchan) {
-        fprintf(stderr, "vchan initialization failed\n");
-        exit(1);
-    }
-    /* wait for gui daemon */
-    while (libvchan_is_open(g.vchan) == VCHAN_WAITING)
-        libvchan_wait(g.vchan);
-    saved_argv = argv;
-    vchan_register_at_eof(handle_guid_disconnect);
-
-    handshake(&g);
-
-    write_status_file("connected\n");
-
     xfd = ConnectionNumber(g.display);
     struct pollfd fds[] = {
         { .fd = -1, .events = POLLIN | POLLHUP, .revents = 0 },

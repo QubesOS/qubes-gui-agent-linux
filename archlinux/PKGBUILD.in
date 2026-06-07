@@ -22,7 +22,6 @@ makedepends=(
     xorg-util-macros
     libxcomposite
     libxt
-    libxcursor
     libxdamage
     libunistring
     pixman
