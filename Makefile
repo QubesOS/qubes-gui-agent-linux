@@ -168,6 +168,8 @@ install-common:
 	install -d $(DESTDIR)/etc/qubes/post-install.d
 	install -m 0755 appvm-scripts/etc/qubes/post-install.d/20-qubes-guivm-gui-agent.sh \
                 $(DESTDIR)/etc/qubes/post-install.d/20-qubes-guivm-gui-agent.sh
+	install -m 0755 appvm-scripts/etc/qubes/post-install.d/20-qubes-gui-agent.sh \
+                $(DESTDIR)/etc/qubes/post-install.d/20-qubes-gui-agent.sh
 	install -D appvm-scripts/usrbin/qubes-session \
 		$(DESTDIR)/usr/bin/qubes-session
 	install -D appvm-scripts/usrbin/qubes-run-xorg \
@@ -211,6 +213,8 @@ endif
 		$(DESTDIR)/etc/qubes-rpc/qubes.SetMonitorLayout
 	ln -sf ../../usr/bin/qubes-start-xephyr \
 		$(DESTDIR)/etc/qubes-rpc/qubes.GuiVMSession
+	install -d $(DESTDIR)/etc/qubes/rpc-config
+	echo "force-user='root'" > $(DESTDIR)/etc/qubes/rpc-config/qubes.GuiVMSession
 	install -D window-icon-updater/icon-sender \
 		$(DESTDIR)/usr/lib/qubes/icon-sender
 	install -m 0644 -D window-icon-updater/qubes-icon-sender.desktop \

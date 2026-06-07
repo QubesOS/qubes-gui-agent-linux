@@ -51,6 +51,10 @@ VMTYPE=$(/usr/bin/qubesdb-read /qubes-vm-type)
 UPDTYPE=$(/usr/bin/qubesdb-read /qubes-vm-updateable)
 [[ $UPDTYPE == 'True' ]] && UPDTYPE="UpdateableVM" || UPDTYPE="NonUpdateableVM"
 
+# Sync environment variables from the user session into the systemd user
+# manager and dbus-daemon
+dbus-update-activation-environment --systemd --all
+
 # process /etc/xdg/autostart and friends (according to Desktop Application
 # Autostart Specification)
 /usr/bin/qubes-session-autostart QUBES X-QUBES "X-$VMTYPE" "X-$UPDTYPE"
