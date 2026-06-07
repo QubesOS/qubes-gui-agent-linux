@@ -239,6 +239,8 @@ endif
 		$(DESTDIR)/usr/lib/qubes/qubes-xorg-wrapper
 	install -D appvm-scripts/usr/lib/qubes/gtk4-workarounds.sh \
 		$(DESTDIR)/usr/lib/qubes/gtk4-workarounds.sh
+	install -m 0644 -D appvm-scripts/etc/xdgautostart/qubes-set-xsettings-xfconf-query.desktop \
+		$(DESTDIR)/etc/xdg/autostart/qubes-set-xsettings-xfconf-query.desktop
 ifeq ($(shell lsb_release -is), Debian)
 	install -D -m 0644 appvm-scripts/etc/pam.d/qubes-gui-agent.debian \
 		$(DESTDIR)/etc/pam.d/qubes-gui-agent
