@@ -55,6 +55,11 @@ UPDTYPE=$(/usr/bin/qubesdb-read /qubes-vm-updateable)
 # manager and dbus-daemon
 dbus-update-activation-environment --systemd --all
 
+if command -v systemctl >/dev/null && [ -e "${XDG_RUNTIME_DIR:-/run/user/$UID}/systemd" ]; then
+    trap "systemctl --user stop qubes-graphical-session.target" EXIT
+    systemctl --user start qubes-graphical-session.target
+fi
+
 # process /etc/xdg/autostart and friends (according to Desktop Application
 # Autostart Specification)
 /usr/bin/qubes-session-autostart QUBES X-QUBES "X-$VMTYPE" "X-$UPDTYPE"
