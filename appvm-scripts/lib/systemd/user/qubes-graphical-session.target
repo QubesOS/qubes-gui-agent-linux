@@ -1,0 +1,3 @@
+[Unit]
+Description=Qubes graphical session
+BindsTo=graphical-session.target

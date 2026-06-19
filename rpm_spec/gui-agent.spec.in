@@ -323,6 +323,7 @@ rm -f %{name}-%{version}
 %config /etc/sysconfig/desktop
 %endif
 %_unitdir/qubes-gui-agent.service
+%{_userunitdir}/qubes-graphical-session.target
 %_udevrulesdir/70-master-of-seat.rules
 %_udevrulesdir/90-qubes-virtual-input-device.rules
 %_sysctldir/30-qubes-gui-agent.conf
