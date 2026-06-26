@@ -160,6 +160,8 @@ install-pipewire:
 install-systemd:
 	install -m 0644 -D appvm-scripts/qubes-gui-agent.service \
 		$(DESTDIR)$(UNITDIR)/qubes-gui-agent.service
+	install -m 0644 -D appvm-scripts/lib/systemd/user/qubes-graphical-session.target \
+		$(DESTDIR)$(USERUNITDIR)/qubes-graphical-session.target
 
 .PHONY: install-common
 install-common:
