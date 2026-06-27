@@ -1,3 +1,10 @@
+qubes-gui-agent (4.3.18-1) unstable; urgency=medium
+
+  * sys-gui: copy dpi from the host display
+  * Start graphical-session.target together with qubes-session
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 27 Jun 2026 14:01:49 +0200
+
 qubes-gui-agent (4.3.17-1) unstable; urgency=medium
 
   [ Thomas GRIM ]
