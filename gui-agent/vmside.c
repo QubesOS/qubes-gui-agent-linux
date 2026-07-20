@@ -1408,6 +1408,7 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
         Window w;
         int ret;
         struct msg_hdr hdr;
+        struct msg_configure conf;
         Atom act_type;
         int act_fmt;
         int mapwindow = 0;
@@ -1440,7 +1441,7 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
                     fprintf(stderr, "window 0x%lx havn't proper _XEMBED_INFO property, assuming defaults (workaround for buggy applications)\n", w);
                 }
                 if (act_type == g->xembed_info && nitems == 2) {
-                    mapwindow = ((int*)data)[1] & XEMBED_MAPPED;
+                    mapwindow = ((unsigned long*)data)[1] & XEMBED_MAPPED;
                     /* TODO: handle version */
                 }
                 if (ret == Success && nitems > 0)
@@ -1484,17 +1485,26 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
                 resp.data.l[4] = 0; /* TODO: handle version; GTK+ uses version 1, but spec says the latest is 0 */
                 resp.display = g->display;
                 XSendEvent(resp.display, resp.window, False,
-                        NoEventMask, (XEvent *) & ev);
+                        NoEventMask, (XEvent *) &resp);
                 XRaiseWindow(g->display, w);
                 if (mapwindow)
                     XMapRaised(g->display, resp.window);
                 XMapWindow(g->display, wd->embeder);
                 XLowerWindow(g->display, wd->embeder);
-                XMoveWindow(g->display, w, 0, 0);
+                XMoveResizeWindow(g->display, w, 0, 0, 32, 32);
                 /* force refresh of window content */
                 XClearWindow(g->display, wd->embeder);
                 XClearArea(g->display, w, 0, 0, 32, 32, True); /* XXX defult size once again */
                 XSync(g->display, False);
+
+                hdr.type = MSG_CONFIGURE;
+                hdr.window = w;
+                conf.x = 0;
+                conf.y = 0;
+                conf.width = 32;
+                conf.height = 32;
+                conf.override_redirect = 0;
+                write_message(g->vchan, hdr, conf);
 
                 hdr.type = MSG_DOCK;
                 hdr.window = w;
