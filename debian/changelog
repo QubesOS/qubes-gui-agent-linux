@@ -1,3 +1,10 @@
+qubes-gui-agent (4.3.19-1) unstable; urgency=medium
+
+  [ besendorf ]
+  * Fix XEmbed tray docking initialization
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 09 Aug 2026 13:41:54 +0200
+
 qubes-gui-agent (4.3.18-1) unstable; urgency=medium
 
   * sys-gui: copy dpi from the host display
