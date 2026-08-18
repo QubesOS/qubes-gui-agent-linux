@@ -1412,8 +1412,10 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
         Atom act_type;
         int act_fmt;
         int mapwindow = 0;
+        int normalize_icon_size = 0;
         unsigned long nitems, bytesafter;
         unsigned char *data;
+        XWindowAttributes attr;
         struct genlist *l;
         struct window_data *wd;
         struct embeder_data *ed;
@@ -1446,6 +1448,22 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
                 }
                 if (ret == Success && nitems > 0)
                     XFree(data);
+
+                ret = XGetWindowAttributes(g->display, w, &attr);
+                if (ret != 1) {
+                    fprintf(stderr,
+                            "XGetWindowAttributes for 0x%lx failed in "
+                            "handle_dock, ret=0x%x\n", w, ret);
+                    return;
+                }
+                /*
+                 * Some tray clients initially create a 1x1 window and need a
+                 * usable size before MSG_DOCK.  Do not force that size
+                 * on clients which already provided one (for example fcitx5),
+                 * as changing a valid geometry can trigger a configure loop
+                 * with some dom0 tray implementations.
+                 */
+                normalize_icon_size = attr.width <= 1 && attr.height <= 1;
 
                 /* TODO: error checking */
                 wd->embeder = XCreateSimpleWindow(g->display, g->root_win,
@@ -1491,20 +1509,25 @@ static void process_xevent_message(Ghandles * g, XClientMessageEvent * ev)
                     XMapRaised(g->display, resp.window);
                 XMapWindow(g->display, wd->embeder);
                 XLowerWindow(g->display, wd->embeder);
-                XMoveResizeWindow(g->display, w, 0, 0, 32, 32);
+                if (normalize_icon_size)
+                    XMoveResizeWindow(g->display, w, 0, 0, 32, 32);
+                else
+                    XMoveWindow(g->display, w, 0, 0);
                 /* force refresh of window content */
                 XClearWindow(g->display, wd->embeder);
                 XClearArea(g->display, w, 0, 0, 32, 32, True); /* XXX defult size once again */
                 XSync(g->display, False);
 
-                hdr.type = MSG_CONFIGURE;
-                hdr.window = w;
-                conf.x = 0;
-                conf.y = 0;
-                conf.width = 32;
-                conf.height = 32;
-                conf.override_redirect = 0;
-                write_message(g->vchan, hdr, conf);
+                if (normalize_icon_size) {
+                    hdr.type = MSG_CONFIGURE;
+                    hdr.window = w;
+                    conf.x = 0;
+                    conf.y = 0;
+                    conf.width = 32;
+                    conf.height = 32;
+                    conf.override_redirect = 0;
+                    write_message(g->vchan, hdr, conf);
+                }
 
                 hdr.type = MSG_DOCK;
                 hdr.window = w;
