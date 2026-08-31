@@ -1,3 +1,10 @@
+qubes-gui-agent (4.3.20-1) unstable; urgency=medium
+
+  [ Janik Besendorf ]
+  * Limit XEmbed size normalization to 1x1 clients
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 31 Aug 2026 04:17:55 +0200
+
 qubes-gui-agent (4.3.19-1) unstable; urgency=medium
 
   [ besendorf ]
