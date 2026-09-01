@@ -56,6 +56,7 @@ typedef struct dummyRec
     /* proc pointer */
     CloseScreenProcPtr CloseScreen;
     xf86CursorInfoPtr CursorInfo;
+    DestroyPixmapProcPtr DestroyPixmap;
     CreateScreenResourcesProcPtr CreateScreenResources;
     /* DRI support */
     int fd;

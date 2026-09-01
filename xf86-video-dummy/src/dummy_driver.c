@@ -1012,8 +1012,10 @@ xf86_qubes_pixmap_remove_list_all(void) {
 
 Bool
 qubes_destroy_pixmap(PixmapPtr pixmap) {
-    DUMMYPtr dPtr = DUMMYPTR(DUMMYScrn);
+    ScreenPtr pScreen = pixmap->drawable.pScreen;
+    DUMMYPtr dPtr = DUMMYPTR(xf86ScreenToScrn(pScreen));
     struct xf86_qubes_pixmap *priv;
+    Bool ret;
 
     assert(pixmap->refcnt > 0);
     priv = xf86_qubes_pixmap_get_private(pixmap);
@@ -1021,7 +1023,18 @@ qubes_destroy_pixmap(PixmapPtr pixmap) {
         xf86_qubes_free_pixmap_private(priv);
     }
 
-    return fbDestroyPixmap(pixmap);
+    /* Chain to the hook saved at ScreenInit time.  With glamor active that
+     * is glamor_egl_destroy_pixmap() -> glamor_destroy_pixmap(), which
+     * release the EGLImage and FBO backing the pixmap; calling
+     * fbDestroyPixmap() directly here instead would leak them.
+     * Unwrap/call/rewrap, since the chained hook may itself update
+     * pScreen->DestroyPixmap. */
+    pScreen->DestroyPixmap = dPtr->DestroyPixmap;
+    ret = pScreen->DestroyPixmap(pixmap);
+    dPtr->DestroyPixmap = pScreen->DestroyPixmap;
+    pScreen->DestroyPixmap = qubes_destroy_pixmap;
+
+    return ret;
 }
 
 /* Mandatory */
@@ -1155,6 +1168,10 @@ DUMMYScreenInit(SCREEN_INIT_ARGS_DECL)
     }
 
     pScreen->CreatePixmap = qubes_create_pixmap;
+    /* Wrap DestroyPixmap, saving the hook installed by glamor_init() above
+     * (fbDestroyPixmap when glamor is disabled) so qubes_destroy_pixmap()
+     * can chain to it. */
+    dPtr->DestroyPixmap = pScreen->DestroyPixmap;
     pScreen->DestroyPixmap = qubes_destroy_pixmap;
     PictureScreenPtr ps = GetPictureScreenIfSet(pScreen);
     ps->Glyphs = fbGlyphs;
