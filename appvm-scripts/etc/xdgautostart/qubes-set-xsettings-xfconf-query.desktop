@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+TryExec=xfconf-query
+Exec=xfconf-query --channel xsettings --property /Gtk/DecorationLayout --create --type string --set ""
+Terminal=false
+Type=Application
+OnlyShowIn=X-QUBES;
