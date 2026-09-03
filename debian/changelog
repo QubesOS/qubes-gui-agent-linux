@@ -1,3 +1,10 @@
+qubes-gui-agent (4.3.21-1) unstable; urgency=medium
+
+  [ etwk ]
+  * dummyqbs: chain DestroyPixmap to the hook it replaces
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 03 Sep 2026 03:03:17 +0200
+
 qubes-gui-agent (4.3.20-1) unstable; urgency=medium
 
   [ Janik Besendorf ]
