@@ -3,6 +3,10 @@ Section "Module"
     Load "glamoregl"
 EndSection
 
+Section "ServerFlags"
+    Option "AutoAddGPU" "false"
+EndSection
+
 Section "ServerLayout"
     Identifier      "Default Layout"
     Screen          0 "Screen0" 0 0
