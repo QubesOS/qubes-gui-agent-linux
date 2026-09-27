@@ -21,12 +21,13 @@
 
 CC ?= gcc
 CFLAGS += -I../include/ `pkg-config --cflags vchan` \
-	  `pkg-config --cflags dbus-1` -g -Wall -Wextra -Werror -fPIC \
+	  `pkg-config --cflags dbus-1` `pkg-config --cflags libpng` \
+	  -g -Wall -Wextra -Werror -fPIC \
 	  -Wmissing-prototypes -Wstrict-prototypes -Wold-style-declaration \
 	  -Wold-style-definition
-OBJS = vmside.o txrx-vchan.o error.o list.o encoding.o
+OBJS = vmside.o txrx-vchan.o error.o list.o encoding.o clipboard-png.o
 LIBS = -lX11 -lXdamage -lXcomposite -lXcursor -lXfixes `pkg-config --libs vchan` -lqubesdb \
-	   -lunistring
+	   -lunistring `pkg-config --libs libpng`
 
 
 all: qubes-gui qubes-gui-runuser
