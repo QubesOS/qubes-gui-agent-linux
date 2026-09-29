@@ -1,0 +1,12 @@
+[Unit]
+Description=Forward shutdown and restart of the GUI domain session to dom0
+ConditionPathExists=/var/run/qubes-service/guivm
+After=systemd-logind.service qubes-qrexec-agent.service
+Wants=systemd-logind.service
+
+[Service]
+ExecStart=/usr/lib/qubes/qubes-guivm-power-forward
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
