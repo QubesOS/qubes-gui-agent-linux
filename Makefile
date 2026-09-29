@@ -160,6 +160,10 @@ install-pipewire:
 install-systemd:
 	install -m 0644 -D appvm-scripts/qubes-gui-agent.service \
 		$(DESTDIR)$(UNITDIR)/qubes-gui-agent.service
+	install -m 0644 -D appvm-scripts/qubes-guivm-power-forward.service \
+		$(DESTDIR)$(UNITDIR)/qubes-guivm-power-forward.service
+	install -m 0644 -D appvm-scripts/lib/systemd/system/systemd-suspend.service.d/30_qubes-guivm.conf \
+		$(DESTDIR)$(UNITDIR)/systemd-suspend.service.d/30_qubes-guivm.conf
 	install -m 0644 -D appvm-scripts/lib/systemd/user/qubes-graphical-session.target \
 		$(DESTDIR)$(USERUNITDIR)/qubes-graphical-session.target
 
@@ -235,6 +239,10 @@ endif
 		$(DESTDIR)/$(UDEVRULESDIR)/90-qubes-virtual-input-device.rules
 	install -D appvm-scripts/usr/lib/qubes/qubes-gui-agent-pre.sh \
 		$(DESTDIR)/usr/lib/qubes/qubes-gui-agent-pre.sh
+	install -D appvm-scripts/usr/lib/qubes/qubes-guivm-power-forward \
+		$(DESTDIR)/usr/lib/qubes/qubes-guivm-power-forward
+	install -D appvm-scripts/usr/lib/qubes/qubes-guivm-suspend \
+		$(DESTDIR)/usr/lib/qubes/qubes-guivm-suspend
 	install -D appvm-scripts/usr/lib/qubes/qubes-keymap.sh \
 		$(DESTDIR)/usr/lib/qubes/qubes-keymap.sh
 	install -D appvm-scripts/usr/lib/qubes/qubes-xorg-wrapper \

@@ -1,0 +1,10 @@
+#!/bin/sh
+# In a GUI domain, suspend the machine through dom0, not this qube.
+if [ -e /var/run/qubes-service/guivm ]; then
+    exec qrexec-client-vm dom0 qubes.PowerSuspend </dev/null
+fi
+for sleep in /usr/lib/systemd/systemd-sleep /lib/systemd/systemd-sleep; do
+    [ -x "$sleep" ] && exec "$sleep" suspend
+done
+echo "systemd-sleep not found" >&2
+exit 1

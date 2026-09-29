@@ -96,6 +96,7 @@ Requires:	xorg-x11-xinit
 # qubesdb-read --wait option
 Requires:	qubes-db >= 4.1.4
 Requires:	python%{python3_pkgversion}-xcffib
+Requires:	python%{python3_pkgversion}-gobject-base
 Requires:   xorg-x11-server-Xorg
 Requires:   xorg-x11-server-Xephyr
 %if 0%{?fedora} >= 41
@@ -215,6 +216,7 @@ mv $RPM_BUILD_ROOT/etc/sysconfig/desktop \
 %post
 if [ -x /bin/systemctl ] && readlink /sbin/init | grep -q systemd; then
     /bin/systemctl enable qubes-gui-agent.service 2> /dev/null
+    /bin/systemctl enable qubes-guivm-power-forward.service 2> /dev/null
 fi
 
 %if 0%{?is_opensuse}
@@ -271,6 +273,7 @@ done
 %preun
 if [ "$1" = 0 ] ; then
 	chkconfig qubes-gui-agent off
+    [ -x /bin/systemctl ] && /bin/systemctl disable qubes-guivm-power-forward.service
     [ -x /bin/systemctl ] && /bin/systemctl disable qubes-gui-agent.service
     /usr/bin/glib-compile-schemas %{_datadir}/glib-2.0/schemas &> /dev/null || :
 fi
@@ -328,12 +331,17 @@ rm -f %{name}-%{version}
 %config /etc/sysconfig/desktop
 %endif
 %_unitdir/qubes-gui-agent.service
+%_unitdir/qubes-guivm-power-forward.service
+%dir %_unitdir/systemd-suspend.service.d
+%_unitdir/systemd-suspend.service.d/30_qubes-guivm.conf
 %{_userunitdir}/qubes-graphical-session.target
 %_udevrulesdir/70-master-of-seat.rules
 %_udevrulesdir/90-qubes-virtual-input-device.rules
 %_sysctldir/30-qubes-gui-agent.conf
 /usr/lib/qubes/gtk4-workarounds.sh
 /usr/lib/qubes/qubes-gui-agent-pre.sh
+/usr/lib/qubes/qubes-guivm-power-forward
+/usr/lib/qubes/qubes-guivm-suspend
 /usr/lib/qubes/qubes-keymap.sh
 /usr/lib/qubes/qubes-xorg-wrapper
 %{_datadir}/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
