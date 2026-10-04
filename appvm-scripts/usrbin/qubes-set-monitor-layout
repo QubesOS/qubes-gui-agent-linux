@@ -42,3 +42,62 @@ done
 
 xrandr $xrandr_cmd
 xrandr --query >/dev/null
+
+# DPI - Configure DPI according to Window Scaling Factor
+scaling="$(qubesdb-read /dpi/scale)"
+if [ "$?" -ne 0 ]; then
+    echo "Unable to read /dpi/scale value from DB: ${scaling}" >&2
+else
+    dpi="$(( 96 * scaling ))"
+    dpi_real_value="$(( dpi * 1024 ))"
+    unscaled_dpi="98304" # 96 * 1024
+
+    # Configure Xsettings DPI values with xfconf
+    if command -v xfconf-query &>/dev/null; then
+        # Global DPI => Set 96 * SCALING
+        xfconf-query -c xsettings -n -p /Xft/DPI -s $dpi -t int
+
+        # --- GTK ---
+        # /Xft/DPI renders very badly for GTK apps
+        # Prefer using /Gdk/WindowScalingFactor
+        # Requires /Gdk/UnscaledDPI to prevent scaling fonts twice
+        # (WindowScalingFactor + /Xft/DPI)
+        xfconf-query -c xsettings -n -p /Gdk/WindowScalingFactor -s $scaling -t int
+        xfconf-query -c xsettings -n -p /Gdk/UnscaledDPI -s "$unscaled_dpi" -t int # 96 * 1024
+    fi
+
+    if command -v xsettingsd &>/dev/null; then
+      if [ "$UID" -ne 0 ]; then
+        target_file="${HOME}/.xsettingsd"
+        if [ ! -f "$target_file" ]; then
+          if [ -f "/etc/xdg/xsettingsd" ]; then
+            cp /etc/xdg/xsettingsd "$target_file"
+          else
+            touch "$target_file"
+          fi
+        fi
+
+        if grep -q "Xft/DPI[[:space:]]" "$target_file"; then
+          sed -i -E "s#Xft/DPI(\s+)?(.*)#Xft/DPI ${dpi_real_value}#" "$target_file"
+        else
+          echo "Xft/DPI ${dpi_real_value}" >> "$target_file"
+        fi
+
+        if grep -q "Gdk/WindowScalingFactor[[:space:]]" "$target_file"; then
+          sed -i -E "s#Gdk/WindowScalingFactor(\s+)?(.*)#Gdk/WindowScalingFactor ${scaling}#" "$target_file"
+        else
+          echo "Gdk/WindowScalingFactor ${scaling}" >> "$target_file"
+        fi
+
+        if grep -q "Gdk/UnscaledDPI[[:space:]]" "$target_file"; then
+          sed -i -E "s#Gdk/UnscaledDPI(\s+)?(.*)#Gdk/UnscaledDPI ${unscaled_dpi}#" "$target_file"
+        else
+          echo "Gdk/UnscaledDPI ${unscaled_dpi}" >> "$target_file"
+        fi
+      fi
+
+      pkill -HUP -u "$(id -u)" -x xsettingsd || true
+    fi
+fi
+
+
