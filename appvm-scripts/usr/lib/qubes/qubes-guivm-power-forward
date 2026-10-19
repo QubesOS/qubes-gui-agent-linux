@@ -1,0 +1,145 @@
+#!/usr/bin/python3
+#
+# The Qubes OS Project, https://www.qubes-os.org/
+#
+# Copyright (C) 2026  Frederic Pierret  <frederic@invisiblethingslab.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#
+#
+"""
+Forward shutdown and restart of a GUI domain's session to dom0.
+"""
+
+import os
+import subprocess
+import sys
+
+import gi
+
+gi.require_version("Gio", "2.0")
+# pylint: disable=wrong-import-position
+from gi.repository import Gio, GLib
+
+LOGIND = "org.freedesktop.login1"
+LOGIND_PATH = "/org/freedesktop/login1"
+LOGIND_MANAGER = "org.freedesktop.login1.Manager"
+SERVICES = {
+    "poweroff": "qubes.PowerShutdown",
+    "halt": "qubes.PowerShutdown",
+    "reboot": "qubes.PowerReboot",
+}
+# logind waits for delay inhibitors 5s by default, stay below it
+TIMEOUT = 3
+
+
+def dom0_requested():
+    return (
+        subprocess.run(
+            ["qubesdb-read", "/qubes-shutdown-requested"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        ).returncode
+        == 0
+    )
+
+
+def forward(kind):
+    service = SERVICES.get(kind)
+    if service is None or dom0_requested():
+        return
+    try:
+        proc = subprocess.run(
+            ["qrexec-client-vm", "dom0", service],
+            stdin=subprocess.DEVNULL,
+            timeout=TIMEOUT,
+            check=False,
+        )
+        if proc.returncode:
+            print(
+                "{} refused or failed ({})".format(service, proc.returncode),
+                file=sys.stderr,
+            )
+    except (OSError, subprocess.TimeoutExpired) as err:
+        print("{} not sent: {}".format(service, err), file=sys.stderr)
+
+
+class Forwarder:
+    def __init__(self, bus):
+        self.bus = bus
+        self.fd = None
+
+    def inhibit(self):
+        if self.fd is not None:
+            return
+        ret, fds = self.bus.call_with_unix_fd_list_sync(
+            LOGIND,
+            LOGIND_PATH,
+            LOGIND_MANAGER,
+            "Inhibit",
+            GLib.Variant(
+                "(ssss)",
+                (
+                    "shutdown",
+                    "Qubes",
+                    "Forward power requests to dom0",
+                    "delay",
+                ),
+            ),
+            GLib.VariantType("(h)"),
+            Gio.DBusCallFlags.NONE,
+            -1,
+            None,
+            None,
+        )
+        self.fd = fds.get(ret.unpack()[0])
+
+    def release(self):
+        if self.fd is not None:
+            os.close(self.fd)
+            self.fd = None
+
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def on_prepare(self, _conn, _sender, _path, _iface, _signal, params):
+        start, metadata = params.unpack()
+        if not start:
+            # the shutdown was cancelled, be ready for the next one
+            self.inhibit()
+            return
+        try:
+            forward(metadata.get("type", ""))
+        finally:
+            self.release()
+
+
+def main():
+    bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+    forwarder = Forwarder(bus)
+    forwarder.inhibit()
+    bus.signal_subscribe(
+        LOGIND,
+        LOGIND_MANAGER,
+        "PrepareForShutdownWithMetadata",
+        LOGIND_PATH,
+        None,
+        Gio.DBusSignalFlags.NONE,
+        forwarder.on_prepare,
+    )
+    GLib.MainLoop().run()
+
+
+if __name__ == "__main__":
+    main()
