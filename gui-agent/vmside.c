@@ -378,6 +378,7 @@ static void send_wmclass(Ghandles * g, XID window, int ignore_fail);
 static void send_pixmap_grant_refs(Ghandles * g, XID window);
 static void retrieve_wmhints(Ghandles * g, XID window, int ignore_fail);
 static void retrieve_wmprotocols(Ghandles * g, XID window, int ignore_fail);
+static void incr_send_free(Ghandles * g);
 
 static void process_xevent_damage(Ghandles * g, XID window,
         int x, int y, int width, int height)
@@ -1096,6 +1097,10 @@ static void process_xevent_destroy(Ghandles * g, XID window)
     struct genlist *l;
     struct window_data *wd;
 
+    /* target of an INCR transfer may not be a managed window */
+    if (window == g->incr_send_win)
+        incr_send_free(g);
+
     /* embeders are not manged windows, so must be handled first */
     l = lookup_window(g, embeder_list, window, NULL);
     if (l) {
@@ -1415,14 +1420,19 @@ static size_t max_property_size(Ghandles * g)
     return (size_t) XMaxRequestSize(g->display) * 4 - 100;
 }
 
+static void incr_send_free(Ghandles * g)
+{
+    free(g->incr_send_data);
+    g->incr_send_data = NULL;
+    g->incr_send_win = None;
+}
+
 static void incr_send_finish(Ghandles * g)
 {
     if (!g->incr_send_data)
         return;
     XSelectInput(g->display, g->incr_send_win, g->incr_send_mask);
-    free(g->incr_send_data);
-    g->incr_send_data = NULL;
-    g->incr_send_win = None;
+    incr_send_free(g);
 }
 
 static void send_clipboard_png_chunk(Ghandles * g)
@@ -1456,7 +1466,12 @@ static bool send_clipboard_png(Ghandles * g, XSelectionRequestEvent * req)
         free(png);
         return true;
     }
-    incr_send_finish(g);
+    if (g->incr_send_data) {
+        /* end the previous transfer early, its target gets truncated data */
+        XChangeProperty(g->display, g->incr_send_win, g->incr_send_prop,
+                g->image_png, 8, PropModeReplace, NULL, 0);
+        incr_send_finish(g);
+    }
     if (!XGetWindowAttributes(g->display, req->requestor, &attr)) {
         fputs("Failed to get clipboard requestor attributes\n", stderr);
         free(png);
@@ -1470,7 +1485,7 @@ static bool send_clipboard_png(Ghandles * g, XSelectionRequestEvent * req)
     g->incr_send_offset = 0;
     /* keep the events the agent already selected on that window */
     XSelectInput(g->display, req->requestor,
-            attr.your_event_mask | PropertyChangeMask);
+            attr.your_event_mask | PropertyChangeMask | StructureNotifyMask);
     incr_len = png_len;
     XChangeProperty(g->display, req->requestor, req->property, g->incr, 32,
             PropModeReplace, (unsigned char *) &incr_len, 1);
