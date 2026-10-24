@@ -52,6 +52,7 @@
 #include "list.h"
 #include "error.h"
 #include "encoding.h"
+#include "clipboard-png.h"
 #include "unix-addr.h"
 #include <libvchan.h>
 #include <poll.h>
@@ -79,7 +80,7 @@
 /* Supported protocol version */
 
 #define PROTOCOL_VERSION_MAJOR 1
-#define PROTOCOL_VERSION_MINOR 8
+#define PROTOCOL_VERSION_MINOR 9
 #define PROTOCOL_VERSION (PROTOCOL_VERSION_MAJOR << 16 | PROTOCOL_VERSION_MINOR)
 
 #if !(PROTOCOL_VERSION_MAJOR == QUBES_GUID_PROTOCOL_VERSION_MAJOR && \
@@ -123,15 +124,30 @@ typedef struct {
     Atom wm_normal_hints;  /* Atom: WM_NORMAL_HINTS */
     Atom clipboard;        /* Atom: CLIPBOARD */
     Atom targets;          /* Atom: TARGETS */
+    Atom image_png;        /* Atom: image/png */
     Atom qprop;            /* Atom: QUBES_SELECTION */
+    Atom incr;             /* Atom: INCR */
     Atom compound_text;    /* Atom: COMPOUND_TEXT */
     Atom xembed;           /* Atom: _XEMBED */
     int xserver_fd;
     int xserver_listen_fd;
     libvchan_t *vchan;
     Window stub_win;    /* window for clipboard operations and to simulate LeaveNotify events */
-    unsigned char *clipboard_data;
+    union {
+        unsigned char *clipboard_data;
+        struct msg_clipboard_image *clipboard_image; /* if clipboard_is_image */
+    };
     unsigned int clipboard_data_len;
+    bool clipboard_is_image;
+    unsigned char *incr_data;   /* selection received in INCR chunks */
+    unsigned int incr_data_len;
+    bool incr_active;
+    Window incr_send_win;       /* image/png sent in INCR chunks */
+    Atom incr_send_prop;
+    long incr_send_mask;
+    unsigned char *incr_send_data;
+    size_t incr_send_len;
+    size_t incr_send_offset;
     Time clipboard_last_access;
     bool clipboard_wipe;
     int log_level;
@@ -362,6 +378,7 @@ static void send_wmclass(Ghandles * g, XID window, int ignore_fail);
 static void send_pixmap_grant_refs(Ghandles * g, XID window);
 static void retrieve_wmhints(Ghandles * g, XID window, int ignore_fail);
 static void retrieve_wmprotocols(Ghandles * g, XID window, int ignore_fail);
+static void incr_send_free(Ghandles * g);
 
 static void process_xevent_damage(Ghandles * g, XID window,
         int x, int y, int width, int height)
@@ -1080,6 +1097,10 @@ static void process_xevent_destroy(Ghandles * g, XID window)
     struct genlist *l;
     struct window_data *wd;
 
+    /* target of an INCR transfer may not be a managed window */
+    if (window == g->incr_send_win)
+        incr_send_free(g);
+
     /* embeders are not manged windows, so must be handled first */
     l = lookup_window(g, embeder_list, window, NULL);
     if (l) {
@@ -1201,20 +1222,68 @@ static void send_clipboard_data(libvchan_t *vchan, XID window, char *data, uint3
     write_data(vchan, (char *) data, len);
 }
 
+static bool valid_clipboard_image(const struct msg_clipboard_image *img, size_t pixels_len)
+{
+    return img->width > 0 && img->height > 0 &&
+        img->width <= MAX_CLIPBOARD_IMAGE_WIDTH &&
+        img->height <= MAX_CLIPBOARD_IMAGE_HEIGHT &&
+        (uint64_t)img->width * img->height * 4 == (uint64_t)pixels_len &&
+        pixels_len <= MAX_CLIPBOARD_IMAGE_BUFFER_SIZE;
+}
+
+static void send_clipboard_image_data(Ghandles * g, XID window,
+        const unsigned char *png, size_t png_len)
+{
+    struct msg_hdr hdr;
+    struct msg_clipboard_image *img;
+    size_t img_len;
+
+    if (g->protocol_version < QUBES_GUID_MIN_CLIPBOARD_IMAGE) {
+        fputs("gui-daemon is too old for clipboard images\n", stderr);
+        send_clipboard_data(g->vchan, window, NULL, 0, g->protocol_version);
+        return;
+    }
+    img = png_to_clipboard_image(png, png_len, &img_len);
+    if (!img) {
+        send_clipboard_data(g->vchan, window, NULL, 0, g->protocol_version);
+        return;
+    }
+    hdr.type = MSG_CLIPBOARD_DATA_IMAGE;
+    hdr.window = window;
+    hdr.untrusted_len = img_len;
+    /* write_data, not real_write_message: an image is far bigger than the
+     * vchan ring buffer, which libvchan_send cannot handle */
+    write_struct(g->vchan, hdr);
+    write_data(g->vchan, (char *) img, img_len);
+    free(img);
+}
+
 static void handle_targets_list(Ghandles * g, unsigned char *data, int len)
 {
     Atom *atoms = (Atom *) data;
     int i;
-    int have_utf8 = 0;
+    int have_utf8 = 0, have_text = 0, have_image = 0;
     if (g->log_level > 1)
         fprintf(stderr, "target list data size %d\n", len);
     for (i = 0; i < len; i++) {
         if (atoms[i] == g->utf8_string_atom)
             have_utf8 = 1;
+        if (atoms[i] == g->utf8_string_atom || atoms[i] == XA_STRING ||
+                atoms[i] == g->compound_text)
+            have_text = 1;
+        if (atoms[i] == g->image_png)
+            have_image = 1;
         if (g->log_level > 1)
             fprintf(stderr, "supported 0x%lx %s\n",
                     atoms[i], XGetAtomName(g->display,
                         atoms[i]));
+    }
+    /* text wins when offered, so existing behaviour does not change */
+    if (!have_text && have_image &&
+            g->protocol_version >= QUBES_GUID_MIN_CLIPBOARD_IMAGE) {
+        XConvertSelection(g->display, g->clipboard, g->image_png, g->qprop,
+                g->stub_win, g->time);
+        return;
     }
     XConvertSelection(g->display, g->clipboard,
             have_utf8 ? g->utf8_string_atom : XA_STRING, g->qprop,
@@ -1259,11 +1328,23 @@ static void process_xevent_selection(Ghandles * g, XSelectionEvent * ev)
                 g->utf8_string_atom, g->qprop,
                 g->stub_win, ev->time);
     else
-        if (type == XInternAtom(g->display, "INCR", False)) {
+        if (type == g->incr) {
+            if (ev->target == g->image_png) {
+                /* images are usually large, collect the chunks */
+                free(g->incr_data);
+                g->incr_data = NULL;
+                g->incr_data_len = 0;
+                g->incr_active = true;
+                XFree(data);
+                XDeleteProperty(g->display, g->stub_win, g->qprop);
+                return;
+            }
             char INCR_WARNING[] =
                 "Qube clipboard size over 256KiB and X11 INCR protocol support is not implemented!";
             send_clipboard_data(g->vchan, g->stub_win, (char *) &INCR_WARNING,
                                 sizeof(INCR_WARNING)-1, g->protocol_version);
+        } else if (ev->target == g->image_png) {
+            send_clipboard_image_data(g, g->stub_win, data, len);
         } else {
             send_clipboard_data(g->vchan, g->stub_win, (char *) data, len,
                                 g->protocol_version);
@@ -1271,6 +1352,144 @@ static void process_xevent_selection(Ghandles * g, XSelectionEvent * ev)
             XA_STRING, it is fine - ascii is legal UTF8 */
         }
     XFree(data);
+}
+
+/* collect INCR chunks of an image selection on the stub window */
+static void process_xevent_property_incr(Ghandles * g, XPropertyEvent * ev)
+{
+    Atom type;
+    int format;
+    unsigned long len, bytes_left, dummy;
+    unsigned char *data, *bigger;
+    size_t chunk;
+
+    g->time = ev->time;
+    if (ev->state != PropertyNewValue)
+        return;
+    XGetWindowProperty(g->display, g->stub_win, g->qprop, 0, 0, 0,
+            AnyPropertyType, &type, &format, &len, &bytes_left, &data);
+    XFree(data);
+    if (bytes_left == 0) {
+        XDeleteProperty(g->display, g->stub_win, g->qprop);
+        g->incr_active = false;
+        if (g->incr_data)
+            send_clipboard_image_data(g, g->stub_win, g->incr_data,
+                    g->incr_data_len);
+        else
+            send_clipboard_data(g->vchan, g->stub_win, NULL, 0,
+                    g->protocol_version);
+        free(g->incr_data);
+        g->incr_data = NULL;
+        g->incr_data_len = 0;
+        return;
+    }
+    if (XGetWindowProperty(g->display, g->stub_win, g->qprop, 0, bytes_left, 0,
+                AnyPropertyType, &type, &format, &len, &dummy, &data) != Success)
+        goto fail;
+    chunk = len * (format / 8);
+    if (chunk == 0 || g->incr_data_len + chunk > MAX_CLIPBOARD_IMAGE_BUFFER_SIZE) {
+        XFree(data);
+        goto fail;
+    }
+    bigger = realloc(g->incr_data, g->incr_data_len + chunk);
+    if (!bigger) {
+        perror("realloc");
+        XFree(data);
+        goto fail;
+    }
+    memcpy(bigger + g->incr_data_len, data, chunk);
+    g->incr_data = bigger;
+    g->incr_data_len += chunk;
+    XFree(data);
+    XDeleteProperty(g->display, g->stub_win, g->qprop);
+    return;
+
+fail:
+    fputs("aborting INCR clipboard image transfer\n", stderr);
+    XDeleteProperty(g->display, g->stub_win, g->qprop);
+    g->incr_active = false;
+    free(g->incr_data);
+    g->incr_data = NULL;
+    g->incr_data_len = 0;
+    send_clipboard_data(g->vchan, g->stub_win, NULL, 0, g->protocol_version);
+}
+
+/* largest property written at once, bigger ones go in INCR chunks */
+static size_t max_property_size(Ghandles * g)
+{
+    return (size_t) XMaxRequestSize(g->display) * 4 - 100;
+}
+
+static void incr_send_free(Ghandles * g)
+{
+    free(g->incr_send_data);
+    g->incr_send_data = NULL;
+    g->incr_send_win = None;
+}
+
+static void incr_send_finish(Ghandles * g)
+{
+    if (!g->incr_send_data)
+        return;
+    XSelectInput(g->display, g->incr_send_win, g->incr_send_mask);
+    incr_send_free(g);
+}
+
+static void send_clipboard_png_chunk(Ghandles * g)
+{
+    size_t chunk = g->incr_send_len - g->incr_send_offset;
+
+    if (chunk > max_property_size(g))
+        chunk = max_property_size(g);
+    XChangeProperty(g->display, g->incr_send_win, g->incr_send_prop,
+            g->image_png, 8, PropModeReplace,
+            g->incr_send_data + g->incr_send_offset, chunk);
+    g->incr_send_offset += chunk;
+    /* an empty chunk ends the transfer */
+    if (chunk == 0)
+        incr_send_finish(g);
+}
+
+static bool send_clipboard_png(Ghandles * g, XSelectionRequestEvent * req)
+{
+    XWindowAttributes attr;
+    unsigned char *png;
+    size_t png_len;
+    long incr_len;
+
+    png = clipboard_image_to_png(g->clipboard_image, &png_len);
+    if (!png)
+        return false;
+    if (png_len <= max_property_size(g)) {
+        XChangeProperty(g->display, req->requestor, req->property,
+                g->image_png, 8, PropModeReplace, png, png_len);
+        free(png);
+        return true;
+    }
+    if (g->incr_send_data) {
+        /* end the previous transfer early, its target gets truncated data */
+        XChangeProperty(g->display, g->incr_send_win, g->incr_send_prop,
+                g->image_png, 8, PropModeReplace, NULL, 0);
+        incr_send_finish(g);
+    }
+    if (!XGetWindowAttributes(g->display, req->requestor, &attr)) {
+        fputs("Failed to get clipboard requestor attributes\n", stderr);
+        free(png);
+        return false;
+    }
+    g->incr_send_win = req->requestor;
+    g->incr_send_prop = req->property;
+    g->incr_send_mask = attr.your_event_mask;
+    g->incr_send_data = png;
+    g->incr_send_len = png_len;
+    g->incr_send_offset = 0;
+    /* keep the events the agent already selected on that window */
+    XSelectInput(g->display, req->requestor,
+            attr.your_event_mask | PropertyChangeMask | StructureNotifyMask);
+    incr_len = png_len;
+    XChangeProperty(g->display, req->requestor, req->property, g->incr, 32,
+            PropModeReplace, (unsigned char *) &incr_len, 1);
+    return true;
 }
 
 static void process_xevent_selection_req(Ghandles * g,
@@ -1287,6 +1506,7 @@ static void process_xevent_selection_req(Ghandles * g,
                     g->time - g->clipboard_last_access);
         g->clipboard_data[0] = '\x00';
         g->clipboard_data_len = 1;
+        g->clipboard_is_image = false;
     }
 
     if (g->log_level > 0)
@@ -1294,11 +1514,19 @@ static void process_xevent_selection_req(Ghandles * g,
                 XGetAtomName(g->display, req->target));
     resp.property = None;
     if (req->target == g->targets) {
-        Atom tmp[4] = { XA_STRING, g->targets, g->utf8_string_atom, g->compound_text };
-        XChangeProperty(g->display, req->requestor, req->property,
-                XA_ATOM, 32, PropModeReplace,
-                (unsigned char *)
-                tmp, sizeof(tmp) / sizeof(tmp[0]));
+        if (g->clipboard_is_image) {
+            Atom tmp[2] = { g->targets, g->image_png };
+            XChangeProperty(g->display, req->requestor, req->property,
+                    XA_ATOM, 32, PropModeReplace,
+                    (unsigned char *)
+                    tmp, sizeof(tmp) / sizeof(tmp[0]));
+        } else {
+            Atom tmp[4] = { XA_STRING, g->targets, g->utf8_string_atom, g->compound_text };
+            XChangeProperty(g->display, req->requestor, req->property,
+                    XA_ATOM, 32, PropModeReplace,
+                    (unsigned char *)
+                    tmp, sizeof(tmp) / sizeof(tmp[0]));
+        }
         resp.property = req->property;
     }
     if (req->target == XA_STRING)
@@ -1307,7 +1535,7 @@ static void process_xevent_selection_req(Ghandles * g,
         convert_style = XCompoundTextStyle;
     else if (req->target == g->utf8_string_atom)
         convert_style = XUTF8StringStyle;
-    if (convert_style != XConverterNotFound) {
+    if (convert_style != XConverterNotFound && !g->clipboard_is_image) {
         XTextProperty ct;
         char empty_string[1] = { '\0' };
         char *ptr[] = { empty_string };
@@ -1333,6 +1561,9 @@ static void process_xevent_selection_req(Ghandles * g,
                 req->property);
         XFree(ct.value);
         resp.property = req->property;
+    } else if (req->target == g->image_png && g->clipboard_is_image) {
+        if (send_clipboard_png(g, req))
+            resp.property = req->property;
     }
 
     if (resp.property == None)
@@ -1355,6 +1586,17 @@ static void process_xevent_property(Ghandles * g, XID window, XPropertyEvent * e
     struct window_data *wd;
 
     g->time = ev->time;
+
+    if (window == g->stub_win) {
+        if (g->incr_active && ev->atom == g->qprop)
+            process_xevent_property_incr(g, ev);
+        return;
+    }
+    if (window == g->incr_send_win && ev->atom == g->incr_send_prop) {
+        if (ev->state == PropertyDelete)
+            send_clipboard_png_chunk(g);
+        return;
+    }
 
     l = lookup_window(g, windows_list, window, __func__);
     if (!l) {
@@ -1833,6 +2075,8 @@ static void mkghandles(Ghandles * g)
                 g->screen),
             WhitePixel(g->display,
                 g->screen));
+    /* needed to receive INCR chunks of a large selection */
+    XSelectInput(g->display, g->stub_win, PropertyChangeMask);
     if ((unsigned)snprintf(tray_sel_atom_name, sizeof(tray_sel_atom_name),
             "_NET_SYSTEM_TRAY_S%u", DefaultScreen(g->display)) >=
         sizeof tray_sel_atom_name)
@@ -1860,7 +2104,9 @@ static void mkghandles(Ghandles * g)
         { &g->wm_normal_hints,  "WM_NORMAL_HINTS" },
         { &g->clipboard,        "CLIPBOARD" },
         { &g->targets,          "TARGETS" },
+        { &g->image_png,        "image/png" },
         { &g->qprop,            "QUBES_SELECTION" },
+        { &g->incr,             "INCR" },
         { &g->compound_text,    "COMPOUND_TEXT" },
         { &g->xembed,           "_XEMBED" },
     };
@@ -2391,6 +2637,7 @@ static void handle_clipboard_data(Ghandles * g, XID UNUSED(winid),
         exit(1);
     }
     g->clipboard_data_len = len;
+    g->clipboard_is_image = false;
     read_data(g->vchan, (char *) g->clipboard_data, len);
     g->clipboard_data[len] = 0;
     g->clipboard_last_access = g->time;
@@ -2401,6 +2648,32 @@ static void handle_clipboard_data(Ghandles * g, XID UNUSED(winid),
     feed_xdriver(g, 'B', 2, 1);
     feed_xdriver(g, 'B', 2, 0);
 #endif
+}
+
+static void handle_clipboard_data_image(Ghandles * g, XID UNUSED(winid),
+        unsigned int len)
+{
+    struct msg_clipboard_image *img;
+
+    if (len < sizeof(*img) || len - sizeof(*img) > MAX_CLIPBOARD_IMAGE_BUFFER_SIZE)
+        errx(1, "invalid MSG_CLIPBOARD_DATA_IMAGE length %u", len);
+    img = malloc(len);
+    if (!img) {
+        perror("malloc");
+        exit(1);
+    }
+    read_data(g->vchan, (char *) img, len);
+    if (!valid_clipboard_image(img, len - sizeof(*img))) {
+        free(img);
+        errx(1, "invalid clipboard image received from gui-daemon");
+    }
+    free(g->clipboard_data);
+    g->clipboard_image = img;
+    g->clipboard_data_len = len;
+    g->clipboard_is_image = true;
+    g->clipboard_last_access = g->time;
+    XSetSelectionOwner(g->display, XA_PRIMARY, g->stub_win, g->time);
+    XSetSelectionOwner(g->display, g->clipboard, g->stub_win, g->time);
 }
 
 static void handle_window_flags(Ghandles *g, XID winid)
@@ -2492,6 +2765,9 @@ static void handle_message(Ghandles * g)
             break;
         case MSG_CLIPBOARD_DATA:
             handle_clipboard_data(g, hdr.window, hdr.untrusted_len);
+            break;
+        case MSG_CLIPBOARD_DATA_IMAGE:
+            handle_clipboard_data_image(g, hdr.window, hdr.untrusted_len);
             break;
         case MSG_KEYMAP_NOTIFY:
             handle_keymap_notify(g);
