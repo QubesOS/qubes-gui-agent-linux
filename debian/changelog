@@ -1,3 +1,44 @@
+qubes-gui-agent (4.4.2-1) unstable; urgency=medium
+
+  [ Thomas GRIM ]
+  * When handling a cursor change event with an empty cursor_name
+    (Chromium), try matching on the cursor's bitmap image before falling
+    back to the default cursor
+  * Rename variables, check bounds, add missing deps, start signing
+    commits
+  * Precompute the hashed cursors lookup table the first time we see an
+    unnamed cursor
+
+  [ Marek Marczykowski-Górecki ]
+  * rpm: adjust BR: dbus-devel for opensuse
+  * Fix registering user session in sys-gui
+  * sys-gui: copy dpi from the host display
+  * Start graphical-session.target together with qubes-session
+
+  [ besendorf ]
+  * Fix XEmbed tray docking initialization
+
+  [ Janik Besendorf ]
+  * Limit XEmbed size normalization to 1x1 clients
+
+  [ etwk ]
+  * dummyqbs: chain DestroyPixmap to the hook it replaces
+
+  [ Frédéric Pierret (fepitre) ]
+  * qubes-start-xephyr: write session log in user home
+
+  [ Marek Marczykowski-Górecki ]
+  * ci: switch to devel
+
+  [ Frédéric Pierret (fepitre) ]
+  * clipboard: send and receive images as raw RGBA
+  * clipboard: end pending INCR transfer early
+
+  [ Marek Marczykowski-Górecki ]
+  * Bump required gui-common version
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 26 Oct 2026 18:52:34 +0100
+
 qubes-gui-agent (4.4.1-1) unstable; urgency=medium
 
   [ Aaron Rainbolt ]
