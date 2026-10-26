@@ -1,14 +1,14 @@
 include:
-- file: /r4.3/gitlab-base.yml
+- file: /devel/gitlab-base.yml
   project: QubesOS/qubes-continuous-integration
   ref: $CI_BRANCH_REF
-- file: /r4.3/gitlab-host.yml
+- file: /devel/gitlab-host.yml
   project: QubesOS/qubes-continuous-integration
   ref: $CI_BRANCH_REF
-- file: /r4.3/gitlab-vm.yml
+- file: /devel/gitlab-vm.yml
   project: QubesOS/qubes-continuous-integration
   ref: $CI_BRANCH_REF
-- file: /r4.3/gitlab-host-vm-openqa.yml
+- file: /devel/gitlab-host-vm-openqa.yml
   project: QubesOS/qubes-continuous-integration
   ref: $CI_BRANCH_REF
 variables:
