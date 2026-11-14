@@ -51,6 +51,8 @@ Depends:
     libpam-systemd,
     python3,
     python3-xcffib,
+    python3-gi,
+    python3-qubesdb,
     xcvt,
     xserver-xorg-video-dummyqbs (= ${binary:Version}),
     xserver-xorg-input-qubes (= ${binary:Version}),

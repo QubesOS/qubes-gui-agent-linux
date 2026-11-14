@@ -21,6 +21,8 @@ etc/xdg/Xresources
 etc/xdg/fonts.conf
 etc/xdg/xsettingsd
 lib/systemd/system/qubes-gui-agent.service
+lib/systemd/system/qubes-guivm-power-forward.service
+lib/systemd/system/systemd-suspend.service.d/30_qubes-guivm.conf
 lib/udev/rules.d/70-master-of-seat.rules
 lib/udev/rules.d/90-qubes-virtual-input-device.rules
 lib/systemd/user/qubes-graphical-session.target
@@ -36,6 +38,8 @@ usr/lib/qubes/icon-sender
 usr/lib/sysctl.d/30-qubes-gui-agent.conf
 usr/lib/qubes/gtk4-workarounds.sh
 usr/lib/qubes/qubes-gui-agent-pre.sh
+usr/lib/qubes/qubes-guivm-power-forward
+usr/lib/qubes/qubes-guivm-suspend
 usr/lib/qubes/qubes-keymap.sh
 usr/lib/qubes/qubes-xorg-wrapper
 usr/share/glib-2.0/schemas/20_qubes-gui-vm.gschema.override
