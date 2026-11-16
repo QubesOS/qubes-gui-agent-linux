@@ -40,3 +40,23 @@ if [ -e "$driver" ]; then
         fi
     done
 fi
+
+# wait for render node unless only software-rendering is requested ...
+if ! [ -e /var/run/qubes-service/software-rendering ]; then
+    # ... and some GPU is present
+    gpu_present=
+    for dev in /sys/bus/pci/devices/*; do
+        [ -d "$dev" ] || continue
+        devclass="$(cat "$dev/class")"
+        if [ "$devclass" = "${devclass#0x03}" ]; then
+            continue
+        fi
+        if [ "$(cat "$dev/vendor"):$(cat "$dev/device")" = "0x1234:0x1111" ]; then
+            continue
+        fi
+        gpu_present=1
+    done
+    if [ -n "$gpu_present" ]; then
+        udevadm wait --timeout=10 /dev/dri/renderD128
+    fi
+fi
