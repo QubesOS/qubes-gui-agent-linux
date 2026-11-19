@@ -254,6 +254,8 @@ struct qubes_stream {
     // Implicitly serialized by PipeWire, in theory at least (so atomic, just in case)
     atomic_bool driving;
     atomic_bool dead;
+    // Main-thread work requested by the realtime thread
+    atomic_bool connect_pending, reconnect_pending;
     // Time information
     uint64_t next_time;
     struct spa_source timer;
@@ -335,6 +337,8 @@ struct impl {
 
     struct pw_core *core;
     struct spa_loop *data_loop, *main_loop;
+    struct pw_loop *pw_main_loop;
+    struct spa_source *main_thread_event;
     struct spa_system *data_system;
     struct spa_hook core_proxy_listener;
     struct spa_hook core_listener;
@@ -426,12 +430,13 @@ static_assert(ATOMIC_BOOL_LOCK_FREE, "PipeWire agent requires lock-free atomic b
 static_assert(PW_DIRECTION_INPUT == 0, "wrong PW_DIRECTION_INPUT");
 static_assert(PW_DIRECTION_OUTPUT == 1, "wrong PW_DIRECTION_OUTPUT");
 
-static int vchan_error_callback(struct spa_loop *loop,
-                                bool async,
-                                uint32_t seq,
-                                const void *data,
-                                size_t size,
-                                void *user_data);
+/* Not spa_loop_invoke(): it runs the function on the calling thread if the
+ * main loop has not been entered yet. */
+static void queue_main_thread_work(struct qubes_stream *stream, atomic_bool *pending)
+{
+    if (!atomic_exchange(pending, true))
+        pw_loop_signal_event(stream->impl->pw_main_loop, stream->impl->main_thread_event);
+}
 
 /**
  * Disconnect a stream from its event loop.  Must be called on the realtime
@@ -450,12 +455,8 @@ static void stop_watching_vchan(struct qubes_stream *stream)
     stream->source.fd = -1;
     // Update the main-thread state asynchronously, but only if the stream
     // is not being torn down.
-    if (!stream->dead) {
-        impl_incref(stream->impl);
-        spa_loop_invoke(stream->impl->main_loop,
-                        vchan_error_callback, 0, NULL, 0, false,
-                        stream);
-    }
+    if (!stream->dead)
+        queue_main_thread_work(stream, &stream->reconnect_pending);
 }
 
 #ifndef SPA_SCALE32_UP
@@ -774,6 +775,8 @@ static void impl_decref(struct impl *impl)
         pw_stream_destroy(impl->stream[PW_DIRECTION_INPUT].stream);
     else
         stream_destroy(&impl->stream[PW_DIRECTION_INPUT]);
+    if (impl->main_thread_event != NULL)
+        pw_loop_destroy_source(impl->pw_main_loop, impl->main_thread_event);
     if (impl->core != NULL) {
         spa_hook_remove(&impl->core_proxy_listener);
         spa_hook_remove(&impl->core_listener);
@@ -792,42 +795,27 @@ static void impl_decref(struct impl *impl)
 /**
  * Called on the main thread when a vchan has been disconnected.
  */
-static int vchan_error_callback(struct spa_loop *loop,
-                                bool async,
-                                uint32_t seq,
-                                const void *data,
-                                size_t size,
-                                void *user_data)
+static void vchan_error_callback(struct qubes_stream *stream)
 {
-    struct qubes_stream *stream = user_data;
-
-    spa_assert_se(!stream->vchan);
+    if (stream->vchan)
+        return;
     stream_shutdown(stream);
     if (!stream->dead && stream->stream != NULL)
         connect_stream(stream);
-    impl_decref(stream->impl);
-    return 0;
 }
 
 static void discard_unwanted_recorded_data(struct qubes_stream *stream);
 
-/* Called on the main thread by spa_loop_invoke() from vchan_ready() */
-static int main_thread_connect(struct spa_loop *loop,
-                               bool async,
-                               uint32_t seq,
-                               const void *data,
-                               size_t size,
-                               void *user_data)
+/* Called on the main thread after vchan_ready() saw the vchan open */
+static void main_thread_connect(struct qubes_stream *stream)
 {
-
-    struct qubes_stream *stream = user_data;
     uint32_t n_params = 0;
     const struct spa_pod *params[1];
     uint8_t buffer[1024];
     struct spa_pod_builder b = { 0 };
 
     if (stream->dead || stream->stream == NULL)
-        return 0;
+        return;
     spa_pod_builder_init(&b, buffer, sizeof(buffer));
     params[n_params++] = spa_format_audio_raw_build(&b,
             SPA_PARAM_EnumFormat, &stream->info);
@@ -840,8 +828,20 @@ static int main_thread_connect(struct spa_loop *loop,
             PW_STREAM_FLAG_RT_PROCESS,
             params, n_params) < 0)
         pw_log_error("Could not connect stream: %m");
-    impl_decref(stream->impl);
-    return 0;
+}
+
+/* Called on the main thread when queue_main_thread_work() signals */
+static void main_thread_event_cb(void *data, uint64_t count)
+{
+    struct impl *impl = data;
+
+    for (int i = 0; i < 2; ++i) {
+        struct qubes_stream *stream = impl->stream + i;
+        if (atomic_exchange(&stream->connect_pending, false))
+            main_thread_connect(stream);
+        if (atomic_exchange(&stream->reconnect_pending, false))
+            vchan_error_callback(stream);
+    }
 }
 
 static int process_control_commands(struct impl *impl);
@@ -901,9 +901,7 @@ static void vchan_ready(struct spa_source *source)
     if (is_open != stream->is_open) {
         if (is_open) {
             // vchan connected
-            impl_incref(stream->impl);
-            spa_loop_invoke(stream->impl->main_loop,
-                            main_thread_connect, 0, NULL, 0, false, stream);
+            queue_main_thread_work(stream, &stream->connect_pending);
             if (qubes_stream_is_capture(stream)) {
                 // vchan just opened, no need to check for buffer space
                 const uint32_t control_commands[3] = {
@@ -1645,6 +1643,13 @@ int pipewire__module_init(struct pw_impl_module *module, const char *args)
         struct pw_loop *loop = pw_context_get_main_loop(context);
         spa_assert_se(loop && loop->loop);
         impl->main_loop = loop->loop;
+        impl->pw_main_loop = loop;
+        impl->main_thread_event = pw_loop_add_event(loop, main_thread_event_cb, impl);
+        if (impl->main_thread_event == NULL) {
+            res = -errno;
+            pw_log_error("can't create main loop event: %m");
+            goto error;
+        }
     }
 
     do {
