@@ -34,5 +34,10 @@ if [ "$XDG_CURRENT_DESKTOP" = "X-QUBES" ]; then
     xfconf-query -c keyboards -p /Default/KeyRepeat -n -t bool -s false
 fi
 
-xfsettingsd --replace&
+if qsvc minimal-usbvm; then
+    # xfsettingsd doesn't need gvfs, but would start gvfsd at login
+    GIO_USE_VFS=local xfsettingsd --replace&
+else
+    xfsettingsd --replace&
+fi
 fi
