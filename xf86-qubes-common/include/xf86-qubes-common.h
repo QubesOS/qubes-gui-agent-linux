@@ -12,7 +12,13 @@ struct xf86_qubes_pixmap {
     uint8_t *data; // Local mapping
     uint32_t refcount; // 1-biased reference count: stores number of references
                        // minus 1
+    uint32_t domid; // Domain the pages are shared with, or
+                    // XF86_QUBES_NO_DOMID for plain memory
+    struct xf86_qubes_pixmap *prev, *next; // List of all allocations
 };
+
+// No GUI domain (DOMID_FIRST_RESERVED)
+#define XF86_QUBES_NO_DOMID 0x7FF0U
 
 // Only intended for use in the Qubes xorg modules.
 
@@ -30,6 +36,8 @@ _X_EXPORT void xf86_qubes_free_pixmap_private(struct xf86_qubes_pixmap *);
 _X_EXPORT void xf86_qubes_pixmap_add_to_list(struct xf86_qubes_pixmap *);
 _X_EXPORT void xf86_qubes_pixmap_remove_list_head(void);
 _X_EXPORT void xf86_qubes_pixmap_remove_list_all(void);
+_X_EXPORT Bool xf86_qubes_set_gui_domid(uint32_t domid);
+_X_EXPORT Bool xf86_qubes_pixmap_ensure_domid(struct xf86_qubes_pixmap *);
 
 // xenctrl and xorg headeres are not compatible, so define the required
 // constants here.

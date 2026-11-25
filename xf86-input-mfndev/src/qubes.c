@@ -626,6 +626,12 @@ static void dump_window_grant_refs(int window_id, int fd)
         goto send_response;
     }
 
+    if (!xf86_qubes_pixmap_ensure_domid(priv)) {
+        xf86Msg(X_ERROR, "window 0x%x is not shared with the GUI domain\n",
+                window_id);
+        goto send_response;
+    }
+
     xf86_qubes_pixmap_add_to_list(priv);
 
     wd_hdr.type = WINDOW_DUMP_TYPE_GRANT_REFS;
@@ -680,6 +686,19 @@ send_response:
     }
 }
 
+static void process_gui_domid_request(InputInfoPtr pInfo) {
+    QubesDevicePtr pQubes = pInfo->private;
+    uint32_t ok;
+
+    if (pQubes->gui_domid_pending) {
+        ok = xf86_qubes_set_gui_domid(pQubes->gui_domid);
+        pQubes->gui_domid_pending = FALSE;
+        if (write_exact(pInfo->fd, &ok, sizeof(ok)) == -1)
+            xf86Msg(X_ERROR, "failed write to gui-agent: %s\n",
+                    strerror(errno));
+    }
+}
+
 static void process_window_dump_request(InputInfoPtr pInfo) {
     QubesDevicePtr pQubes = pInfo->private;
 
@@ -694,6 +713,7 @@ static void QubesBlockHandler(void *arg, void *timeout) {
     InputInfoPtr pInfo = arg;
 
     input_lock();
+    process_gui_domid_request(pInfo);
     process_window_dump_request(pInfo);
     input_unlock();
 }
@@ -747,6 +767,13 @@ static void process_request(int fd, InputInfoPtr pInfo)
         break;
     case 'K':
         xf86PostKeyboardEvent(pInfo->dev, cmd.arg1, cmd.arg2);
+        break;
+    case 'D':
+        pQubes->gui_domid = cmd.arg1;
+        pQubes->gui_domid_pending = TRUE;
+#if !HAVE_THREADED_INPUT
+        process_gui_domid_request(pInfo);
+#endif
         break;
     case 'a':
         xf86_qubes_pixmap_remove_list_head();

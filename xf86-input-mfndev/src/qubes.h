@@ -32,4 +32,6 @@ typedef struct _QubesDeviceRec
     int num_vals;
     int axes;
     unsigned int window_id; /* X Window ID for send_mfns callback */
+    uint32_t gui_domid; /* GUI domain requested by the 'D' command */
+    Bool gui_domid_pending;
 } QubesDeviceRec, *QubesDevicePtr ;

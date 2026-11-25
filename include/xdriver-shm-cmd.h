@@ -33,4 +33,10 @@ struct xdriver_cmd {
 	uint32_t arg1;
 	uint32_t arg2;
 };
+
+/* Command 'D': share all pixmaps with domain arg1. Xorg replies with a
+ * uint32_t: 1 if all pixmaps are shared, 0 otherwise. */
+
+/* arg1 of 'D' when there is no GUI domain */
+#define XDRIVER_NO_GUI_DOMID 0x7FF0U
 #endif

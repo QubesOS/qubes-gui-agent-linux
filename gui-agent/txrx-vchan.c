@@ -43,12 +43,22 @@ static _Noreturn void handle_vchan_error(libvchan_t *vchan, const char *op)
     errx(1, "Error while vchan %s\n, terminating", op);
 }
 
+/* On gui-daemon disconnect, call the at_eof handler and drop the data. */
+static int handle_vchan_write_error(libvchan_t *vchan, const char *op)
+{
+    if (!libvchan_is_open(vchan) && vchan_at_eof) {
+        vchan_at_eof();
+        return -1;
+    }
+    handle_vchan_error(vchan, op);
+}
+
 int real_write_message(libvchan_t *vchan, char *hdr, int size, char *data, int datasize)
 {
     if (libvchan_send(vchan, hdr, size) < 0)
-        handle_vchan_error(vchan, "send hdr");
+        return handle_vchan_write_error(vchan, "send hdr");
     if (libvchan_send(vchan, data, datasize) < 0)
-        handle_vchan_error(vchan, "send data");
+        return handle_vchan_write_error(vchan, "send data");
     return 0;
 }
 
@@ -61,7 +71,7 @@ int write_data(libvchan_t *vchan, char *buf, int size)
         /* cannot use libvchan_send b/c buf can be bigger than ring buffer */
         ret = libvchan_write(vchan, buf + written, size - written);
         if (ret <= 0)
-            handle_vchan_error(vchan, "write data");
+            return handle_vchan_write_error(vchan, "write data");
         written += ret;
     }
     //      fprintf(stderr, "sent %d bytes\n", size);
