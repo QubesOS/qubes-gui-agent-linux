@@ -3,6 +3,11 @@
  * Copyright 2002, SuSE Linux AG, Author: Egbert Eich
  */
 
+/* for MREMAP_FIXED */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -55,6 +60,8 @@
 #include <gbm.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <string.h>
+#include <sys/mman.h>
 #include "../../include/list.h"
 
 /* Mandatory functions */
@@ -105,6 +112,18 @@ static Bool     dummyDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
 #define DUMMY_MAX_HEIGHT 32767
 
 static ScrnInfoPtr DUMMYScrn; /* static-globalize it */
+
+/* All pixmap allocations, to re-share them when the GUI domain changes.
+ * Use under qubes_lock(): the input thread also frees pixmaps. */
+static struct xf86_qubes_pixmap *qubes_pixmaps;
+
+#if GET_ABI_MAJOR(ABI_XINPUT_VERSION) >= 23
+#define qubes_lock() input_lock()
+#define qubes_unlock() input_unlock()
+#else
+#define qubes_lock() do { } while (0)
+#define qubes_unlock() do { } while (0)
+#endif
 
 /*
  * This is intentionally screen-independent.  It indicates the binding
@@ -688,6 +707,8 @@ DUMMYPreInit(ScrnInfoPtr pScrn, int flags)
 
     xf86GetOptValBool(dPtr->Options, OPTION_SW_CURSOR,&dPtr->swCursor);
     xf86GetOptValInteger(dPtr->Options, OPTION_GUI_DOMID, (int*)&dPtr->gui_domid);
+    if (dPtr->gui_domid > XF86_QUBES_NO_DOMID)
+        dPtr->gui_domid = XF86_QUBES_NO_DOMID;
 
     if (device->videoRam != 0) {
         pScrn->videoRam = device->videoRam;
@@ -860,6 +881,24 @@ DUMMYLoadPalette(
 
 }
 
+/* Pages shared with domid, or plain memory if there is no GUI domain.
+ * Free either with xengntshr_unshare(). */
+static void *
+qubes_map_pixmap_pages(DUMMYPtr dPtr, uint32_t domid, size_t pages,
+                       uint32_t *refs) {
+    void *data;
+
+    if (domid != XF86_QUBES_NO_DOMID)
+        return xengntshr_share_pages(dPtr->xgs, domid, pages, refs, 0);
+
+    data = mmap(NULL, pages << XC_PAGE_SHIFT, PROT_READ | PROT_WRITE,
+                MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (data == MAP_FAILED)
+        return NULL;
+    memset(refs, 0, pages * sizeof(*refs));
+    return data;
+}
+
 static struct xf86_qubes_pixmap *
 qubes_alloc_pixmap_private(size_t size) {
     DUMMYPtr dPtr = DUMMYPTR(DUMMYScrn);
@@ -877,27 +916,111 @@ qubes_alloc_pixmap_private(size_t size) {
     priv->refs = (uint32_t *) (((uint8_t *) priv) + sizeof(struct xf86_qubes_pixmap));
     priv->refcount = 0;
 
-    priv->data = xengntshr_share_pages(dPtr->xgs,
-                                       dPtr->gui_domid,
-                                       pages,
-                                       priv->refs,
-                                       0);
+    qubes_lock();
+    priv->domid = dPtr->gui_domid;
+    priv->data = qubes_map_pixmap_pages(dPtr, priv->domid, pages, priv->refs);
     if (priv->data == NULL) {
+        qubes_unlock();
         xf86DrvMsg(DUMMYScrn->scrnIndex, X_ERROR,
                    "Failed to allocate %zu grant pages!\n", pages);
         free(priv);
         return NULL;
     }
+    priv->next = qubes_pixmaps;
+    if (qubes_pixmaps)
+        qubes_pixmaps->prev = priv;
+    qubes_pixmaps = priv;
+    qubes_unlock();
 
     return priv;
+}
+
+/* Share the pixmap memory with the current GUI domain. The new pages are
+ * mremap()ed over the old ones, so the address does not change.
+ * Caller holds qubes_lock(). Returns FALSE if not shared with that domain. */
+static Bool
+qubes_reshare_pixmap_private(DUMMYPtr dPtr, struct xf86_qubes_pixmap *priv) {
+    size_t len = priv->pages << XC_PAGE_SHIFT;
+    uint32_t domid = dPtr->gui_domid;
+    uint32_t *refs;
+    void *data;
+
+    if (priv->domid == domid)
+        return TRUE;
+
+    refs = malloc(priv->pages * sizeof(*refs));
+    if (refs == NULL)
+        return FALSE;
+    data = qubes_map_pixmap_pages(dPtr, domid, priv->pages, refs);
+    if (data == NULL && domid != XF86_QUBES_NO_DOMID &&
+            priv->domid != XF86_QUBES_NO_DOMID) {
+        /* At least stop sharing with the old domain. */
+        domid = XF86_QUBES_NO_DOMID;
+        data = qubes_map_pixmap_pages(dPtr, domid, priv->pages, refs);
+    }
+    if (data == NULL) {
+        free(refs);
+        return FALSE;
+    }
+    memcpy(data, priv->data, len);
+    if (mremap(data, len, len, MREMAP_MAYMOVE | MREMAP_FIXED, priv->data) ==
+            MAP_FAILED) {
+        /* Some kernels unmap the destination before failing. */
+        if (msync(priv->data, len, MS_ASYNC) != 0)
+            FatalError("Lost pixmap memory while re-sharing it: %s\n",
+                       strerror(errno));
+        xengntshr_unshare(dPtr->xgs, data, priv->pages);
+        free(refs);
+        return FALSE;
+    }
+    memcpy(priv->refs, refs, priv->pages * sizeof(*refs));
+    free(refs);
+    priv->domid = domid;
+    return domid == dPtr->gui_domid;
+}
+
+Bool
+xf86_qubes_set_gui_domid(uint32_t domid) {
+    DUMMYPtr dPtr = DUMMYPTR(DUMMYScrn);
+    struct xf86_qubes_pixmap *priv;
+    size_t failed = 0;
+
+    if (domid > XF86_QUBES_NO_DOMID)
+        domid = XF86_QUBES_NO_DOMID;
+
+    qubes_lock();
+    dPtr->gui_domid = domid;
+    for (priv = qubes_pixmaps; priv != NULL; priv = priv->next)
+        if (!qubes_reshare_pixmap_private(dPtr, priv))
+            failed++;
+    qubes_unlock();
+
+    if (failed)
+        xf86DrvMsg(DUMMYScrn->scrnIndex, X_ERROR,
+                   "Failed to share %zu pixmaps with GUI domain %u\n",
+                   failed, domid);
+    else
+        xf86DrvMsg(DUMMYScrn->scrnIndex, X_INFO,
+                   "Pixmaps now shared with GUI domain %u\n", domid);
+    return failed == 0;
+}
+
+Bool
+xf86_qubes_pixmap_ensure_domid(struct xf86_qubes_pixmap *priv) {
+    DUMMYPtr dPtr = DUMMYPTR(DUMMYScrn);
+    Bool ret;
+
+    qubes_lock();
+    ret = dPtr->gui_domid != XF86_QUBES_NO_DOMID &&
+        qubes_reshare_pixmap_private(dPtr, priv);
+    qubes_unlock();
+    return ret;
 }
 
 static PixmapPtr
 qubes_create_pixmap(ScreenPtr pScreen, int width, int height, int depth,
                     unsigned hint)
 {
-    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
-    DUMMYPtr dPtr = DUMMYPTR(pScrn);
     PixmapPtr pixmap;
     struct xf86_qubes_pixmap *priv;
     size_t bytes_per_line;
@@ -930,9 +1053,7 @@ qubes_create_pixmap(ScreenPtr pScreen, int width, int height, int depth,
     return pixmap;
 
 err_unshare:
-    xengntshr_unshare(dPtr->xgs, priv->data, priv->pages);
-    // Also frees refs
-    free(priv);
+    xf86_qubes_free_pixmap_private(priv);
 err_destroy_pixmap:
     fbDestroyPixmap(pixmap);
 
@@ -960,22 +1081,32 @@ qubes_create_screen_resources(ScreenPtr pScreen) {
 
 void xf86_qubes_free_pixmap_private(struct xf86_qubes_pixmap *priv) {
     assert(priv != NULL);
+    qubes_lock();
     uint32_t refcount = priv->refcount;
     assert(refcount < INT32_MAX && "refcount overflow");
     if (refcount == 0) {
         DUMMYPtr dPtr = DUMMYPTR(DUMMYScrn);
+        if (priv->prev)
+            priv->prev->next = priv->next;
+        else
+            qubes_pixmaps = priv->next;
+        if (priv->next)
+            priv->next->prev = priv->prev;
         xengntshr_unshare(dPtr->xgs, priv->data, priv->pages);
         // Also frees refs
         free(priv);
     } else {
         priv->refcount = refcount - 1;
     }
+    qubes_unlock();
 }
 
 void
 xf86_qubes_pixmap_add_to_list(struct xf86_qubes_pixmap *priv) {
+    qubes_lock();
     assert(priv->refcount < INT32_MAX && "refcount overflow");
     priv->refcount++;
+    qubes_unlock();
     DUMMYPtr dPtr = DUMMYPTR(DUMMYScrn);
     struct genlist *q = list_insert(&dPtr->queue, 0, priv);
     if (q == NULL) {
