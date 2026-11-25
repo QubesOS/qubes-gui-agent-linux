@@ -55,6 +55,7 @@
 #include "clipboard-png.h"
 #include "unix-addr.h"
 #include <libvchan.h>
+#include <qubesdb-client.h>
 #include <poll.h>
 #include "unistr.h"
 
@@ -154,7 +155,11 @@ typedef struct {
     int sync_all_modifiers;
     int composite_redirect_automatic;
     pid_t x_pid;
-    uint32_t domid;
+    uint32_t domid; /* GUI domain to connect to */
+    uint32_t xorg_domid; /* GUI domain Xorg shares pixmaps with */
+    qdb_handle_t qdb; /* NULL if GUI domain changes are not followed */
+    int qdb_fd;
+    bool guid_disconnected;
     uint32_t protocol_version;
     Time time;
     int uinput_fd;
@@ -2841,6 +2846,157 @@ static void cleanup_status_file(void)
     unlink(STATUS_FILE_PATH);
 }
 
+static void watch_gui_domid(Ghandles *g)
+{
+    g->qdb_fd = -1;
+    g->qdb = qdb_open(NULL);
+    if (!g->qdb) {
+        perror("qdb_open, GUI domain changes will not be followed");
+        return;
+    }
+    if (!qdb_watch(g->qdb, "/qubes-gui-domain-xid")) {
+        perror("qdb_watch, GUI domain changes will not be followed");
+        qdb_close(g->qdb);
+        g->qdb = NULL;
+        return;
+    }
+    g->qdb_fd = qdb_watch_fd(g->qdb);
+}
+
+/* Gives XDRIVER_NO_GUI_DOMID if the key is unset. Returns false on error. */
+static bool read_gui_domid(Ghandles *g, uint32_t *domid)
+{
+    char *value, *end;
+    unsigned int len;
+    unsigned long xid;
+
+    value = qdb_read(g->qdb, "/qubes-gui-domain-xid", &len);
+    if (!value) {
+        if (errno != ENOENT)
+            return false;
+        *domid = XDRIVER_NO_GUI_DOMID;
+        return true;
+    }
+    errno = 0;
+    xid = strtoul(value, &end, 10);
+    if (errno || end == value || *end || xid >= XDRIVER_NO_GUI_DOMID) {
+        fprintf(stderr, "Invalid /qubes-gui-domain-xid value\n");
+        free(value);
+        return false;
+    }
+    free(value);
+    *domid = xid;
+    return true;
+}
+
+/* Handle a QubesDB watch event; returns true if the GUI domain changed. */
+static bool handle_gui_domid_watch(Ghandles *g)
+{
+    char *path;
+    uint32_t domid;
+
+    path = qdb_read_watch(g->qdb);
+    if (!path) {
+        perror("qdb_read_watch, GUI domain changes no longer followed");
+        qdb_close(g->qdb);
+        g->qdb = NULL;
+        g->qdb_fd = -1;
+        return false;
+    }
+    free(path);
+    if (!read_gui_domid(g, &domid) || domid == g->domid)
+        return false;
+    fprintf(stderr, "GUI domain changed from %u to %u\n", g->domid, domid);
+    g->domid = domid;
+    return true;
+}
+
+static void sync_xorg_gui_domid(Ghandles *g)
+{
+    uint32_t ok;
+
+    if (g->xorg_domid == g->domid)
+        return;
+    /* acks from the old gui-daemon will never come */
+    feed_xdriver(g, 'A', 0, 0);
+    feed_xdriver(g, 'D', (int) g->domid, 0);
+    if (read(g->xserver_fd, &ok, sizeof(ok)) != sizeof(ok))
+        err(1, "unix read GUI domain change status");
+    if (!ok)
+        fprintf(stderr, "Some windows could not be shared with GUI domain %u\n",
+                g->domid);
+    g->xorg_domid = g->domid;
+}
+
+/* Wait for a gui-daemon to connect. Start over if the GUI domain changes. */
+static void wait_for_guid(Ghandles *g)
+{
+    for (;;) {
+        bool changed = false;
+
+        sync_xorg_gui_domid(g);
+        if (g->domid != XDRIVER_NO_GUI_DOMID) {
+            g->vchan = libvchan_server_init(g->domid, 6000, 4096, 4096);
+            if (!g->vchan)
+                fprintf(stderr, "vchan initialization for domain %u failed\n",
+                        g->domid);
+        }
+        while (g->vchan && !changed &&
+               libvchan_is_open(g->vchan) == VCHAN_WAITING) {
+            struct pollfd fds[] = {
+                { .fd = libvchan_fd_for_select(g->vchan), .events = POLLIN },
+                { .fd = g->qdb_fd, .events = POLLIN },
+            };
+            if (poll(fds, QUBES_ARRAY_SIZE(fds), -1) < 0) {
+                if (errno == EINTR)
+                    continue;
+                err(1, "poll");
+            }
+            if (fds[0].revents)
+                libvchan_wait(g->vchan);
+            if (fds[1].revents)
+                changed = handle_gui_domid_watch(g);
+        }
+        if (!changed && g->vchan &&
+                libvchan_is_open(g->vchan) == VCHAN_CONNECTED)
+            return;
+        if (g->vchan) {
+            libvchan_close(g->vchan);
+            g->vchan = NULL;
+        }
+        if (changed)
+            continue;
+
+        /* No GUI domain, or it died: wait until a new one is set. */
+        fprintf(stderr, "Waiting for a new GUI domain\n");
+        while (!changed) {
+            struct pollfd fd = { .fd = g->qdb_fd, .events = POLLIN };
+
+            if (g->qdb_fd < 0)
+                errx(1, "GUI domain %u is gone, cannot reconnect", g->domid);
+            if (poll(&fd, 1, -1) < 0) {
+                if (errno == EINTR)
+                    continue;
+                err(1, "poll");
+            }
+            changed = handle_gui_domid_watch(g);
+        }
+    }
+}
+
+static void reconnect_guid(Ghandles *g)
+{
+    write_status_file("started\n");
+    g->guid_disconnected = false;
+    libvchan_close(g->vchan);
+    g->vchan = NULL;
+    wait_for_guid(g);
+    handshake(g);
+    send_all_windows_info(g);
+    write_status_file("connected\n");
+}
+
+/* Called from vchan I/O; the main loop reconnects. */
 static void handle_guid_disconnect(void)
 {
     Ghandles *g = ghandles_for_vchan_reinitialize;
@@ -2850,15 +3006,7 @@ static void handle_guid_disconnect(void)
                 "cannot reconnect, exiting!\n");
         exit(1);
     }
-    write_status_file("started\n");
-    libvchan_close(g->vchan);
-    g->vchan = libvchan_server_init(g->domid, 6000, 4096, 4096);
-    /* wait for gui daemon */
-    while (libvchan_is_open(g->vchan) == VCHAN_WAITING)
-        libvchan_wait(g->vchan);
-    handshake(g);
-    send_all_windows_info(g);
-    write_status_file("connected\n");
+    g->guid_disconnected = true;
 }
 
 static _Noreturn void handle_sigterm(int UNUSED(sig),
@@ -3007,6 +3155,16 @@ int main(int argc, char **argv)
 
     parse_args(&g, argc, argv);
 
+    watch_gui_domid(&g);
+    if (g.qdb) {
+        uint32_t domid;
+
+        /* it may have changed since the service read it */
+        if (read_gui_domid(&g, &domid) && domid != XDRIVER_NO_GUI_DOMID)
+            g.domid = domid;
+    }
+    g.xorg_domid = g.domid;
+
     /* Clipboard wipe functionality is controlled by the
      * gui-agent-clipboard-wipe service
      */
@@ -3105,14 +3263,7 @@ int main(int argc, char **argv)
 
     write_status_file("started\n");
 
-    g.vchan = libvchan_server_init(g.domid, 6000, 4096, 4096);
-    if (!g.vchan) {
-        fprintf(stderr, "vchan initialization failed\n");
-        exit(1);
-    }
-    /* wait for gui daemon */
-    while (libvchan_is_open(g.vchan) == VCHAN_WAITING)
-        libvchan_wait(g.vchan);
+    wait_for_guid(&g);
     saved_argv = argv;
     vchan_register_at_eof(handle_guid_disconnect);
 
@@ -3125,6 +3276,7 @@ int main(int argc, char **argv)
         { .fd = -1, .events = POLLIN | POLLHUP, .revents = 0 },
         { .fd = xfd, .events = POLLIN | POLLHUP, .revents = 0 },
         { .fd = g.xserver_fd, .events = POLLIN | POLLHUP, .revents = 0 },
+        { .fd = -1, .events = POLLIN, .revents = 0 },
     };
     for (;;) {
         int busy;
@@ -3134,7 +3286,11 @@ int main(int argc, char **argv)
             exit(1);
         }
 
+        if (g.guid_disconnected)
+            reconnect_guid(&g);
+
         fds[0].fd = libvchan_fd_for_select(g.vchan);
+        fds[3].fd = g.qdb_fd;
         wait_for_vchan_or_argfd(g.vchan, fds, QUBES_ARRAY_SIZE(fds));
         /* first process possible qubes_drv reconnection, otherwise we may be
          * using stale g.xserver_fd */
@@ -3161,17 +3317,20 @@ int main(int argc, char **argv)
             }
         }
 
+        if (fds[3].fd >= 0 && fds[3].revents && handle_gui_domid_watch(&g))
+            g.guid_disconnected = true;
+
         do {
             busy = 0;
             if (XPending(g.display)) {
                 process_xevent(&g);
                 busy = 1;
             }
-            while (libvchan_data_ready(g.vchan)) {
+            while (!g.guid_disconnected && libvchan_data_ready(g.vchan)) {
                 handle_message(&g);
                 busy = 1;
             }
-        } while (busy);
+        } while (busy && !g.guid_disconnected);
 
     }
     return 0;
